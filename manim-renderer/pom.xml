@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.example.yuanxuan.see</groupId>
+        <artifactId>see</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>manim-renderer</artifactId>
+    <name>manim-renderer</name>
+    <description>调用 Manim 渲染微服务的 Java 客户端（可复用 Service）</description>
+
+    <properties>
+        <!-- 自带版本，便于被外部（可能不同 Spring Boot 大版本）工程直接依赖 -->
+        <fastjson2.version>2.0.43</fastjson2.version>
+    </properties>
+
+    <dependencies>
+        <!--
+            HTTP 用 JDK java.net.http.HttpClient，JSON 用 fastjson2，
+            刻意不依赖 spring-web / Jackson，避免与消费端 Spring Boot 大版本（3.x vs 4.x / Jackson 2 vs 3）冲突。
+            Spring 仅用于自动装配注解，标记 optional，不向消费端传递本仓库的 Spring 版本。
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.fastjson2</groupId>
+            <artifactId>fastjson2</artifactId>
+            <version>${fastjson2.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 作为被依赖的库 jar，不做 spring-boot repackage -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

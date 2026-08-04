@@ -1,0 +1,85 @@
+# problem_altitude · 直角三角形斜边上的高（等面积法）
+# 标杆样例：演示「题图 + 分步作图(reveal) + 四件套(step/knowledge_card/warning/answer_box) + 心法」
+# 来源：经典例题
+
+core:
+  title: "题目讲解"
+  statement: "（经典例题）如图，在 $\\mathrm{Rt}\\triangle ABC$ 中，$\\angle C=90^\\circ$，$AC=3$，$BC=4$，$CD\\perp AB$ 于点 $D$。求斜边上的高 $CD$ 的长。"
+  say: "看这道直角三角形的题。直角顶点在C，两条直角边AC等于三、BC等于四，CD是斜边AB上的高。我们要求这条高CD有多长。"
+  figure:
+    type: schematic
+    x_range: [-0.8, 4.8]
+    y_range: [-0.8, 3.8]
+    elements:
+      # 三角形 A(0,3) C(0,0) B(4,0)：题干就有，整组初始显示
+      - {type: polygon, points: [[0, 3], [0, 0], [4, 0]], color: "#1F2937", stroke_width: 2.5}
+      # C 处直角符号（标准小方块）
+      - {type: polygon, points: [[0, 0], [0.35, 0], [0.35, 0.35], [0, 0.35]], color: "#1F2937", stroke_width: 1.5}
+      # 顶点标签
+      - {type: label, x: -0.3, y: 3.05, text: "$A$", font_size: 30}
+      - {type: label, x: -0.3, y: -0.3, text: "$C$", font_size: 30}
+      - {type: label, x: 4.15, y: -0.35, text: "$B$", font_size: 30}
+      # 边长标注
+      - {type: label, x: -0.45, y: 1.5, text: "$3$", font_size: 28, color: "#B91C1C"}
+      - {type: label, x: 2.0, y: -0.4, text: "$4$", font_size: 28, color: "#B91C1C"}
+      # —— 以下带 id 的元素：初始隐藏，讲到作高那拍才描出来 ——
+      - {type: line, x1: 0, y1: 0, x2: 1.44, y2: 1.92, color: "#1D4ED8", stroke_width: 2.5, dashed: true, id: alt}
+      - {type: dot, x: 1.44, y: 1.92, color: "#1D4ED8", id: dotD}
+      - {type: label, x: 1.78, y: 2.05, text: "$D$", font_size: 30, color: "#1D4ED8", id: labelD}
+
+teach:
+  acts:
+    - title: "第一步：先求斜边 AB"
+      transition: soft
+      beats:
+        - say: "要算斜边上的高，得先知道斜边多长。直角三角形里两条直角边已知，斜边用勾股定理：AB等于根号下三的平方加四的平方，等于根号二十五，等于五。"
+          show:
+            type: step
+            body: "$AB=\\sqrt{AC^2+BC^2}=\\sqrt{3^2+4^2}=\\sqrt{25}=5$"
+
+    - title: "第二步：等面积法求高"
+      transition: soft
+      beats:
+        - say: "求斜边上的高，最快的不是相似、也不是解直角三角形，而是等面积法。一个三角形的面积只有一个值，但可以用不同的底和高去算。这里有两套底高：用两条直角边AC、BC算，或者用斜边AB配它上面的高CD算。两种算法结果必须相等，这就架起了一座桥，把要求的CD和已知量连起来。"
+          show:
+            type: knowledge_card
+            title: "等面积法"
+            body: "同一个三角形，面积只有一个值"
+            points:
+              - "直角边作底高：$S=\\dfrac{1}{2}\\,AC\\cdot BC$"
+              - "斜边作底高：$S=\\dfrac{1}{2}\\,AB\\cdot CD$"
+              - "两式相等 $\\Rightarrow$ 解出 $CD$"
+        - say: "我们把这条高画出来：从直角顶点C向斜边AB作垂线，垂足是D，CD就是斜边上的高。"
+          show:
+            type: figure
+            ref: [alt, dotD, labelD]
+            anim: create
+        - say: "让两种面积算法相等：二分之一乘AC乘BC，等于二分之一乘AB乘CD。"
+          show:
+            type: step
+            body: "$\\dfrac{1}{2}\\,AC\\cdot BC=\\dfrac{1}{2}\\,AB\\cdot CD$"
+        - say: "两边的二分之一约掉，代入数：CD等于AC乘BC再除以AB，也就是三乘四除以五，等于五分之十二。"
+          show:
+            type: step
+            body: "$CD=\\dfrac{AC\\cdot BC}{AB}=\\dfrac{3\\times 4}{5}=\\dfrac{12}{5}$"
+        - say: "所以斜边上的高CD等于五分之十二。"
+          show:
+            type: answer_box
+            body: "$CD=\\dfrac{12}{5}$"
+
+    - title: "第三步：避坑提醒"
+      transition: soft
+      beats:
+        - say: "这里最容易错的，是把面积公式里的底和高配错——比如拿AC当底却去乘CD。记住：底和高必须互相垂直、是配套的一对。直角边AC配BC，斜边AB配它上面的高CD，不能混搭。"
+          show:
+            type: warning
+            label: "易错"
+            body: "底与高必须配套垂直：$AB$ 配 $CD$、$AC$ 配 $BC$，不能混用"
+
+summary:
+  beats:
+    - say: "这道题的核心是等面积法。直角三角形里，斜边上的高等于两条直角边的乘积除以斜边。看到斜边上的高，先想等面积，往往比相似和解三角形都快。"
+      show:
+        type: takeaway
+        body: "斜边上的高 $=\\dfrac{\\text{两直角边之积}}{\\text{斜边}}$（等面积法搭桥）"
+        number: 1

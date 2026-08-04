@@ -1,0 +1,59 @@
+# 示例 1 · 简单题（Q1 复数与复平面）
+# 难度：★☆☆☆☆
+# 布局分支：B（无 keypoint，题干短，讲题时题干缩到顶栏下一行）
+# 结构：1 个 act + summary 极简
+
+core:
+  title: "襄阳期中 · 第 1 题"
+  statement: '若复数 $z$ 满足 $z\mathrm{i} = -1 + 2\mathrm{i}$，则 $z$ 在复平面内对应的点位于（\quad）\choices{第一象限}{第二象限}{第三象限}{第四象限}'
+  say: "同学们，第一题复数基础。题目给了复数方程 z 乘 i 等于负 一 加 二 i，要判断 z 在复平面的象限。复数章节两把刀——代数变形和待定系数，我们都讲一遍。"
+
+teach:
+  acts:
+    - title: "两种方法"
+      beats:
+        - say: "先铺两个知识点。第一，i 的平方等于负 一，这是复数运算的灵魂。第二，复数a + b i对应复平面上的a逗号b。"
+          show:
+            type: knowledge_card
+            title: "复数基本量"
+            points:
+              - "$\\mathrm{i}^2 = -1$"
+              - "$z = a + b\\mathrm{i}$ 对应复平面点 $(a, b)$"
+
+        - say: "以及啊，复数相等等价于实部虚部分别相等，这是待定系数法的方程组来源。"
+          show:
+            type: knowledge_card
+            title: "复数相等"
+            body: "$a_1 + b_1\\mathrm{i} = a_2 + b_2\\mathrm{i} \\Leftrightarrow a_1 = a_2, b_1 = b_2$"
+
+        - say: "知识点备好了，那我们先讲方法一：代数变形。两边除以 i，分子分母同乘 i 把分母变实。"
+          show:
+            type: step
+            body: "$z = \\frac{-1+2\\mathrm{i}}{\\mathrm{i}} = \\frac{(-1+2\\mathrm{i})\\mathrm{i}}{\\mathrm{i}^2}$"
+
+        - say: "分子展开，分母 i 平方是负 一，化简得到 z 等于 二 加 i。"
+          show:
+            type: step
+            body: "$= \\frac{-\\mathrm{i} - 2}{-1} = 2 + \\mathrm{i}$"
+
+        - say: "方法二：待定系数。设 z 等于 a 加 b i，代入方程展开。"
+          show:
+            type: step
+            body: "设 $z = a + b\\mathrm{i}$，则 $z\\mathrm{i} = -b + a\\mathrm{i}$"
+
+        - say: "左右两边实部虚部分别相等，列方程组解出 a 和 b。"
+          show:
+            type: step
+            body: "$\\begin{cases} -b = -1 \\\\ a = 2 \\end{cases} \\Rightarrow z = 2 + \\mathrm{i}$"
+
+        - say: "两种方法结果一致。对应复平面点 二 逗号 一，横纵坐标都为正，位于第一象限。"
+          show:
+            type: answer_box
+            body: "$z = 2 + \\mathrm{i}$ 对应第一象限，选 A"
+
+summary:
+  beats:
+    - say: "记住这道题的通用方法——复数题的两种方式。代数变形快但要熟悉套路，待定系数稳但步骤多。考场上哪把顺手用哪把，这招覆盖复数章节的半壁江山。"
+      show:
+        type: takeaway
+        body: "复数题两把刀：代数变形（快） vs 待定系数（稳）"

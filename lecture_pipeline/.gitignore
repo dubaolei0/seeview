@@ -1,0 +1,15 @@
+# 渲染产物与缓存——不进共享仓库（每个人本地各自生成）
+media/
+output/
+*.mp4
+*.wav
+_dummy.wav
+
+# 密钥——只提交 .env.example，真实 .env 永不入库
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.python-version

@@ -1,0 +1,29 @@
+core:
+  title: "布局 B 测试"
+  statement: "求 $f(x)=x^2-1$ 的零点。"
+  say: 求函数 f of x 等于 x 平方减 1 的零点。
+
+teach:
+  acts:
+    - title: "求解"
+      transition: none
+      beats:
+        - say: 令 f of x 等于零。
+          show:
+            type: step
+            body: "$x^2 - 1 = 0$"
+        - say: 因式分解得到。
+          show:
+            type: step
+            body: "$(x-1)(x+1)=0$"
+        - say: 所以答案是。
+          show:
+            type: answer_box
+            body: "$x = \\pm 1$"
+
+summary:
+  beats:
+    - say: 因式分解是求零点的基本方法。
+      show:
+        type: takeaway
+        body: "零点即令 $f(x)=0$"

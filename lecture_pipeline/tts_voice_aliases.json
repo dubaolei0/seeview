@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "default": {
+    "alias": "longcheng",
+    "provider": "aliyun",
+    "voice": "longcheng_v3"
+  },
+  "aliases": {
+    "yingyujiaoxue": {
+      "provider": "doubao",
+      "voice": "zh_female_yingyujiaoxue_uranus_bigtts",
+      "label": "豆包英语教学女声"
+    },
+    "longcheng": {
+      "provider": "aliyun",
+      "voice": "longcheng_v3",
+      "label": "阿里云默认男声"
+    },
+    "longhua": {
+      "provider": "aliyun",
+      "voice": "longhua_v3",
+      "label": "阿里云中文音色"
+    },
+    "longwan": {
+      "provider": "aliyun",
+      "voice": "longwan_v3",
+      "label": "阿里云中文音色"
+    },
+    "longxiaochun": {
+      "provider": "aliyun",
+      "voice": "longxiaochun_v3",
+      "label": "阿里云中文音色"
+    },
+    "longshuo": {
+      "provider": "aliyun",
+      "voice": "longshuo_v3",
+      "label": "阿里云中文音色"
+    },
+    "longxiu": {
+      "provider": "aliyun",
+      "voice": "longxiu_v3",
+      "label": "阿里云中文音色"
+    },
+    "longmiao": {
+      "provider": "aliyun",
+      "voice": "longmiao_v3",
+      "label": "阿里云中文音色"
+    },
+    "longyuan": {
+      "provider": "aliyun",
+      "voice": "longyuan_v3",
+      "label": "阿里云中文音色"
+    },
+    "xiaotian": {
+      "provider": "doubao",
+      "voice": "zh_male_taocheng_uranus_bigtts",
+      "label": "豆包男声"
+    },
+    "xiaotian_2": {
+      "provider": "doubao",
+      "voice": "zh_male_taocheng_uranus_bigtts",
+      "label": "豆包男声"
+    },
+    "yunzhou": {
+      "provider": "doubao",
+      "voice": "zh_male_m191_uranus_bigtts",
+      "label": "豆包男声"
+    },
+    "yunzhou_2": {
+      "provider": "doubao",
+      "voice": "zh_male_m191_uranus_bigtts",
+      "label": "豆包男声"
+    },
+    "liufei": {
+      "provider": "doubao",
+      "voice": "zh_male_liufei_uranus_bigtts",
+      "label": "豆包刘飞男声"
+    },
+    "liufei_2": {
+      "provider": "doubao",
+      "voice": "zh_male_liufei_uranus_bigtts",
+      "label": "豆包刘飞男声"
+    },
+    "liu_fei": {
+      "provider": "doubao",
+      "voice": "zh_male_liufei_uranus_bigtts",
+      "label": "豆包刘飞男声"
+    },
+    "jieshuoxiaoming": {
+      "provider": "doubao",
+      "voice": "zh_male_jieshuoxiaoming_uranus_bigtts",
+      "label": "豆包讲解男声"
+    },
+    "qingshuangnanda": {
+      "provider": "doubao",
+      "voice": "zh_male_qingshuangnanda_uranus_bigtts",
+      "label": "豆包清爽男声"
+    },
+    "cancan": {
+      "provider": "doubao",
+      "voice": "zh_female_cancan_uranus_bigtts",
+      "label": "豆包女声"
+    },
+    "linjianvhai": {
+      "provider": "doubao",
+      "voice": "zh_female_linjianvhai_uranus_bigtts",
+      "label": "豆包邻家女声"
+    },
+    "qingxinnvsheng": {
+      "provider": "doubao",
+      "voice": "zh_female_qingxinnvsheng_uranus_bigtts",
+      "label": "豆包清新女声"
+    },
+    "zhixingnv": {
+      "provider": "doubao",
+      "voice": "zh_female_zhixingnv_uranus_bigtts",
+      "label": "豆包知性女声"
+    }
+  }
+}

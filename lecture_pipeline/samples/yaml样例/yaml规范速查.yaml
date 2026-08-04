@@ -1,0 +1,169 @@
+# ============================================================
+# v3 讲稿 YAML 完整规范参考
+# 本文件覆盖所有常用字段，每个注释标注了规范要点。
+# 写新 yaml 时可复制本文件，删掉不需要的部分。
+# ============================================================
+
+core:
+  # ── title ──
+  # 调用者给了就原样照抄；没给默认"题目讲解"（四字，不加后缀/题号/考点）。
+  title: "题目讲解"
+
+  # ── statement（题干）──
+  # 【必须双引号】因为 LaTeX 反斜杠需要 \\，换行需要 \n。
+  # 【题源】用（）包裹放最前；后缀（·拆解/·改编/·节选）必须保留。
+  # 【选择题】括号写（\\quad），选项前用 \n 换行，选项用 \\choices{}{}{}{}。
+  # 【填空】用 $\\underline{\\hspace{2cm}}$，禁止（空）。
+  # 【多小问】用 \n 分隔，不要全挤一行。
+  # 【行数】控制在 4 行以内，防止和蓝线/解析重叠。
+  statement: "（2024年新高考I卷第8题·改编）已知函数 $f(x)=x^3-3x+1$，$g(x)=\\sin x + \\cos x$，若 $f(a)=g(b)=0$，则下列哪个选项正确（\\quad）\n\\choices{$a<b$}{$b<a$}{$a=b$}{无法确定}"
+
+  # ── say（开场台词）──
+  # 【单引号即可】除非需要 \n 换行才用双引号。
+  # 【教师主体性】像老师在带学生：有判断、有提醒、有课堂口吻。
+  # 【不读题源】跳过括号里的题源信息。
+  # 【字数】80-200 字。
+  say: '同学们来看这道题。它给了两个函数都等于零的条件，核心动作是比较 a 和 b 的大小。'
+
+  # ── keypoint（可选，布局 A 触发条件）──
+  # 有 keypoint → 布局 A（左侧推导 + 右侧锚点栏）。
+  # 没有 → 布局 B（全宽推导）。
+  # 有 figure 无 keypoint → 布局 C（左图右推导）。
+  # 有 figure + conditions → 布局 D。
+  # keypoint: ["$f(a)=0$", "$g(b)=0$"]
+
+  # ── figure（可选，布局 C/D 触发条件）──
+  # schema 字段只能用：type / x_range / y_range / elements
+  # element type 只能用：rect / circle / line / dot / label / arrow / arc / polygon
+  #   plot 类：function / point
+  #   3D 类：sphere / cylinder / cube / cone / plane / segment3d / dot3d / label3d / vector3d
+  # 禁止发明 vertices / edges / annotations / from / to 等字段。
+  # figure:
+  #   type: schematic
+  #   x_range: [-3, 3]
+  #   y_range: [-3, 3]
+  #   elements:
+  #     - {type: line, x1: -3, y1: 0, x2: 3, y2: 0, color: "#999"}
+  #     - {type: dot, x: 1, y: 2, color: "#B91C1C"}
+  #     - {type: label, x: 1.3, y: 2.3, text: "$P$", font_size: 24}
+
+teach:
+  acts:
+    # ══════════════════════════════════════════
+    # Act 1
+    # ══════════════════════════════════════════
+    - title: "求解 f(a)=0"
+      # ── transition ──
+      # none：强连续（保留上 act 内容，直接接着写）
+      # soft：软转场（上 act 内容淡化成 0.35 透明度作背景）——最常用
+      # hard：硬切（清空上 act 内容 + 短暂空白）
+      transition: none
+      beats:
+        # ── beat: step（推导步骤）──
+        # show.body 是纯 LaTeX，给学生看。
+        # say 是课堂口吻，给学生听。声画分工，不要互相复制。
+        # mode: spotlight（默认，听觉主导，say 10-40 字）
+        - say: '先看第一个条件，令 f(a) 等于零，解这个三次方程。'
+          show:
+            type: step
+            body: 由 $f(a)=0$，得 $a^3 - 3a + 1 = 0$。
+          mode: spotlight
+
+        # ── beat: step（含 \frac 等 LaTeX）──
+        # show.body 中数字相乘必须写 \times，禁止隐式 3(3+k)。
+        # 向量用 \vec{}，数量积用 \cdot，模用 |\vec{a}|。
+        - say: '对它因式分解，注意到 a 等于 1 时值为负 1，不是根。试试 a 等于负 1。'
+          show:
+            type: step
+            body: 试根：$f(1)=-1$，$f(-1)=3$，$f(2)=3$。
+          mode: spotlight
+
+        # ── beat: 纯过渡（无 show）──
+        # 纯过渡 beat 不需要 show，只等音频。
+        - say: '这个方程没有有理根，我们用数值方法估算。'
+
+        # ── beat: step（长推导）──
+        # mode: construct 时 say 100-200 字，用于关键跳跃要讲清 Why。
+        - say: '通过求导发现 f 在 x 等于正负 1 处取极值。f(1) 等于负 1，f(-1) 等于 3，所以方程有三个实根，分别在负 2 到负 1、0 到 1、1 到 2 之间。我们取最小的那个根作为 a。'
+          show:
+            type: step
+            body: $f'(x)=3x^2-3=0 \\Rightarrow x=\\pm 1$，$f(1)=-1<0$，$f(-1)=3>0$
+          mode: construct
+
+    # ══════════════════════════════════════════
+    # Act 2
+    # ══════════════════════════════════════════
+    - title: "求解 g(b)=0 并比较"
+      transition: soft    # 上 act 内容淡化保留
+      beats:
+        # ── beat: warning（易错提醒）──
+        # 只有确有高频错误时才写，不要为结构完整硬写。
+        # label 是短标签（如"易错""注意"），body 是 LaTeX。
+        - say: '这里最容易忽略的是 sine 加 cosine 可以合成一个 sine，别硬算。'
+          show:
+            type: warning
+            label: "易错"
+            body: $\\sin x + \\cos x = \\sqrt{2}\\sin(x+\\frac{\\pi}{4})$，不要分别求解。
+          mode: spotlight
+
+        - say: '合成后令它等于零，解出 b 的值。'
+          show:
+            type: step
+            body: $\\sqrt{2}\\sin(b+\\frac{\\pi}{4})=0 \\Rightarrow b = -\\frac{\\pi}{4} + k\\pi$
+          mode: spotlight
+
+        - say: '取主值 b 等于负四分之派，约等于负 0.785。'
+          show:
+            type: step
+            body: 取 $k=0$：$b=-\\frac{\\pi}{4} \\approx -0.785$
+          mode: spotlight
+
+        # ── beat: wow_formula（顿悟公式）──
+        # 居中放大金色显示，讲完 FadeOut。一题最多 2 处。
+        # formula 是纯 LaTeX；中文金句才用 body 代 formula。
+        - say: '对比两个值，a 约等于负 1.88，b 约等于负 0.785，所以 a 小于 b。'
+          show:
+            type: wow_formula
+            formula: "a \\approx -1.88 < b \\approx -0.785"
+            caption: "数值比较"
+          mode: insight
+
+        # ── beat: answer_box（答案）──
+        # 居中对齐加入推导流，永久保留。
+        # say 直接念答案，不要写"最后给出答案"。
+        - say: '答案是第一个，a 小于 b。'
+          show:
+            type: answer_box
+            body: 答案：$a < b$，选第一项。
+          mode: spotlight
+
+        # ── beat: knowledge_card（知识卡片）──
+        # 可多 beat 逐步出现（先 title 后逐 point）。
+        # 每 beat 用 construct mode，say 100-200 字。
+        # 禁止 5 个 point 用 1 个短 say 带过。
+        # - say: '这道题用到了两个核心知识……'
+        #   show:
+        #     type: knowledge_card
+        #     title: "辅助角公式"
+        #     points:
+        #       - "$a\\sin x + b\\cos x = \\sqrt{a^2+b^2}\\sin(x+\\varphi)$"
+        #       - "其中 $\\tan\\varphi = \\frac{b}{a}$"
+        #   mode: construct
+
+# ── summary（升华/心法）──
+# 备课有核心心法 → 写 summary，每条心法一条 takeaway。
+# 备课写"无核心心法"（套路/纯计算题）→ 整段省略，不要写空 summary。
+# takeaway 的 body 是给学生看的短规则，number 是序号。
+summary:
+  beats:
+    - say: '这类题的关键是分别求解再比较，辅助角公式是处理 sine 加 cosine 的标准手法。'
+      show:
+        type: takeaway
+        body: "$\\sin x + \\cos x$ 型用辅助角公式合成，不要分别求解。"
+        number: 1
+
+    - say: '第二个心法是三次方程没有有理根时，用导数判极值来估算根的范围。'
+      show:
+        type: takeaway
+        body: 三次方程无有理根时，用 $f'(x)=0$ 的极值点划区间估算。
+        number: 2

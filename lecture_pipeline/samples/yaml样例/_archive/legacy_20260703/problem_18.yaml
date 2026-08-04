@@ -1,0 +1,361 @@
+# Q18 角平分线 + 面积最优化
+# 布局分支 C：右侧带几何示意图（三角形 ABC + 角平分线 AD）
+# 来源：pipeline 1.5 自然语言讲稿 → pipeline 2 结构化编排
+
+core:
+  title: "襄阳期中 · 第 18 题"
+  statement: |
+    在 $\triangle ABC$ 中，$AB = 2AC$，$AD$ 是 $\angle BAC$ 的平分线，且 $AD = kAC$。
+
+    （1）求 $k$ 的取值范围；
+    （2）若 $S_{\triangle ABC} = 1$，则 $k$ 为何值时，$BC$ 最短。
+  say: 同学们来看第十八题。三角形 ABC，AB 等于 2 倍的 AC，AD 是角 BAC 的平分线，长度等于 k 乘以 AC。第一问求 k 的取值范围，第二问面积等于 1 时，k 取多少 BC 最短。
+  conditions:
+    - "$AB = 2AC$"
+    - "$AD$ 平分 $\\angle BAC$"
+    - "$AD = kAC$"
+    - "(1) 求 $k$ 的取值范围"
+    - "(2) $S_{\\triangle ABC}=1$ 时，$BC$ 最短的 $k$"
+  figure:
+    type: schematic
+    x_range: [-5, 3, 1]
+    y_range: [-1, 4, 1]
+    elements:
+      # 三角形 ABC
+      - type: polygon
+        points: [[0, 2.5], [-4.5, 0], [1, 0]]
+        color: "#1F2937"
+        stroke_width: 2.5
+      # 角平分线 AD（虚线红色）
+      - type: line
+        x1: 0
+        y1: 2.5
+        x2: -0.83
+        y2: 0
+        color: "#B91C1C"
+        stroke_width: 1.8
+        dashed: true
+      # 顶点 A
+      - type: dot
+        x: 0
+        y: 2.5
+        color: "#1F2937"
+      - type: label
+        x: 0.3
+        y: 2.8
+        text: "$A$"
+        font_size: 28
+      # 顶点 B
+      - type: dot
+        x: -4.5
+        y: 0
+        color: "#1F2937"
+      - type: label
+        x: -4.9
+        y: -0.3
+        text: "$B$"
+        font_size: 28
+      # 顶点 C
+      - type: dot
+        x: 1
+        y: 0
+        color: "#1F2937"
+      - type: label
+        x: 1.4
+        y: -0.3
+        text: "$C$"
+        font_size: 28
+      # 角平分线足 D
+      - type: dot
+        x: -0.83
+        y: 0
+        color: "#B91C1C"
+      - type: label
+        x: -0.83
+        y: -0.4
+        text: "$D$"
+        font_size: 26
+        color: "#B91C1C"
+      # 边长标注
+      - type: label
+        x: -2.8
+        y: 1.6
+        text: "$2a$"
+        font_size: 24
+        color: "#1E40AF"
+      - type: label
+        x: 0.9
+        y: 1.5
+        text: "$a$"
+        font_size: 24
+        color: "#1E40AF"
+      - type: label
+        x: -0.9
+        y: 1.4
+        text: "$ka$"
+        font_size: 22
+        color: "#B91C1C"
+      # 角平分线等角弧
+      - type: arc
+        x: 0
+        y: 2.5
+        radius: 0.55
+        start_angle: 209
+        end_angle: 250
+        color: "#1E40AF"
+        stroke_width: 2
+      - type: arc
+        x: 0
+        y: 2.5
+        radius: 0.55
+        start_angle: 250
+        end_angle: 292
+        color: "#1E40AF"
+        stroke_width: 2
+      - type: label
+        x: -0.6
+        y: 1.85
+        text: "$\\frac{\\alpha}{2}$"
+        font_size: 18
+        color: "#1E40AF"
+      - type: label
+        x: 0.15
+        y: 1.75
+        text: "$\\frac{\\alpha}{2}$"
+        font_size: 18
+        color: "#1E40AF"
+
+teach:
+  acts:
+    # ==========  Act 1：面积分割推导 k  ==========
+    - title: "第一问：面积分割推导 k"
+      transition: soft
+      beats:
+        # 过渡：两问有关系
+        - say: 这两问之间是有联系的，第二问最后要用到第一问的结论。我们一步步来。
+
+        # 提出问题 + 策略思考
+        - say: 第一问求 k 的范围。k 就是 AD 跟 AC 的比值。怎么把 k 和角度联系起来呢？
+
+        # Why beat：为什么选面积法
+        - say: 看到角平分线把三角形一分为二，你要马上建立一个直觉——D 在 BC 上，AD 把大三角形劈成两个小的，大的面积等于两个小的面积之和。面积公式里有边长乘以 sin 角，正好能把 k 和角度联系起来。
+
+        # 知识铺垫：面积分割法
+        - say: 来看面积分割法的公式。大三角形的面积等于两个小三角形的面积之和。
+          show:
+            type: knowledge_card
+            title: "面积分割法"
+            body: "$S_{\\triangle ABC} = S_{\\triangle ABD} + S_{\\triangle ACD}$"
+            icon: think
+
+        # 设元
+        - say: 设 AC 等于 a，那 AB 就是 2a，AD 就是 ka。角 BAC 设成 alpha，平分之后两边各是二分之 alpha。
+          show:
+            type: step
+            body: "设 $AC = a$：$AB = 2a$，$AD = ka$，$\\angle BAD = \\angle DAC = \\frac{\\alpha}{2}$"
+
+        # 大三角形面积
+        - say: 大三角形面积，二分之一乘 2a 乘 a 乘 sin alpha，就是 a 平方 sin alpha。
+          show:
+            type: step
+            body: "$S_{\\triangle ABC} = \\frac{1}{2} \\cdot 2a \\cdot a \\cdot \\sin\\alpha = a^2\\sin\\alpha$"
+
+        # 两个小三角形面积
+        - say: 两个小三角形的夹角都是二分之 alpha，注意不是 alpha。加起来是二分之三 ka 平方 sin 二分之 alpha。
+          show:
+            type: step
+            body: "$S_{\\triangle ABD} + S_{\\triangle ACD} = \\frac{3}{2}ka^2\\sin\\frac{\\alpha}{2}$"
+
+        # 列等式
+        - say: 两边相等，a 平方约掉。
+          show:
+            type: step
+            body: "$\\sin\\alpha = \\frac{3}{2}k\\sin\\frac{\\alpha}{2}$"
+
+        # Why beat：为什么要用倍角
+        - say: 左边 sin alpha，右边 sin 二分之 alpha，不一样不能直接约。怎么办？倍角公式拆一下。
+
+        # 倍角公式知识卡
+        - say: 倍角公式，sin alpha 等于 2 sin 二分之 alpha 乘以 cos 二分之 alpha。这样左边就也有 sin 二分之 alpha 了。
+          show:
+            type: knowledge_card
+            title: "倍角公式"
+            body: "$\\sin\\alpha = 2\\sin\\frac{\\alpha}{2}\\cos\\frac{\\alpha}{2}$"
+            icon: think
+
+        # 倍角化简
+        - say: 拆开之后两边都有 sin 二分之 alpha 了，约掉它。
+          show:
+            type: step
+            body: "$2\\cos\\frac{\\alpha}{2} = \\frac{3}{2}k$"
+
+        # 得到 k 的表达式（重要结论）
+        - say: k 就出来了——三分之四 cos 二分之 alpha。记住这个式子，第二问要用。
+          show:
+            type: step
+            body: "$k = \\frac{4}{3}\\cos\\frac{\\alpha}{2}$"
+            emphasis: ["\\frac{4}{3}\\cos\\frac{\\alpha}{2}"]
+
+    # ==========  Act 2：第一问收尾  ==========
+    - title: "第一问：确定范围"
+      transition: none
+      beats:
+        - say: alpha 在 0 到 pai 之间，二分之 alpha 在 0 到二分之 pai，cos 值 0 到 1，取不到端点。
+          show:
+            type: step
+            body: "$\\cos\\frac{\\alpha}{2} \\in (0,\\, 1) \\Rightarrow k \\in \\left(0,\\, \\frac{4}{3}\\right)$"
+
+        - say: 第一问搞定。k 的取值范围是开区间 0 到三分之四。
+          show:
+            type: answer_box
+            body: "第一问：$k \\in \\left(0,\\, \\frac{4}{3}\\right)$"
+
+    # ==========  Act 3：建立 BC 表达式 + 消元  ==========
+    - title: "第二问：把 BC 化成单变量"
+      transition: soft
+      beats:
+        # 过渡 + 策略分析
+        - say: 好，第一问搞定了，来看第二问。面积等于 1，BC 最短时 k 是多少。
+
+        # Why beat：整体策略
+        - say: 同学们先想清楚思路。BC 不是已知量，它取决于三角形的形状。我们要做两件事——第一，用已知量把 BC 表示出来；第二，找到 BC 的最小值。
+
+        # Why beat：为什么用余弦定理
+        - say: BC 怎么表示？看图，AB、AC 和夹角 alpha 都已知了。两边夹一角，求第三边——这就是余弦定理的标准场景。
+
+        # 余弦定理知识卡
+        - say: 余弦定理，c 的平方等于 a 平方加 b 平方减 2ab cos C。这里 c 就是 BC，a 和 b 就是 AB 和 AC。
+          show:
+            type: knowledge_card
+            title: "余弦定理"
+            body: "$c^2 = a^2 + b^2 - 2ab\\cos C$"
+            icon: think
+
+        # 余弦定理展开
+        - say: 代进去化简一下，BC 的平方就是 a 平方乘以 5 减 4 cos alpha。
+          show:
+            type: step
+            body: "$BC^2 = (2a)^2 + a^2 - 2(2a)(a)\\cos\\alpha = a^2(5 - 4\\cos\\alpha)$"
+
+        # Why beat：为什么要消元
+        - say: 这里面有 a 和 alpha 两个变量，没法直接求最值。别忘了第二问给了面积等于 1。
+
+        # 用面积消元
+        - say: 面积等于 a 平方 sin alpha 等于 1，所以 a 平方等于 sin alpha 分之一。
+          show:
+            type: step
+            body: "$a^2\\sin\\alpha = 1 \\Rightarrow a^2 = \\frac{1}{\\sin\\alpha}$"
+
+        # 代入得到单变量
+        - say: 代回去，a 消掉了。BC 的平方变成只跟 alpha 有关的式子。这一步是关键得分点。
+          show:
+            type: step
+            body: "$BC^2 = \\frac{5 - 4\\cos\\alpha}{\\sin\\alpha}$"
+            emphasis: ["\\frac{5 - 4\\cos\\alpha}{\\sin\\alpha}"]
+
+    # ==========  Act 4：辅助角求最值 + 代回  ==========
+    - title: "第二问：辅助角求最值"
+      transition: soft
+      beats:
+        # Why beat：为什么要变形
+        - say: 现在目标是求这个分式的最小值。看到分式里 sin 和 cos 混在一起，我们有一个经典工具——辅助角公式。它能处理的是 a sin x 加 b cos x 的形式。那怎么凑出这种形式？设分式等于 y，两边乘 sin alpha，一整理就出来了。
+
+        # 设 y
+        - say: 看，y sin alpha 加 4 cos alpha 等于 5，这就是标准的线性组合形式，可以套辅助角了。
+          show:
+            type: step
+            body: "$y\\sin\\alpha + 4\\cos\\alpha = 5$"
+
+        # 辅助角公式知识卡
+        - say: 左边 sin 和 cos 的线性组合，辅助角公式正好能处理。a sin x 加 b cos x，可以合成根号下 a 平方加 b 平方，乘以 sin 括号 x 加 phi。
+          show:
+            type: knowledge_card
+            title: "辅助角公式"
+            body: "$a\\sin x + b\\cos x = \\sqrt{a^2+b^2}\\;\\sin(x+\\varphi)$"
+            icon: think
+
+        # 辅助角合并
+        - say: 套进去，这里 a 就是 y，b 就是 4，合并之后就是这个样子。
+          show:
+            type: step
+            body: "$\\sqrt{y^2 + 16}\\;\\sin(\\alpha + \\varphi) = 5$"
+
+        # 有解条件（知识卡片）
+        - say: 关键来了。sin 最大就是 1，所以根号下 y 平方加 16 不能比 5 小，不然方程没解。
+          show:
+            type: knowledge_card
+            title: "有解条件 → 最值"
+            body: "$\\sin(\\alpha+\\varphi) \\le 1 \\Rightarrow \\sqrt{y^2+16} \\ge 5$"
+            icon: think
+
+        # 求出最小值
+        - say: 两边平方，y 大于等于 3。BC 的平方最小是 3，BC 最短就是根号 3。
+          show:
+            type: step
+            body: "$y \\ge 3 \\Rightarrow BC_{\\min} = \\sqrt{3}$"
+
+        # 等号条件
+        - say: 等号什么时候取到？sin 等于 1 的时候。解出来 cos alpha 等于五分之四。
+          show:
+            type: step
+            body: "等号成立 $\\Leftrightarrow \\cos\\alpha = \\frac{4}{5}$"
+
+        # 警告：题目问的是 k
+        - say: 注意了同学们，题目问的是 k，不是 alpha。很多人算到这就收笔了，白白丢分。
+          show:
+            type: warning
+            body: "题目问 $k$！要代回第一问"
+            label: "别漏"
+
+        # recall 回指第一问的 k 公式
+        - say: 第一问推出来的公式现在派上用场了。k 等于三分之四 cos 二分之 alpha。
+          recall: indicate
+
+        # 半角公式知识卡
+        - say: 怎么从 cos alpha 求 cos 二分之 alpha？用半角公式。
+          show:
+            type: knowledge_card
+            title: "半角公式"
+            body: "$\\cos\\frac{\\alpha}{2} = \\sqrt{\\frac{1+\\cos\\alpha}{2}}$"
+            icon: think
+
+        # 半角公式代入
+        - say: cos alpha 等于五分之四，代进去，cos 二分之 alpha 等于十分之三根号十。
+          show:
+            type: step
+            body: "$\\cos\\frac{\\alpha}{2} = \\sqrt{\\frac{1 + \\frac{4}{5}}{2}} = \\frac{3\\sqrt{10}}{10}$"
+
+        # 最终计算
+        - say: 代入 k 的公式，三分之四乘十分之三根号十，化简得五分之二根号十。
+          show:
+            type: step
+            body: "$k = \\frac{4}{3} \\times \\frac{3\\sqrt{10}}{10} = \\frac{2\\sqrt{10}}{5}$"
+
+        # Why beat：回顾两问的串联
+        - say: 大家看，第一问求 k 的范围，表面上是独立的，实际上就是为第二问铺路。面积分割法推出 k 和角度的关系式，第二问用余弦定理加消元求出角度，再代回去。这就是两问串联题的典型套路。
+
+        # 第二问答案
+        - say: 第二问答案——k 等于五分之二根号十时，BC 最短，等于根号 3。
+          show:
+            type: answer_box
+            body: "第二问：$k = \\frac{2\\sqrt{10}}{5}$ 时，$BC_{\\min} = \\sqrt{3}$"
+
+summary:
+  beats:
+    - say: 总结三点。第一，角平分线长度问题，面积分割法是首选。AD 把三角形劈成两份，面积关系直接带出 k 的表达式。以后看到角平分线加长度，条件反射就是面积分割。
+      show:
+        type: takeaway
+        number: 1
+        body: "角平分线长 → 面积分割：$S = S_1 + S_2$"
+
+    - say: 第二，多变量求最值不要慌。数约束条件，用约束消元，化成单变量再求最值。
+      show:
+        type: takeaway
+        number: 2
+        body: "多变量最值 → 约束消元 → 单变量"
+
+    - say: 第三，辅助角公式的有解逻辑。R sin theta 等于常数，sin 最大是 1，所以 R 大于等于常数。这个条件就是最值的来源。
+      show:
+        type: takeaway
+        number: 3
+        body: "辅助角有解：$R\\sin\\theta = c \\Rightarrow R \\ge |c|$"

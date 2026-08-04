@@ -1,0 +1,136 @@
+# 示例 2 · 中档解答题（Q17 菱形向量三小问）
+# 难度：★★★☆☆
+# 布局分支：A（有 keypoint，锚点常驻右栏）
+# 结构：4 个 act + summary（多条 takeaway）
+
+core:
+  title: "襄阳期中 · 第 17 题"
+  statement: |
+    在菱形 $ABCD$ 中，$|\vec{AB}| = 6$，$\angle BAD = 60^\circ$，$\vec{BE} = \frac{1}{2}\vec{BC}$，$\vec{CF} = 2\vec{FD}$.
+    
+    （1）若 $\vec{EF} = x\vec{AB} + y\vec{AD}$，求 $3x + 2y$ 的值；
+    （2）求 $\vec{AC} \cdot \vec{EF}$ 的值；
+    （3）若 $P$ 是线段 $EF$ 上的动点，则 $\vec{AP} \cdot \vec{AC}$ 是否为定值？若是，求该定值；若不是，求取值范围.
+  say: "同学们，第十七题菱形中的向量，三小问层层递进。整道题的核心思想是基底化——把所有向量用 AB 和 AD 两个基底表示，问题就变成代数运算。我们分三问推进。"
+  keypoint:
+    - "菱形 $ABCD$，$|\\vec{AB}| = 6$，$\\angle BAD = 60^\\circ$"
+    - "$\\vec{BE} = \\frac{1}{2}\\vec{BC}$（E 是 BC 中点）"
+    - "$\\vec{CF} = 2\\vec{FD}$（F 把 CD 分 2:1）"
+
+teach:
+  acts:
+    # ==========  Act 1：建立基底  ==========
+    - title: "建立基底"
+      beats:
+        - say: "解向量综合题第一步永远是选基底。好基底的条件：模已知、夹角已知、不共线。菱形相邻两边 AB 和 AD 三者全满足，是天选基底。"
+          show:
+            type: knowledge_card
+            title: "基底选择"
+            points:
+              - "设 $\\vec{m} = \\vec{AB}$，$\\vec{n} = \\vec{AD}$"
+              - "模已知、夹角已知、不共线"
+
+        - say: "算三个基本量：m 的平方、n 的平方、m 点 n。这三个数贯穿全题，所有计算都要回来查。"
+          show:
+            type: knowledge_card
+            title: "基本量（贯穿全题）"
+            body: "$\\vec{m}^2 = \\vec{n}^2 = 36$，$\\vec{m} \\cdot \\vec{n} = 18$"
+
+    # ==========  Act 2：第一问  ==========
+    - title: "第一问：EF 的基底表示"
+      transition: soft
+      beats:
+        - say: "第一问把 EF 拆成 EC 加 CF 两段。从 E 走到 C，再从 C 走到 F。"
+          show:
+            type: step
+            body: "$\\vec{EF} = \\vec{EC} + \\vec{CF}$"
+
+        - say: "菱形对边关系：BC 和 AD 同向相等，CD 和 AB 反向相等。所以 EC 等于二分之一 n，CF 等于负三分之二 m。"
+          show:
+            type: step
+            body: "$\\vec{EC} = \\frac{1}{2}\\vec{n}$，$\\vec{CF} = -\\frac{2}{3}\\vec{m}$"
+            emphasis: ["-\\frac{2}{3}\\vec{m}"]
+
+        - say: "合并得到 EF 等于负三分之二 m 加二分之一 n。对照题目 x 乘 m 加 y 乘 n，x 是负三分之二，y 是二分之一。"
+          show:
+            type: step
+            body: "$\\vec{EF} = -\\frac{2}{3}\\vec{m} + \\frac{1}{2}\\vec{n}$"
+
+        - say: "代入三 x 加二 y，得负一。第一问搞定。"
+          show:
+            type: answer_box
+            body: "第一问：$3x + 2y = -2 + 1 = -1$"
+
+    # ==========  Act 3：第二问  ==========
+    - title: "第二问：AC 点 EF"
+      transition: soft
+      beats:
+        - say: "第二问求数量积。先算 AC——菱形对角线 AC 等于 AB 加 BC 等于 m 加 n。"
+          show:
+            type: step
+            body: "$\\vec{AC} = \\vec{m} + \\vec{n}$"
+
+        - say: "代入数量积分配律展开。注意中间的 m 点 n 系数要合并。"
+          show:
+            type: step
+            body: "$\\vec{AC} \\cdot \\vec{EF} = -\\frac{2}{3}\\vec{m}^2 + (\\frac{1}{2} - \\frac{2}{3})\\vec{m} \\cdot \\vec{n} + \\frac{1}{2}\\vec{n}^2$"
+
+        - say: "代入三个基本量三十六、十八、三十六，算出负二十四减三加十八等于负九。"
+          show:
+            type: answer_box
+            body: "第二问：$\\vec{AC} \\cdot \\vec{EF} = -24 - 3 + 18 = -9$"
+
+    # ==========  Act 4：第三问（动点定值判断）  ==========
+    - title: "第三问：动点定值判断"
+      transition: soft
+      beats:
+        - say: "第三问的通用套路——动点用参数刻画。P 在 EF 上，设 EP 等于 t 乘 EF，t 从零到一扫过整条线段。"
+          show:
+            type: knowledge_card
+            title: "动点参数化"
+            body: "$\\vec{EP} = t\\vec{EF}$，$t \\in [0, 1]$"
+
+        - say: "然后计算目标 AP 点 AC 的表达式。看参数消不消——消了就是定值，没消就是非定值看范围。这是机器级规则。"
+          show:
+            type: step
+            body: "$\\vec{AP} = \\vec{AE} + t\\vec{EF}$"
+
+        - say: "先算 AE。从 A 走到 E 经过 B：AE 等于 m 加二分之一 n。"
+          show:
+            type: step
+            body: "$\\vec{AE} = \\vec{AB} + \\vec{BE} = \\vec{m} + \\frac{1}{2}\\vec{n}$"
+
+        - say: "AE 点 AC 展开代入，算出八十一。"
+          show:
+            type: step
+            body: "$\\vec{AE} \\cdot \\vec{AC} = 36 + 18 + 9 + 18 = 81$"
+
+        - say: "目标式展开，EF 点 AC 就是第二问的负九。"
+          show:
+            type: step
+            body: "$\\vec{AP} \\cdot \\vec{AC} = 81 + t \\cdot (-9) = 81 - 9t$"
+            emphasis: ["81 - 9t"]
+
+        - say: "参数 t 没消掉，所以不是定值。"
+          show:
+            type: step
+            body: "表达式含参数 $t$ → 非定值"
+
+        - say: "t 在零到一区间线性变化，端点代入得七十二和八十一。所以取值范围是闭区间七十二到八十一。"
+          show:
+            type: answer_box
+            body: "第三问：$\\vec{AP} \\cdot \\vec{AC} \\in [72, 81]$（非定值）"
+
+summary:
+  beats:
+    - say: "总结这道题两条核心心法。第一条：基底化是向量综合题的灵魂。选好基底、算好基本量、所有向量表为基底的线性组合，几何问题降维成代数运算。"
+      show:
+        type: takeaway
+        number: 1
+        body: "基底化——向量综合题的灵魂"
+
+    - say: "第二条：定值问题有机器规则。用参数刻画动点，计算目标表达式，参数消掉就是定值、没消就看范围。不靠直觉，照规则走。"
+      show:
+        type: takeaway
+        number: 2
+        body: "定值问题的机器规则：设参数 → 算表达式 → 看参数"

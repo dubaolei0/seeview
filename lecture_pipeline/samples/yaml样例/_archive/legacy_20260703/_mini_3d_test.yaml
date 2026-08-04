@@ -1,0 +1,75 @@
+core:
+  title: "3D 测试 · 圆柱内两等球"
+  statement: "圆柱底面半径 4，高 9，内放两个等径球，求半径最大值。"
+  say: 这是一个 3D 渲染测试，让大家直观看到两球在圆柱内的对角摆放。
+  figure:
+    type: geometry3d
+    camera_rotate: true
+    elements:
+      # 圆柱（透明灰）：底面在 z=0，顶面 z=4.5（原题 H=9，scale 0.5 让它更紧凑）
+      - type: cylinder
+        x: 0
+        y: 0
+        z: 2.25
+        radius: 2.0
+        height: 4.5
+        color: "#9CA3AF"
+        fill_opacity: 0.15
+      # 左下球：球心 (-0.75, 0, 1.25)，半径 1.25
+      - type: sphere
+        x: -0.75
+        y: 0
+        z: 1.25
+        radius: 1.25
+        color: "#1E40AF"
+        fill_opacity: 0.5
+      # 右上球：球心 (0.75, 0, 3.25)，半径 1.25
+      - type: sphere
+        x: 0.75
+        y: 0
+        z: 3.25
+        radius: 1.25
+        color: "#1E40AF"
+        fill_opacity: 0.5
+      # 球心连线
+      - type: segment3d
+        p1: [-0.75, 0, 1.25]
+        p2: [0.75, 0, 3.25]
+        color: "#B91C1C"
+        stroke_width: 0.04
+      # 标注
+      - type: dot3d
+        x: -0.75
+        y: 0
+        z: 1.25
+        color: "#B91C1C"
+      - type: dot3d
+        x: 0.75
+        y: 0
+        z: 3.25
+        color: "#B91C1C"
+
+teach:
+  acts:
+    - title: "3D 视觉演示"
+      transition: none
+      beats:
+        - say: 大家看这个 3D 视图。圆柱内放两个等径球。
+          show:
+            type: step
+            body: "圆柱底面半径 R = 4，高 H = 9"
+        - say: 两球对角摆放。一个贴底贴左壁，另一个贴顶贴右壁。
+          show:
+            type: step
+            body: "对角摆放 + 互相相切"
+        - say: 球心距由水平和垂直分量勾股合成。
+          show:
+            type: step
+            body: "$d = \\sqrt{(2R-2r)^2 + (H-2r)^2} = 2r$"
+
+summary:
+  beats:
+    - say: 3D 立体可视化让对角摆放的几何关系一目了然。
+      show:
+        type: takeaway
+        body: "3D 几何可视化的核心价值"

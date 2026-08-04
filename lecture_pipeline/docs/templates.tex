@@ -1,0 +1,258 @@
+\documentclass[11pt, aspectratio=169]{beamer}
+
+% ==================== 必需的宏包 ====================
+% 使用 ctex 宏包，Overleaf 请务必使用 XeLaTeX 编译器！
+\usepackage{ctex}
+\renewcommand{\familydefault}{\sfdefault} % 全局默认使用无衬线字体
+
+\usefonttheme[onlymath]{serif} % 让公式恢复传统的经典衬线字体
+\usepackage{amsmath, amssymb}
+\usepackage{bm} % 提供 \bm{} 命令，用于数学粗体
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+\usepackage{fontawesome5} % 提供各种图标
+\usepackage{tikz}
+
+% ==================== 颜色定义 ====================
+% --- 主题色 1 (柔和系) ---
+\definecolor{mainblue}{RGB}{0, 112, 192}
+\definecolor{bgblue}{RGB}{229, 242, 250}
+\definecolor{bgyellow}{RGB}{253, 245, 230}
+\definecolor{mainpink}{RGB}{204, 85, 119}
+\definecolor{eyewhite}{RGB}{250, 249, 244} % 护眼白
+
+% ==================== 页面与导航设置 ====================
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\setbeamercolor{background canvas}{bg=eyewhite} % 全局背景设为护眼白
+
+% ==================== 全局公式大小设置 ====================
+% 强制所有行内公式（如分式）使用独立公式的原始比例，避免被自动缩小
+\everymath{\displaystyle}
+
+% ==================== 极简细线页眉设置 ====================
+\setbeamertemplate{frametitle}{
+    \vspace{0.2ex}
+    {\color{mainblue}\large\bfseries\insertframetitle}\par
+    \vspace{-0.5ex}
+    {\color{mainblue}\rule{\textwidth}{0.8pt}}
+    \vspace{-2.6ex}
+}
+
+% ==================== 图标宏定义 ====================
+\newcommand{\thinkicon}{%
+    \tikz[baseline=(char.base)]\node[circle, fill=mainblue, text=white, inner sep=1.5pt] (char) {\tiny\faHourglassHalf};%
+}
+\newcommand{\summaryicon}{%
+    \tikz[baseline=(char.base)]\node[circle, fill=mainblue, text=white, inner sep=1.5pt] (char) {\tiny\faBook};%
+}
+
+% ==================== 自定义样式框 ====================
+\newtcolorbox{bluebox}{
+    enhanced,
+    colback=bgblue, colframe=bgblue,
+    arc=2pt, outer arc=2pt, boxrule=0pt,
+    top=2mm, bottom=2mm, left=2mm, right=2mm,
+    before skip=0.5em, after skip=0.5ex,
+    fontupper=\scriptsize
+}
+
+\newtcolorbox{yellowbox}{
+    enhanced,
+    colback=bgyellow, colframe=bgyellow,
+    arc=2pt, outer arc=2pt, boxrule=0pt,
+    top=2mm, bottom=2mm, left=2mm, right=2mm,
+    before skip=0.5em, after skip=0.5em,
+    fontupper=\footnotesize
+}
+
+\newtcolorbox{exercisebox}[1][练习]{
+    enhanced,
+    colback=eyewhite, % 背景改为护眼白
+    frame hidden,
+    borderline={1pt}{0pt}{mainpink, dashed},
+    arc=0.5mm,
+    top=3mm, bottom=1mm, left=2mm, right=2mm,
+    before skip=0.5em, after skip=0.3em,
+    fontupper=\scriptsize,
+    overlay={
+        \node[anchor=west, fill=mainpink, text=white, rounded corners=2mm, inner xsep=3mm, inner ysep=1mm]
+        at ([xshift=4mm, yshift=0pt]frame.north west) {\footnotesize\textbf{#1}};
+    }
+}
+
+\begin{document}
+
+% ==================== 封面 ====================
+\begin{frame}[plain] 
+    \begin{tikzpicture}[remember picture, overlay]
+        % 1. 左上角几何装饰
+        \fill[mainblue] (current page.north west) -- ++(3.5,0) -- ++(-3.5,-2.5) -- cycle;
+        \fill[bgyellow] (current page.north west) -- ++(1.5,0) -- ++(-1.5,-1.2) -- cycle;
+        % 线条修饰网络 (左上)
+        \draw[thin, mainblue!50] (current page.north west) -- ++(3.5,0) -- ++(-3.5,-2.5) -- cycle;
+        \foreach \x in {0.5, 1.0, 1.5, 2.0, 2.5} {
+            \draw[ultra thin, mainblue!20] (current page.north west) ++(\x,0) -- ++(-3.5, {-2.5 * (\x/3.5)});
+        }
+        \foreach \y in {-0.5, -1.0, -1.5, -2.0} {
+            \draw[ultra thin, mainblue!20] (current page.north west) ++(0,\y) -- ++({3.5 * (\y/-2.5)}, \y);
+        }
+        % 2. 右下角圆形与叠加装饰
+        \fill[bgblue] (current page.south east) circle (4cm);
+        \fill[mainblue] (current page.south east) ++(1cm, -0.5cm) circle (3cm);
+        \fill[mainpink] (current page.south east) ++(-2.5cm, 1.5cm) circle (0.6cm);
+
+        % 同心圆和辐射线修饰 (右下)
+        \foreach \r in {3.8, 3.6, 3.4} {
+            \draw[thin, bgblue!30] (current page.south east) circle (\r cm);
+        }
+        \foreach \r in {2.8, 2.6, 2.4} {
+            \draw[thin, mainblue!30] (current page.south east) ++(1cm, -0.5cm) circle (\r cm);
+        }
+        \foreach \angle in {0, 45, 90, 135, 180} {
+            \draw[thin, bgblue!20, dashed] (current page.south east) -- ++({cos(\angle)*4cm}, {sin(\angle)*4cm});
+        }
+        % 3. 半透明数学水印 (可根据学科替换符号)
+        \node[opacity=0.1, scale=8, color=mainblue, rotate=15] 
+            at ([xshift=-2.5cm, yshift=2.5cm]current page.south east) {$\bm{\Sigma}$};
+            
+        % 4. 文字排版区
+        \node[anchor=west, text width=0.8\paperwidth] 
+            at ([xshift=1.2cm, yshift=0.5cm]current page.west) {
+            {\noindent\color{mainpink}\rule{1.2cm}{2.5pt}}\vspace{0.4cm}\par            
+            {\Huge\bfseries\color{mainblue} 此处填写主标题名称}\vspace{0.6cm}\par
+            {\large\color{black!70} \faTags~此处填写副标题或课程说明}\vspace{1.2cm}\par   
+        };
+    \end{tikzpicture}
+\end{frame}
+
+% ==================== 模板结构演示 ====================
+
+% --- 知识点 1 ---
+\begin{frame}[t]
+    \frametitle{知识点 1：[知识点名称]}
+    \footnotesize
+    \onslide<1->{这里是知识点 1 的定义或文字描述部分，您可以自由地添加文本。\par\vspace{1em}}
+    
+    \onslide<2->{
+    \begin{yellowbox}
+        \noindent\summaryicon~\textcolor{mainblue}{\textbf{核心概念或公式框}}\par
+        在此处填写公式或重要结论：
+        \[ A^2 + B^2 = C^2 \]
+    \end{yellowbox}
+    }
+\end{frame}
+
+% --- 例题 1 ---
+\begin{frame}[t]
+    \frametitle{例题 1}
+    \footnotesize
+    \noindent\textbf{【题目】：}[此处填写例题的具体描述，例如：已知某条件，求某某的值。] \par
+    \vspace{1.5em}
+    
+    % 如果是选择题，可以使用如下排版
+    \textbf{A.} 选项内容 A \qquad 
+    \textbf{B.} 选项内容 B \qquad 
+    \textbf{C.} 选项内容 C \qquad 
+    \textbf{D.} 选项内容 D \par
+\end{frame}
+
+% --- 知识点 2 ---
+\begin{frame}[t]
+    \frametitle{知识点 2：[知识点名称]}
+    \footnotesize
+    \onslide<1->{这里是知识点 2 的内容，可以使用分点说明：\par\vspace{0.5em}}
+    
+    \onslide<2->{
+    \begin{itemize}
+        \item \textbf{要点一：} 描述说明文字。
+        \item \textbf{要点二：} 描述说明文字。
+        \item \textbf{要点三：} 描述说明文字。
+    \end{itemize}
+    }
+\end{frame}
+
+% --- 例题 2 ---
+\begin{frame}[t]
+    \frametitle{例题 2}
+    \footnotesize
+    \noindent\textbf{【题目】：}[此处填写第二道例题的题干，例如化简下列表达式或证明题。]
+    \[ \int_{a}^{b} f(x) dx \]
+\end{frame}
+
+
+% ==================== 课程总结 ====================
+\begin{frame}[t]
+    \frametitle{课程总结}
+    \begin{center}
+    \vspace{-0.5em}
+    \begin{tikzpicture}[
+        edge from parent path={(\tikzparentnode.south) -- +(0,-0.4) -| (\tikzchildnode.north)},
+        level 1/.style={sibling distance=4.8cm, level distance=1.8cm}, % 适配 16:9 宽度
+        level 2/.style={sibling distance=2.6cm, level distance=1.4cm},
+        every node/.style={align=center, rounded corners, thick},
+        root/.style={draw=mainblue, fill=mainblue, text=white, minimum height=0.8cm, inner xsep=3mm, font=\large\bfseries},
+        mainnode/.style={draw=mainblue, fill=bgblue, minimum height=0.6cm, inner xsep=2mm, font=\small\bfseries},
+        subnode/.style={draw=mainpink, fill=eyewhite, minimum height=0.5cm, inner xsep=1.5mm, font=\scriptsize},
+        edge from parent/.style={draw, thick, mainblue, -latex}
+    ]
+
+    \node[root] {本节核心主题}
+        child {node[mainnode] {知识点 1\\名称概括}
+            child {node[subnode, draw=mainpink] {核心要点 1} edge from parent[draw=mainpink]}
+        }
+        child {node[mainnode] {知识点 2\\名称概括}
+            child {node[subnode, draw=mainpink] {核心要点 2} edge from parent[draw=mainpink]}
+            child {node[subnode, draw=mainpink] {核心要点 3} edge from parent[draw=mainpink]}
+        }
+        child {node[mainnode] {知识点 3\\名称概括}
+            child {node[subnode, draw=mainpink] {核心要点 4} edge from parent[draw=mainpink]}
+        };
+    \end{tikzpicture}
+    \end{center}
+\end{frame}
+
+% ==================== 致谢页 ====================
+\begin{frame}[plain] 
+    \begin{tikzpicture}[remember picture, overlay]
+        % 1. 左上角几何装饰 (复用封面风格)
+        \fill[mainblue] (current page.north west) -- ++(3.5,0) -- ++(-3.5,-2.5) -- cycle;
+        \fill[bgyellow] (current page.north west) -- ++(1.5,0) -- ++(-1.5,-1.2) -- cycle;
+        \draw[thin, mainblue!50] (current page.north west) -- ++(3.5,0) -- ++(-3.5,-2.5) -- cycle;
+        \foreach \x in {0.5, 1.0, 1.5, 2.0, 2.5} {
+            \draw[ultra thin, mainblue!20] (current page.north west) ++(\x,0) -- ++(-3.5, {-2.5 * (\x/3.5)});
+        }
+        \foreach \y in {-0.5, -1.0, -1.5, -2.0} {
+            \draw[ultra thin, mainblue!20] (current page.north west) ++(0,\y) -- ++({3.5 * (\y/-2.5)}, \y);
+        }
+
+        % 2. 右下角圆形与叠加装饰 (复用封面风格)
+        \fill[bgblue] (current page.south east) circle (4cm);
+        \fill[mainblue] (current page.south east) ++(1cm, -0.5cm) circle (3cm);
+        \fill[mainpink] (current page.south east) ++(-2.5cm, 1.5cm) circle (0.6cm);
+
+        \foreach \r in {3.8, 3.6, 3.4} {
+            \draw[thin, bgblue!30] (current page.south east) circle (\r cm);
+        }
+        \foreach \r in {2.8, 2.6, 2.4} {
+            \draw[thin, mainblue!30] (current page.south east) ++(1cm, -0.5cm) circle (\r cm);
+        }
+        \foreach \angle in {0, 45, 90, 135, 180} {
+            \draw[thin, bgblue!20, dashed] (current page.south east) -- ++({cos(\angle)*4cm}, {sin(\angle)*4cm});
+        }
+        
+        % 3. 半透明数学水印 (复用封面风格)
+        \node[opacity=0.1, scale=8, color=mainblue, rotate=15] 
+            at ([xshift=-2.5cm, yshift=2.5cm]current page.south east) {$\bm{\Sigma}$};
+            
+        % 4. 文字排版区 (居中)
+        \node[anchor=center, text width=0.8\paperwidth, align=center] 
+            at (current page.center) {
+            {\fontsize{40}{48}\selectfont\bfseries\color{mainblue} Thanks!}\vspace{0.6cm}\par
+            {\large\color{black!70} 感谢聆听，欢迎提问！}\par   
+        };
+    \end{tikzpicture}
+\end{frame}
+
+\end{document}

@@ -1,0 +1,23 @@
+# Core dependencies
+manim>=0.18.0
+pyyaml>=6.0
+requests>=2.31.0
+
+# Audio processing
+pydub>=0.25.1
+
+# PDF processing
+pdf2image>=1.16.3
+Pillow>=10.0.0
+pymupdf>=1.23.0
+
+# Web interface
+flask>=3.0.0
+pymupdf>=1.23.0
+
+# Performance monitoring
+psutil>=5.9.0
+
+# Utilities
+python-dotenv>=1.0.0
+dashscope

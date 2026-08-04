@@ -1,0 +1,30 @@
+core:
+  title: "锚点栏位置测试"
+  statement: "这是一个最简测试题，用来验证已知框的位置、撑满效果和文字显示。"
+  say: 这是一道最简测试题，用来验证已知框的位置和撑满效果。
+  keypoint:
+    - "条件一：$R = 4$，$H = 9$"
+    - "条件二：两个等径铁球"
+    - "条件三：求 $r$ 的最大值"
+
+teach:
+  acts:
+    - title: "唯一 Act"
+      transition: none
+      beats:
+        - say: 简单说一下这道题。
+          show:
+            type: step
+            number: 1
+            body: "这是第一步推导。"
+        - say: 接着给出答案。
+          show:
+            type: answer_box
+            body: "$r = 2$"
+
+summary:
+  beats:
+    - say: 一句话总结。
+      show:
+        type: takeaway
+        body: "记住这个结论就够了。"

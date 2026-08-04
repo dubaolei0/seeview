@@ -1,0 +1,54 @@
+core:
+  title: "布局 D 测试"
+  statement: "在 $\\triangle ABC$ 中，$AB=5$，$AC=3$，$\\angle A=60°$，求 $BC$。"
+  say: 三角形 ABC，AB 等于 5，AC 等于 3，角 A 等于 60 度，求 BC。
+  conditions:
+    - "$AB = 5$"
+    - "$AC = 3$"
+    - "$\\angle A = 60°$"
+  figure:
+    type: schematic
+    x_range: [-1, 6]
+    y_range: [-1, 4]
+    elements:
+      - type: polygon
+        points: [[0,0],[5,0],[1.5,2.6]]
+        color: "#1F2937"
+        stroke_width: 2.5
+      - type: label
+        x: 1.5
+        y: 3.0
+        text: "$A$"
+      - type: label
+        x: -0.4
+        y: -0.3
+        text: "$B$"
+      - type: label
+        x: 5.3
+        y: -0.3
+        text: "$C$"
+
+teach:
+  acts:
+    - title: "余弦定理"
+      transition: none
+      beats:
+        - say: 用余弦定理。
+          show:
+            type: step
+            body: "$BC^2 = AB^2 + AC^2 - 2 \\cdot AB \\cdot AC \\cdot \\cos A$"
+        - say: 代入数值。
+          show:
+            type: step
+            body: "$BC^2 = 25 + 9 - 2 \\times 5 \\times 3 \\times \\frac{1}{2} = 19$"
+        - say: 所以。
+          show:
+            type: answer_box
+            body: "$BC = \\sqrt{19}$"
+
+summary:
+  beats:
+    - say: 两边夹角已知，优先余弦定理。
+      show:
+        type: takeaway
+        body: "两边夹角 → 余弦定理"

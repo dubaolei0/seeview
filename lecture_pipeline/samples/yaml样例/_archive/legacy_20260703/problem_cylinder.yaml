@@ -1,0 +1,188 @@
+# 中等难度 · 圆柱内两球最大半径
+# 难度：★★★☆☆
+# 布局分支：C（有 figure 示意图）
+# 结构：3 个 act + summary
+
+core:
+  title: "圆柱内两等球 · 最大半径"
+  statement: '一个底面半径为 $4$ cm（直径 $8$ cm），高为 $9$ cm 的封闭圆柱形容器内有两个半径相等的铁球，则铁球半径 $r$ 的最大值为 $\underline{\qquad\qquad}$ cm.'
+  say: "同学们，这道题是立体几何里的最值问题。一个封闭圆柱里塞两个一样大的铁球，问球半径最大能到多少。这题计算不难，关键是你想不想得到——球应该怎么放才能最大。很多人第一反应是竖着叠，但那不是最优解。我们一步步拆。"
+  figure:
+    type: schematic
+    reveal_at_act: 1     # Act 0（直觉方案）时图不出现；到 Act 1（关键跳跃）再出现
+    # 俯视 + 侧视的二合一示意：左侧画圆柱侧面剖面 + 两球对角贴壁
+    x_range: [-6, 6, 1]
+    y_range: [-1, 10, 1]
+    elements:
+      # 圆柱侧面矩形（宽 = 2R = 8，高 = 9）
+      - type: rect
+        x: 0
+        y: 4.5
+        width: 8
+        height: 9
+        color: "#1F2937"
+        stroke_width: 2.5
+      # 左下球（贴底贴左壁）：球心 (-1.5, 2.5)，半径 2.5
+      - type: circle
+        x: -1.5
+        y: 2.5
+        radius: 2.5
+        color: "#1E40AF"
+        stroke_width: 2
+        fill_color: "#D6DEF5"
+        fill_opacity: 0.6
+      # 右上球（贴顶贴右壁）：球心 (1.5, 6.5)，半径 2.5
+      - type: circle
+        x: 1.5
+        y: 6.5
+        radius: 2.5
+        color: "#1E40AF"
+        stroke_width: 2
+        fill_color: "#D6DEF5"
+        fill_opacity: 0.6
+      # 球心连线（相切的对角线）
+      - type: line
+        x1: -1.5
+        y1: 2.5
+        x2: 1.5
+        y2: 6.5
+        color: "#B91C1C"
+        stroke_width: 2
+        dashed: true
+      # 两球心
+      - type: dot
+        x: -1.5
+        y: 2.5
+        color: "#B91C1C"
+      - type: dot
+        x: 1.5
+        y: 6.5
+        color: "#B91C1C"
+      # 顶部标注：高 H=9
+      - type: label
+        x: 5
+        y: 4.5
+        text: "$H=9$"
+        font_size: 22
+        color: "#1F2937"
+      # 底部标注：直径 2R=8
+      - type: label
+        x: 0
+        y: -0.5
+        text: "$2R=8$"
+        font_size: 22
+        color: "#1F2937"
+
+teach:
+  acts:
+    # ========== Act 1：审题与直觉方案 ==========
+    - title: "直觉方案：竖直叠放"
+      beats:
+        - say: 先看条件。圆柱底面半径是 4，所以直径是 8，高是 9。里面放两个一样大的铁球，求半径最大值。
+          show:
+            type: step
+            number: 1
+            body: "$R = 4, H = 9$，两球等径，求 $r_{\\max}$"
+
+        - say: 直觉上，学生会想到——把两个球竖着叠起来，下面一个贴底，上面一个贴顶。那球心距就是两球半径的和，4r 等于 H。
+          show:
+            type: step
+            body: "方案 A（竖直叠放）：$4r = H \\Rightarrow r = \\frac{9}{4} = 2.25$"
+
+        - say: 算出来 r 等于四分之九，也就是 2.25。看起来合理，可以当答案了？等一下，我们来想想——这真的是最大吗？
+          show:
+            type: warning
+            body: "$r = 2.25$ 看起来合理，但这真的是最大值吗？"
+            label: "反思"
+
+    # ========== Act 2：关键跳跃：对角摆放 ==========
+    - title: "关键跳跃：让球贴壁"
+      transition: hard
+      beats:
+        - say: 你注意到了吗？竖直叠放的时候，球根本没碰到圆柱壁。也就是说，横向空间一大块是空的。既然横向没用完，我们能不能让球往两边倒，用壁来撑开球心距，让 r 更大？
+          mode: insight
+          show:
+            type: knowledge_card
+            title: "极值问题通用心法"
+            body: "最优解发生在所有约束同时取等号时：球要贴壁、贴底顶、互相相切，全部绷紧。"
+
+        - say: 这就是这道题的灵魂——让所有约束同时绷紧。两球对角摆放，一个贴底贴左壁，另一个贴顶贴右壁，中间相切。这种状态下 r 最大。
+          show:
+            type: step
+            body: "对角摆放：两球分别贴底贴顶 + 贴壁 + 互切"
+
+        - say: 接下来建方程。俯视图——两球心在圆心对面，各离轴 R 减 r。所以两球心水平间距等于 2 倍的 R 减 r。
+          show:
+            type: step
+            body: "水平分量：$2(R - r) = 2(4 - r)$"
+            emphasis: ["2(R - r)"]
+
+        - say: 侧视图——一个球心高 r，另一个球心高 H 减 r，垂直间距就是 H 减 2r。
+          show:
+            type: step
+            body: "垂直分量：$H - 2r = 9 - 2r$"
+
+        - say: 两球心距怎么算？空间两点距离，我们拆成水平分量平方加垂直分量平方开根号。因为两球相切，球心距恰好等于 2r。这就是核心方程。
+          mode: insight
+          show:
+            type: wow_formula
+            formula: "[2(R-r)]^2 + (H-2r)^2 = (2r)^2"
+            caption: "空间距离的勾股分解 · 核心方程"
+
+    # ========== Act 3：求解方程 ==========
+    - title: "解方程并验证"
+      transition: soft
+      beats:
+        - say: 代入 R 等于 4、H 等于 9。注意 2 倍的 4 减 r 的平方是 4 倍的括号 4 减 r 括号平方，这里别漏了 4 倍。
+          show:
+            type: step
+            body: "$4(4-r)^2 + (9-2r)^2 = 4r^2$"
+            emphasis: ["4(4-r)^2"]
+
+        - say: 展开。4 乘 16 减 8r 加 r 平方，加上 81 减 36r 加 4r 平方，等于 4r 平方。
+          show:
+            type: step
+            body: "$4(16 - 8r + r^2) + (81 - 36r + 4r^2) = 4r^2$"
+
+        - say: 整理。两边 4r 平方抵消掉一个，合并常数项 64 加 81 等于 145，合并 r 一次项负 68 r。最后得到标准二次方程。
+          show:
+            type: step
+            body: "$4r^2 - 68r + 145 = 0$"
+
+        - say: 求根公式。判别式 delta 等于 68 平方减 4 乘 4 乘 145，算出 2304，开根号是 48。
+          show:
+            type: step
+            body: "$\\Delta = 68^2 - 16 \\cdot 145 = 2304 = 48^2$"
+
+        - say: 两个根。68 加 48 除以 8 等于 14.5，68 减 48 除以 8 等于 2.5。但 14.5 比圆柱半径 4 还大，球塞不进去，舍掉。
+          show:
+            type: step
+            body: "$r = \\frac{68 \\pm 48}{8} = 14.5 \\text{（舍）} \\text{ 或 } 2.5$"
+            emphasis: ["r = 2.5"]
+
+        - say: 验证一下。球心到轴是 4 减 2.5 等于 1.5。球心连线水平分量是 3，垂直分量是 9 减 5 等于 4，斜线就是根号 9 加 16 等于 5，恰好等于 2r。完美相切。
+          show:
+            type: step
+            body: "验证：球心距 $= \\sqrt{3^2 + 4^2} = 5 = 2r$ ✓"
+
+        - say: 最终答案 r 等于二分之五厘米。比叠放的四分之九大了 0.25，说明对角摆确实更优。
+          show:
+            type: answer_box
+            body: "$r_{\\max} = \\dfrac{5}{2}$ cm"
+
+summary:
+  beats:
+    - say: 这道题最大的启示是——容器最值问题，最优解发生在所有约束同时取等号的状态。不要只用一个维度去思考，要想到贴壁、贴底顶、相切能不能同时发生。
+      show:
+        type: takeaway
+        body: "容器最值心法：所有约束同时取等号"
+
+    - say: 第二条心法，空间中的斜线距离，永远可以拆成水平分量加垂直分量的勾股合成。这招在球体、圆锥、圆柱问题里反复用到。
+      show:
+        type: takeaway
+        body: "空间距离分解：水平分量 + 垂直分量 → 勾股定理"
+
+    - say: 最后提醒一下——有答案了记得回代验证几何意义，判别式里 14.5 这种超出容器的解，数学上成立但物理上不合理，必须舍。
+      show:
+        type: takeaway
+        body: "极值验证：数学解要对几何意义负责，不合理的要舍"

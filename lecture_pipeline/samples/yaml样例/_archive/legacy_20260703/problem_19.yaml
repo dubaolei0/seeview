@@ -1,0 +1,385 @@
+# 压轴解答题 · Q19 布洛卡点
+# 难度：★★★★★
+# 布局分支：C（带 schematic figure，三角形 + 内点 P + 三个 θ）
+# 结构：6 个 act + 含 2 个 wow_formula + 多层 takeaway
+
+core:
+  title: "襄阳期中 · 第 19 题"
+  statement: |
+    若 $\triangle ABC$ 内一点 $P$ 满足 $\angle PAB = \angle PBC = \angle PCA = \theta$，则称 $P$ 为 $\triangle ABC$ 的布洛卡点，$\theta$ 为布洛卡角。
+    （1）若 $\sin\angle BAC = \frac{3}{5}$，$\sin\theta = \frac{1}{5}$，求 $\frac{PA}{b}$。
+    （2）若 $\triangle ABC$ 为锐角三角形，
+      ① $\theta = \frac{\pi}{6}$，求 $\sin(\angle BAC-\theta)\sin(\angle ABC-\theta)\sin(\angle ACB-\theta)$；
+      ② $\angle BAC = \frac{\pi}{3}$，求 $\tan\theta$ 的范围。
+  say: 同学们，第十九题是全卷压轴。布洛卡点是一个陌生概念，但拆开来看就是三个子三角形配一个公共角 theta。整道题三问，全靠一招正弦定理打天下，但每一问的串法不同。难度高在思维转换，不在计算。我们一步步来。
+  figure:
+    type: schematic
+    dismiss_at_act: 4    # 进入"第二问②求范围"时图淡出，腾出空间给单变量函数分析
+    x_range: [-3, 5, 1]
+    y_range: [-1, 4, 1]
+    elements:
+      # 三角形 ABC（钝角三角形外形，便于看清三个子三角形）
+      - type: polygon
+        points: [[0, 0], [4, 0], [1.5, 3.2]]
+        color: "#1F2937"
+        stroke_width: 2.5
+      # 顶点 A（左下）
+      - type: dot
+        x: 0
+        y: 0
+        color: "#1F2937"
+      - type: label
+        x: -0.4
+        y: -0.3
+        text: "$A$"
+        font_size: 28
+      # 顶点 B（右下）
+      - type: dot
+        x: 4
+        y: 0
+        color: "#1F2937"
+      - type: label
+        x: 4.4
+        y: -0.3
+        text: "$B$"
+        font_size: 28
+      # 顶点 C（顶）
+      - type: dot
+        x: 1.5
+        y: 3.2
+        color: "#1F2937"
+      - type: label
+        x: 1.5
+        y: 3.6
+        text: "$C$"
+        font_size: 28
+      # 内点 P
+      - type: dot
+        x: 1.7
+        y: 1.0
+        color: "#B91C1C"
+      - type: label
+        x: 1.9
+        y: 0.85
+        text: "$P$"
+        font_size: 26
+        color: "#B91C1C"
+      # PA、PB、PC（虚线，红色，三条联通子三角形）
+      - type: line
+        x1: 1.7
+        y1: 1.0
+        x2: 0
+        y2: 0
+        color: "#B91C1C"
+        stroke_width: 1.5
+        dashed: true
+      - type: line
+        x1: 1.7
+        y1: 1.0
+        x2: 4
+        y2: 0
+        color: "#B91C1C"
+        stroke_width: 1.5
+        dashed: true
+      - type: line
+        x1: 1.7
+        y1: 1.0
+        x2: 1.5
+        y2: 3.2
+        color: "#B91C1C"
+        stroke_width: 1.5
+        dashed: true
+      # 三个 θ 角弧（在 A、B、C 各画一个小弧）
+      # ∠PAB 在 A 处，从 AB 边到 AP
+      - type: arc
+        x: 0
+        y: 0
+        radius: 0.6
+        start_angle: 0
+        end_angle: 30
+        color: "#1E40AF"
+        stroke_width: 2
+      - type: label
+        x: 0.85
+        y: 0.18
+        text: "$\\theta$"
+        font_size: 22
+        color: "#1E40AF"
+      # ∠PBC 在 B 处，从 BC 边到 BP
+      - type: arc
+        x: 4
+        y: 0
+        radius: 0.6
+        start_angle: 128
+        end_angle: 165
+        color: "#1E40AF"
+        stroke_width: 2
+      - type: label
+        x: 3.2
+        y: 0.5
+        text: "$\\theta$"
+        font_size: 22
+        color: "#1E40AF"
+      # ∠PCA 在 C 处，从 CA 边到 CP
+      - type: arc
+        x: 1.5
+        y: 3.2
+        radius: 0.6
+        start_angle: 234
+        end_angle: 263
+        color: "#1E40AF"
+        stroke_width: 2
+      - type: label
+        x: 1.3
+        y: 2.4
+        text: "$\\theta$"
+        font_size: 22
+        color: "#1E40AF"
+
+teach:
+  acts:
+    # ============ Act 1：破题 ============
+    - title: "破题：三个子三角形 + 公共 θ"
+      beats:
+        - say: 拿到陌生概念，第一件事不是急着算，是看它的几何结构。点 P 在三角形内部，天然把大三角形切成三个子三角形——PAB、PBC、PCA。
+          show:
+            type: knowledge_card
+            title: "结构观察 · 三个子三角形"
+            points:
+              - "$\\triangle PAB$，$\\triangle PBC$，$\\triangle PCA$"
+              - "每个子三角形里都有一个 $\\theta$"
+
+        - say: 这就是布洛卡点的灵魂。看图——P 在三角形内，从 A 出发的 PA 把 A 处的角切成两半，靠近 AB 那一半就是 theta。从 B、C 出发也一样，每个顶点都被切成两半，其中一半是 theta。
+          mode: tour
+          recall: indicate
+
+        - say: 列清楚每个子三角形的所有角。这是后面所有推导的基础。
+          show:
+            type: knowledge_card
+            title: "角度分布"
+            points:
+              - "$\\triangle PAB$：$\\angle PAB=\\theta$，$\\angle PBA=\\angle ABC-\\theta$"
+              - "$\\triangle PBC$：$\\angle PBC=\\theta$，$\\angle PCB=\\angle ACB-\\theta$"
+              - "$\\triangle PCA$：$\\angle PCA=\\theta$，$\\angle PAC=\\angle BAC-\\theta$"
+
+        - say: 整道题的工具只有一个——正弦定理。在每个子三角形里反复用，PA、PB、PC 就和三边 a、b、c、内角串起来了。
+          show:
+            type: step
+            body: "工具：每个子三角形里都用 \\textbf{正弦定理}"
+
+    # ============ Act 2：第一问 ============
+    - title: "第一问：在 △APC 里求 PA / b"
+      transition: hard
+      beats:
+        - say: 第一问关注 PA 比 b。在子三角形 APC 里，PA 对的角是 PCA 等于 theta，b 也就是 AC 对的角是 APC。先把 APC 算出来。
+          show:
+            type: step
+            body: "在 $\\triangle APC$ 中，PA 对 $\\theta$，$b$ 对 $\\angle APC$"
+
+        - say: 三角形内角和 pai。APC 等于 pai 减 PCA 减 PAC，也就是 pai 减 theta 减括号 BAC 减 theta 括号。两个 theta 一正一负刚好抵消。
+          show:
+            type: step
+            body: "$\\angle APC = \\pi - \\theta - (\\angle BAC - \\theta) = \\pi - \\angle BAC$"
+
+        - say: 由诱导公式，sin pai 减角 BAC 等于 sin 角 BAC。这就是正弦定理能用上的关键。
+          show:
+            type: step
+            body: "$\\sin\\angle APC = \\sin\\angle BAC = \\frac{3}{5}$"
+
+        - say: 现在写正弦定理。PA 比 sine theta 等于 b 比 sine APC，也就是 b 比 sine 角 BAC。
+          show:
+            type: step
+            body: "$\\frac{PA}{\\sin\\theta} = \\frac{b}{\\sin\\angle BAC}$"
+
+        - say: 移项得到 PA 比 b 等于 sine theta 比 sine 角 BAC。代入数值——五分之一比五分之三，就是三分之一。
+          show:
+            type: step
+            body: "$\\frac{PA}{b} = \\frac{\\sin\\theta}{\\sin\\angle BAC} = \\frac{1/5}{3/5} = \\frac{1}{3}$"
+
+        - say: 第一问答案 PA 比 b 等于 三分之一。
+          show:
+            type: answer_box
+            body: "$\\dfrac{PA}{b} = \\dfrac{1}{3}$"
+
+        - say: 注意，第一问只是开胃菜。重点是这个推导可以推广——同样手法在另外两个子三角形也能用。
+          show:
+            type: knowledge_card
+            title: "重要推论（伏笔）"
+            points:
+              - "$\\dfrac{PA}{b} = \\dfrac{\\sin\\theta}{\\sin\\angle BAC}$"
+              - "$\\dfrac{PB}{c} = \\dfrac{\\sin\\theta}{\\sin\\angle ABC}$"
+              - "$\\dfrac{PC}{a} = \\dfrac{\\sin\\theta}{\\sin\\angle ACB}$"
+
+    # ============ Act 3：第二问 ① 关键跳跃：换个角度用正弦定理 ============
+    - title: "第二问①：另一种正弦定理用法"
+      transition: hard
+      beats:
+        - say: 第二问①目标是三个 sine 角减 theta 的乘积。为什么是这个目标？因为它对 BAC、ABC、ACB 三个角是循环对称的。看到对称，立刻想到——三式相乘看会不会消元。
+          mode: insight
+          show:
+            type: knowledge_card
+            title: "对称结构的暗示"
+            body: "三元循环对称 + 乘积目标 → 尝试三式相乘消元"
+
+        - say: 但怎么把 sine BAC 减 theta 表达出来呢？回到子三角形 APC。我们换个角度用正弦定理——这次让 PC 对 angle PAC，也就是 BAC 减 theta。
+          show:
+            type: step
+            body: "$\\triangle APC$ 中：$\\dfrac{PC}{\\sin(\\angle BAC-\\theta)} = \\dfrac{b}{\\sin\\angle APC} = \\dfrac{b}{\\sin\\angle BAC}$"
+
+        - say: 反解出 sin BAC 减 theta 等于 PC 乘 sine 角 BAC 比 b。注意这里出现了 PC 比 b，刚才推论里恰好有 PC 比 a 等于什么——所以待会儿要做替换。
+          show:
+            type: step
+            body: "$\\sin(\\angle BAC-\\theta) = \\dfrac{PC \\sin\\angle BAC}{b}$"
+
+        - say: 同样的手法用在另外两个子三角形里，循环替换字母即可。三式都列出来。
+          show:
+            type: knowledge_card
+            title: "三式（对称）"
+            points:
+              - "$\\sin(\\angle BAC-\\theta) = \\dfrac{PC \\sin\\angle BAC}{b}$（来自 $\\triangle APC$）"
+              - "$\\sin(\\angle ABC-\\theta) = \\dfrac{PA \\sin\\angle ABC}{c}$（来自 $\\triangle APB$）"
+              - "$\\sin(\\angle ACB-\\theta) = \\dfrac{PB \\sin\\angle ACB}{a}$（来自 $\\triangle BPC$）"
+
+        - say: 三式相乘。等号左边就是题目要求的乘积。等号右边把 PA、PB、PC 和 a、b、c、三个 sine 角整理一下。
+          show:
+            type: step
+            body: "$\\prod\\sin(\\angle X-\\theta) = \\dfrac{PA}{b}\\cdot\\dfrac{PB}{c}\\cdot\\dfrac{PC}{a}\\cdot\\sin\\angle BAC\\sin\\angle ABC\\sin\\angle ACB$"
+
+        - say: 关键时刻——还记得第一问的三条推论吗？PA 比 b、PB 比 c、PC 比 a 都等于 sine theta 比相应的 sine 角。三个相乘，sine 角连乘抵消！
+          mode: insight
+          show:
+            type: wow_formula
+            formula: "\\prod\\sin(\\angle X-\\theta) = \\sin^3\\theta"
+            caption: "对称结构 → 三式相乘消元"
+
+        - say: 代入 theta 等于 pai 比 6，sine pai 比 6 等于 二分之一，立方等于 八分之一。
+          show:
+            type: step
+            body: "$\\theta=\\frac{\\pi}{6} \\Rightarrow \\sin^3\\theta = \\left(\\frac{1}{2}\\right)^3 = \\frac{1}{8}$"
+
+        - say: 第二问①答案就是八分之一。
+          show:
+            type: answer_box
+            body: "$\\sin^3\\theta = \\dfrac{1}{8}$"
+
+    # ============ Act 4：第二问 ② 转折：对称破坏 ============
+    - title: "第二问②：对称破坏，方法换轨"
+      transition: hard
+      beats:
+        - say: 第二问②条件变了——只固定 BAC 等于 pai 比 3，B 和 C 还在变。这意味着三式对称性被破坏，①的方法用不了了。
+          show:
+            type: warning
+            body: "对称性破坏！三式相乘消元不再适用"
+            label: "方法转换"
+
+        - say: 该怎么办？退回基本招——一个等式加一个约束减元。我们让 PA 在两个不同子三角形里都算一遍，令两式相等，配合内角和 pai，把所有未知都化归到一个变量。
+          mode: insight
+          show:
+            type: knowledge_card
+            title: "对称破坏后的化归"
+            body: "一个等式 + 内角和约束 → 减元到单变量函数"
+
+        - say: PA 的第一种表达从第一问知道——PA 等于 b 乘 sine theta 比 sine BAC。
+          show:
+            type: step
+            body: "$PA = \\dfrac{b\\sin\\theta}{\\sin\\angle BAC}$"
+
+        - say: PA 的第二种表达从子三角形 APB 里——这次用另一种正弦定理用法，PA 对 sine 角 PBA，sine 角 PBA 就是 sine ABC 减 theta。结合 c 比 sine APB。
+          show:
+            type: step
+            body: "$PA = \\dfrac{c\\sin(\\angle ABC-\\theta)}{\\sin\\angle ABC}$"
+
+        - say: 两式相等。整理后用正弦定理把 b、c 的比换成对应 sine 角的比，记 A、B、C 是三内角，化简。
+          show:
+            type: step
+            body: "$\\sin A\\sin C\\sin(B-\\theta) = \\sin^2 B\\sin\\theta$"
+
+        - say: 把 sin 括号 B 减 theta 括号展开为 sineB cos theta 减 cosB sine theta。两边除以 sine theta，整理得到 cot theta 等于一个分式。
+          show:
+            type: step
+            body: "$\\cot\\theta = \\dfrac{\\sin^2 B + \\sin A\\sin C\\cos B}{\\sin A\\sin B\\sin C}$"
+
+        - say: 关键化简——分子 sine 平方 B 怎么处理？利用内角和 pai，sine B 等于 sine A 加 C，把 sine 平方 B 拆成 sine B 乘以 sine A 加 C。
+          mode: insight
+          show:
+            type: step
+            body: "$\\sin^2 B = \\sin B\\cdot\\sin(A+C)$"
+            emphasis: ["sin(A+C)"]
+
+        - say: 展开 sine A 加 C 等于 sineA cosC 加 cosA sineC。代入分子，分子分成两组，每组都能除以 sine A sine B sine C 凑出 cot 项。
+          show:
+            type: step
+            body: "$\\dfrac{\\sin B\\sin(A+C)}{\\sin A\\sin B\\sin C} = \\dfrac{\\sin A\\cos C + \\cos A\\sin C}{\\sin A\\sin C} = \\cot C + \\cot A$"
+
+        - say: 加上后半项 cos B 比 sine B 等于 cot B。三项 cot 加在一起。这就是布洛卡角的核心公式，请大家放大记下来。
+          mode: insight
+          show:
+            type: wow_formula
+            formula: "\\cot\\theta = \\cot A + \\cot B + \\cot C"
+            caption: "布洛卡角定理"
+
+    # ============ Act 5：第二问 ② 求范围 ============
+    - title: "第二问②（续）：单变量化 + 求范围"
+      transition: soft
+      beats:
+        - say: 代入 A 等于 pai 比 3，cot A 等于 三分之根号三。B 加 C 等于 三分之二 pai，所以 C 等于 三分之二 pai 减 B。
+          show:
+            type: step
+            body: "$\\cot\\theta = \\dfrac{\\sqrt{3}}{3} + \\cot B + \\cot\\left(\\dfrac{2\\pi}{3}-B\\right)$"
+
+        - say: 记后两项为 f 括号 B。通分后分子是 sine 三分之二 pai 等于 二分之根号三。分母用积化和差，得到 二分之一 乘 cos 二B 减 三分之二 pai 加 二分之一。
+          show:
+            type: step
+            body: "$f(B) = \\dfrac{\\sqrt{3}}{\\cos\\left(2B-\\dfrac{2\\pi}{3}\\right) + \\dfrac{1}{2}}$"
+
+        - say: 锐角约束很关键。每个角小于 pai 比 2。B 小于 pai 比 2 给上界，C 等于 三分之二 pai 减 B 小于 pai 比 2 给下界 B 大于 pai 比 6。
+          show:
+            type: knowledge_card
+            title: "锐角约束"
+            points:
+              - "$B < \\frac{\\pi}{2}$（B 锐角）"
+              - "$C = \\frac{2\\pi}{3} - B < \\frac{\\pi}{2} \\Rightarrow B > \\frac{\\pi}{6}$（C 锐角）"
+              - "故 $B \\in \\left(\\frac{\\pi}{6}, \\frac{\\pi}{2}\\right)$"
+
+        - say: 在 B 这个区间里，2B 减 三分之二 pai 范围是负 三分之 pai 到 三分之 pai 开开。cos 在这个对称开区间里大于二分之一 小于等于一。注意 B 等于 三分之 pai 时 cos 取一闭。
+          show:
+            type: step
+            body: "$2B - \\dfrac{2\\pi}{3} \\in \\left(-\\dfrac{\\pi}{3}, \\dfrac{\\pi}{3}\\right) \\Rightarrow \\cos \\in \\left(\\dfrac{1}{2}, 1\\right]$"
+
+        - say: 分母 cos 加 二分之一 范围 一开 三分之二 闭。f 括号 B 范围 三分之二根号三 闭 到 根号三 开。
+          show:
+            type: step
+            body: "$f(B) \\in \\left[\\dfrac{2\\sqrt{3}}{3},\\ \\sqrt{3}\\right)$"
+
+        - say: 加上 三分之根号三，cot theta 范围 根号三 闭 到 三分之四根号三 开。
+          show:
+            type: step
+            body: "$\\cot\\theta \\in \\left[\\sqrt{3},\\ \\dfrac{4\\sqrt{3}}{3}\\right)$"
+
+        - say: 取倒数得 tan theta。注意正数取倒数大小关系翻转，开闭也翻转。
+          show:
+            type: warning
+            body: "取倒数 → 大小反向，闭对闭、开对开"
+            label: "易错"
+
+        - say: 最终 tan theta 范围是 四分之根号三 开 到 三分之根号三 闭。
+          show:
+            type: answer_box
+            body: "$\\tan\\theta \\in \\left(\\dfrac{\\sqrt{3}}{4},\\ \\dfrac{\\sqrt{3}}{3}\\right]$"
+
+summary:
+  beats:
+    - say: 这道题最大的启示是——面对陌生概念不要被定义吓住。看几何结构，把它拆成你熟悉的工具。布洛卡点 P 拆成三个子三角形，每个子三角形里都是熟悉的正弦定理。陌生概念都能这样拆。
+      show:
+        type: takeaway
+        body: "心法一：陌生概念 → 拆几何结构 → 还是熟工具"
+
+    - say: 第二条心法。看到三元循环对称结构 + 乘积目标，立刻想到三式相乘。对称的部分会自己抵消。这是数学里 对称即不变量 思想的具体应用。
+      show:
+        type: takeaway
+        body: "心法二：对称结构 + 乘积 → 三式相乘消元"
+
+    - say: 第三条心法。当对称性被破坏，对称消元用不了时，退回基本招——一个等式加一个约束减元，把问题化归到单变量函数求范围。这是数学里诚实的一面，没法偷懒就老老实实减元。
+      show:
+        type: takeaway
+        body: "心法三：对称破坏 → 单变量化归 → 函数分析"

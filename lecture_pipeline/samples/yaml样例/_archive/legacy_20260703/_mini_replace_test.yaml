@@ -1,0 +1,40 @@
+core:
+  title: "TransformMatchingTex 测试"
+  statement: "测试推导式之间字符级原地变形：$2x + 4 = 10$ 求 x。"
+  say: 这是一个测试，看推导式之间能不能原地变形。
+
+teach:
+  acts:
+    - title: "推导链"
+      transition: none
+      beats:
+        - say: 第一步，从原方程开始。
+          show:
+            type: step
+            body: "$2x + 4 = 10$"
+        - say: 移项，把 4 挪到右边变成减 4。
+          show:
+            type: step
+            body: "$2x = 10 - 4$"
+            replace_prev: true
+        - say: 算右边，10 减 4 等于 6。
+          show:
+            type: step
+            body: "$2x = 6$"
+            replace_prev: true
+        - say: 两边除以 2 得到 x 等于 3。
+          show:
+            type: step
+            body: "$x = 3$"
+            replace_prev: true
+        - say: 给出最终答案。
+          show:
+            type: answer_box
+            body: "$x = 3$"
+
+summary:
+  beats:
+    - say: 推导链中相同部分原地保留，新增字符淡入，删除字符淡出。这就是 TransformMatchingTex 的效果。
+      show:
+        type: takeaway
+        body: "原地变形：x = 3"

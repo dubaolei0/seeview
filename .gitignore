@@ -1,0 +1,44 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### lecture_pipeline 引擎运行时产物（自包含 python 引擎） ###
+lecture_pipeline/.venv/
+lecture_pipeline/media/
+lecture_pipeline/output/
+lecture_pipeline/**/__pycache__/
+lecture_pipeline/.env
+lecture_pipeline/*.log
+
+### Claude Code 本地数据（工具会话/记忆，不应上传）###
+.claude/

@@ -1,0 +1,31 @@
+# 示例 · 简单题快车道（复数减法）
+# 用途：基础计算题的高质量样例。重点不是结构堆满，而是讲法恰当、自然、有老师口吻。
+# 结构：1 个 act，3 个 beats，无 summary。真实易错点放在计算过程中，不硬凑总结。
+
+core:
+  title: "题目讲解"
+  statement: '（简单题快车道样例）计算：$5-(3+2\mathrm{i})=$ $\underline{\hspace{2cm}}$。'
+  say: "同学们来看这道题。它不难，真正要盯住的就一个地方：减的是整个复数三加二i，不是只减前面的三。所以我们先把括号处理清楚。"
+
+teach:
+  acts:
+    - title: "减括号"
+      transition: soft
+      beats:
+        - say: "括号前面是减号，对吧，那括号里的实部和虚部都要一起变号。三变成负三，二i变成负二i。"
+          show:
+            type: step
+            body: '$5-(3+2\mathrm{i})=5-3-2\mathrm{i}$'
+          mode: spotlight
+
+        - say: "现在再合并就很直接了。实部是五减三，得到二；虚部是负二。"
+          show:
+            type: step
+            body: '$(5-3)-2\mathrm{i}=2-2\mathrm{i}$'
+          mode: spotlight
+
+        - say: "所以答案是二减二i。这题最容易错在把二i的符号漏掉，只写成二加二i。"
+          show:
+            type: answer_box
+            body: '$2-2\mathrm{i}$'
+          mode: spotlight
