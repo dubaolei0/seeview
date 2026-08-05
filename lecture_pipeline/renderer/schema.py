@@ -27,7 +27,23 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional, Union
 
+import re
 import yaml
+
+
+_DOC_SEP_RE = re.compile(r"^---\s*$")
+
+
+def _load_single_yaml_doc(text: str) -> Any:
+    """加载 yaml 文本为单个文档。
+
+    模型偶尔会用列 1 的 ``---`` 把单个 yaml 切成多段（例如把 core 与 teach 分两段），
+    ``yaml.safe_load`` 会抛 ``ComposerError: expected a single document in the stream``。
+    本 schema 的字符串值均用引号或 ``\\n`` 转义、不会有列 1 的 ``---`` 作为内容，
+    故剔除列 1 的 ``---`` 分隔符以合并为单文档后再加载（缩进的 ``---`` 视为块标量内容，保留）。
+    """
+    cleaned = "\n".join(line for line in text.splitlines() if not _DOC_SEP_RE.match(line))
+    return yaml.safe_load(cleaned)
 
 
 # =====================================================================
@@ -353,13 +369,12 @@ class LectureDoc:
     @classmethod
     def from_yaml_file(cls, path: Union[str, Path]) -> "LectureDoc":
         path = Path(path)
-        with path.open("r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        return cls.from_dict(data)
+        text = path.read_text(encoding="utf-8")
+        return cls.from_dict(_load_single_yaml_doc(text))
 
     @classmethod
     def from_yaml_string(cls, text: str) -> "LectureDoc":
-        return cls.from_dict(yaml.safe_load(text))
+        return cls.from_dict(_load_single_yaml_doc(text))
 
     # ---------- 便捷查询 ----------
 

@@ -136,7 +136,7 @@ public class LectureGenerateService {
                 ? buildYamlUserFast(req, problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample, profile)
                 : buildYamlUser(problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample,
                         profile, beike, jianggao));
-        yaml = stripCodeFence(yaml);
+        yaml = cleanYaml(yaml);
         Path yamlPath = outPath.resolve(problemId + ".yaml");
         Files.writeString(yamlPath, yaml, StandardCharsets.UTF_8);
 
@@ -163,7 +163,7 @@ public class LectureGenerateService {
                 String current = Files.readString(yamlPath, StandardCharsets.UTF_8);
                 String fixed = chat(yamlPrompt,
                         buildFixUser(yamlPath.getFileName().toString(), current, cr.feedback()));
-                Files.writeString(yamlPath, stripCodeFence(fixed), StandardCharsets.UTF_8);
+                Files.writeString(yamlPath, cleanYaml(fixed), StandardCharsets.UTF_8);
                 rounds++;
                 cr = validateService.runChecks(yamlPath);
             }
@@ -476,6 +476,26 @@ public class LectureGenerateService {
             return t.strip();
         }
         return text;
+    }
+
+    /** yaml 落盘前的统一清洗：去代码围栏 + 去多余的 YAML 文档分隔符。 */
+    private String cleanYaml(String text) {
+        return stripDocSeparators(stripCodeFence(text));
+    }
+
+    /**
+     * 移除列 1 的 YAML 文档分隔符 {@code ---}。模型偶尔会用 {@code ---} 把单个 yaml 切成多段
+     * （例如把 core 与 teach 分两段），下游 {@code yaml.safe_load} 会报
+     * {@code expected a single document in the stream}。本 schema 的字符串值均用引号或 {@code \n}
+     * 转义、列 1 的 {@code ---} 不可能是内容，故剔除（缩进的 {@code ---} 视为块标量内容，保留）。
+     */
+    private String stripDocSeparators(String text) {
+        if (text == null) {
+            return text;
+        }
+        StringBuilder sb = new StringBuilder();
+        text.lines().filter(line -> !line.matches("---\\s*")).forEach(line -> sb.append(line).append('\n'));
+        return sb.toString().strip();
     }
 
     private static boolean blank(String s) {
