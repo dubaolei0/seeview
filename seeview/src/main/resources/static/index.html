@@ -442,7 +442,6 @@
           <select id="budget">
             <option value="标准" selected>标准</option>
             <option value="简洁">简洁</option>
-            <option value="深入">深入</option>
           </select>
         </div>
         <div class="field">
@@ -937,7 +936,8 @@
     renderProbList();
     $('detailWrap').hidden=false;
     renderDoc('beike');renderDoc('jianggao');renderYaml();renderValidation();
-    switchTab('beike');
+    updateTabs();
+    switchTab((p&&p.beike)?'beike':(p&&p.jianggao)?'jianggao':'yaml');
     $('videoTitle').innerHTML='当前题目：<b>第 '+(idx+1)+' 题</b>'+(p.type?(' · '+escapeHtml(p.type)):'')+(p.preview?(' · '+escapeHtml(p.preview)):'');
     updateRenderBtns();
     if(p.videoUrl){showVideo(p.videoUrl,p.problemId);}else{hideVideo();}
@@ -953,6 +953,15 @@
     Array.prototype.forEach.call(document.querySelectorAll('.panel'),function(p){
       p.classList.toggle('active',p.dataset.panel===name);
     });
+  }
+  /* 简洁预算无备课/讲稿：内容为空时隐藏对应 tab */
+  function updateTabs(){
+    var p=cur();
+    var hasBeike=!!(p&&p.beike),hasJianggao=!!(p&&p.jianggao);
+    var bt=document.querySelector('.tab[data-tab="beike"]');
+    var jt=document.querySelector('.tab[data-tab="jianggao"]');
+    if(bt)bt.style.display=hasBeike?'':'none';
+    if(jt)jt.style.display=hasJianggao?'':'none';
   }
   function updateStepper(){
     var s1=$('step1'),s2=$('step2');

@@ -98,35 +98,43 @@ public class LectureGenerateService {
         Files.createDirectories(outPath);
         Path pipelineDir = Path.of(props.getEngineDir()).toAbsolutePath().normalize();
 
-        // 读三份提示词
-        String beikePrompt = readSkill("备课.md");
-        String jianggaoPrompt = readSkill("讲稿.md");
         String yamlPrompt = readSkill("yaml.md");
+        boolean concise = "简洁".equals(budget); // 简洁：只生成 yaml（fast 模式，无备课/讲稿）
 
         // 读注入引用（缺失则跳过，不阻塞）
-        String beikeSample = readResource(pipelineDir.resolve("samples/备课样例"), beikeSampleName(budget));
         String ttsRules = readResource(pipelineDir, "rules/tts_读法约定.md");
-        String jianggaoSample = readResource(pipelineDir, "samples/自然语言讲稿/problem_18_讲稿.md");
         String schemaSpec = readResource(pipelineDir, "docs/schema规范.md");
         String yamlSample = readResource(pipelineDir.resolve("samples/yaml样例"), yamlSampleName(budget));
         String profile = blank(req.memberName()) ? null
                 : readResource(Paths.get(communityDir), "team/" + req.memberName() + "/profile.md");
 
-        // ① 备课
-        String beike = chat(beikePrompt,
-                buildBeikeUser(req, problemId, budget, outPath.toString(), beikeSample));
-        Path beikePath = outPath.resolve(problemId + "_备课.md");
-        Files.writeString(beikePath, beike, StandardCharsets.UTF_8);
+        String beike = null, jianggao = null;
+        Path beikePath = null, jianggaoPath = null;
 
-        // ② 讲稿
-        String jianggao = chat(jianggaoPrompt,
-                buildJianggaoUser(problemId, budget, outPath.toString(), ttsRules, jianggaoSample, beike));
-        Path jianggaoPath = outPath.resolve(problemId + "_讲稿.md");
-        Files.writeString(jianggaoPath, jianggao, StandardCharsets.UTF_8);
+        if (!concise) {
+            // 标准 / 深入：三段式，先生成备课、讲稿
+            String beikePrompt = readSkill("备课.md");
+            String jianggaoPrompt = readSkill("讲稿.md");
+            String beikeSample = readResource(pipelineDir.resolve("samples/备课样例"), beikeSampleName(budget));
+            String jianggaoSample = readResource(pipelineDir, "samples/自然语言讲稿/problem_18_讲稿.md");
 
-        // ③ yaml
-        String yaml = chat(yamlPrompt,
-                buildYamlUser(problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample,
+            // ① 备课
+            beike = chat(beikePrompt,
+                    buildBeikeUser(req, problemId, budget, outPath.toString(), beikeSample));
+            beikePath = outPath.resolve(problemId + "_备课.md");
+            Files.writeString(beikePath, beike, StandardCharsets.UTF_8);
+
+            // ② 讲稿
+            jianggao = chat(jianggaoPrompt,
+                    buildJianggaoUser(problemId, budget, outPath.toString(), ttsRules, jianggaoSample, beike));
+            jianggaoPath = outPath.resolve(problemId + "_讲稿.md");
+            Files.writeString(jianggaoPath, jianggao, StandardCharsets.UTF_8);
+        }
+
+        // ③ yaml（标准=full 模式带备课/讲稿；简洁=fast 模式直接由题目编导）
+        String yaml = chat(yamlPrompt, concise
+                ? buildYamlUserFast(req, problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample, profile)
+                : buildYamlUser(problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample,
                         profile, beike, jianggao));
         yaml = stripCodeFence(yaml);
         Path yamlPath = outPath.resolve(problemId + ".yaml");
@@ -137,8 +145,12 @@ public class LectureGenerateService {
 
         String finalYaml = Files.readString(yamlPath, StandardCharsets.UTF_8); // normalize_say 可能就地改写
         return new LectureResult(problemId,
-                beikePath.toString(), jianggaoPath.toString(), yamlPath.toString(),
-                beike, jianggao, finalYaml, report);
+                beikePath == null ? "" : beikePath.toString(),
+                jianggaoPath == null ? "" : jianggaoPath.toString(),
+                yamlPath.toString(),
+                beike == null ? "" : beike,
+                jianggao == null ? "" : jianggao,
+                finalYaml, report);
     }
 
     // ===================== yaml 校验闭环 =====================
@@ -249,6 +261,34 @@ public class LectureGenerateService {
                 + "【校验反馈】\n" + feedback + "\n\n"
                 + "【当前 yaml】\n---\n" + currentYaml + "\n---\n\n"
                 + "请只修正校验反馈指出的问题，保持其余内容不变，输出完整 yaml。";
+    }
+
+    /**
+     * 简洁预算（fast 模式）的 yaml user message：无备课/讲稿，由题目 statement + answer_hint 直接编导。
+     */
+    private String buildYamlUserFast(LectureRequest req, String pid, String budget, String outDir,
+                                     String ttsRules, String schemaSpec, String sample, String profile) {
+        StringBuilder sb = new StringBuilder();
+        if (ttsRules != null) {
+            sb.append("【TTS 读法约定（单一真源，必读）】\n").append(ttsRules).append("\n\n");
+        }
+        if (schemaSpec != null) {
+            sb.append("【schema 规范（字段全集）】\n").append(schemaSpec).append("\n\n");
+        }
+        if (sample != null) {
+            sb.append("【yaml 样例（开工前参考 1 份）】\n").append(sample).append("\n\n");
+        }
+        if (profile != null) {
+            sb.append("【成员讲题视频偏好】\n").append(profile).append("\n\n");
+        }
+        sb.append("【本次输入】\n- problem_id: ").append(pid)
+                .append("\n- title: 题目讲解\n- mode: fast\n- budget: ").append(budget)
+                .append("\n- statement:\n").append(req.problem())
+                .append("\n- answer_hint: ").append(blank(req.answerHint()) ? "（无）" : req.answerHint())
+                .append("\n- output_dir: ").append(outDir).append("\n\n");
+        sb.append("【环境说明】tts_读法约定/schema规范/样例均已附上方，无需再读文件；本地无 Python，请按提示词规则做纯文本自检（逐条人工核对），不要运行 grep/python 命令；schema 校验与渲染由下游处理。本题为 fast 模式（无备课/讲稿），请按 yaml 提示词「fast 模式」规则：先把答案做对，再自写口语 say（守 budget 上限，仍受全部 say 红线），figure 自判，排版/分幕/schema/自检与 full 一致。请直接输出 ")
+                .append(pid).append(".yaml 的完整 YAML 正文，不要「报告」段，不用 markdown 代码围栏包裹整体。");
+        return sb.toString();
     }
 
     // ===================== 多题批量生成（SSE 并发） =====================
