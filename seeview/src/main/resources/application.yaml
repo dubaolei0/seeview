@@ -16,3 +16,39 @@ manim:
 
   # 远程微服务地址（/get 接口走 HTTP 客户端模式时用，本方案默认不走）
   base-url: http://localhost:8000
+
+
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key: ${ARK_API_KEY:}
+      model-name: glm-5.2
+      base-url: https://ark.cn-beijing.volces.com/api/coding/v3
+      log-requests: true
+      log-responses: true
+      # 单次调用读超时：生成长文档（备课/讲稿/yaml，提示词+样例注入后体量较大）常超 60s 默认值
+      timeout: 900s
+      # 超时/瞬断重试次数（maxRetries=重试次数，不含首次；过大遇慢模型会成倍等待）
+      max-retries: 1
+      # glm-5.2 是推理模型，默认把输出额度花在 reasoning_content（思考链）上：
+      # 长任务（尤其 yaml 步提示词 16k+ token）推理膨胀会吃光 max_tokens，
+      # finish_reason=length 且 content 为空。关闭思考直接产出正文
+      # （提示词本就面向 sonnet/opus 这类非重推理模型设计）。
+      custom-parameters:
+        thinking:
+          type: disabled
+      # 关思考后 max_tokens 全部留给正文；压轴备课/yaml 较长，需足够额度
+      max-tokens: 50000
+
+# 讲题视频三段式生成配置
+lecture:
+  # 三份提示词所在目录（备课.md / 讲稿.md / yaml.md）
+  skills-dir: ${user.dir}/skills/讲题视频
+  # 三份文档输出目录
+  output-dir: ${user.dir}/lecture_output
+  # 成员 profile 根目录（team/{姓名}/profile.md），可选
+  community-dir: ${user.dir}/community
+  # 是否启用 yaml 校验闭环（schema + 裸中文 + normalize_say，复用 manim.python/engine-dir）
+  validate: true
+  # yaml 校验闭环最大 LLM 修正轮数
+  max-fix-rounds: 2

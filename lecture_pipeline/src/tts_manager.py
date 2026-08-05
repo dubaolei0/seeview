@@ -24,9 +24,9 @@ from pydub import AudioSegment
 
 from src.config import Config
 from src.audio_silence_guard import (
-    TTSLongInternalSilenceError,
+    analyze_tts_silence,
     append_shadow_log,
-    enforce_tts_silence_quality,
+    compress_internal_silences,
 )
 
 logger = logging.getLogger(__name__)
@@ -772,12 +772,19 @@ class TTSManager:
         
         if cached:
             try:
-                self._enforce_silence_gate(cached[0], text, source="cache")
+                new_duration = self._enforce_silence_gate(cached[0], text, source="cache")
+            except TTSGenerationError as e:
+                # 缓存音频静音处理失败（极少见，如文件损坏）：失效后走重新生成
+                logger.warning(f"⚠️  缓存 TTS 静音处理失败，索引失效并重新生成: {e}")
+                self._invalidate_cache(fingerprint)
+            else:
+                if new_duration is not None:
+                    # 缓存音频就地压缩过，更新索引时长，避免下次命中时偏移
+                    self.cache_index[fingerprint]["duration"] = new_duration
+                    self._save_cache_index()
+                    cached = (cached[0], new_duration)
                 logger.info(f"✅ TTS cache hit: {text[:30]}...")
                 return cached
-            except TTSLongInternalSilenceError:
-                logger.warning("⚠️  缓存 TTS 未通过静音质量门，索引失效并重新生成")
-                self._invalidate_cache(fingerprint)
         
         attempts = self.retry_count + 1
         errors: list[str] = []
@@ -789,7 +796,9 @@ class TTSManager:
                 )
                 audio_path, duration = self.driver.generate(text, mode, prev_text)
                 self._validate_generated_audio(audio_path, duration)
-                self._enforce_silence_gate(audio_path, text, source="generated")
+                new_duration = self._enforce_silence_gate(audio_path, text, source="generated")
+                if new_duration is not None:
+                    duration = new_duration
                 self._save_to_cache(fingerprint, audio_path, duration)
                 return audio_path, duration
             except Exception as e:
@@ -965,28 +974,50 @@ class TTSManager:
         except Exception as e:
             logger.error(f"Failed to record TTS failure: {e}")
 
-    def _enforce_silence_gate(self, audio_path: str, text: str, source: str) -> None:
-        """Reject long internal silence; preserve evidence and let normal retry handle it."""
+    def _enforce_silence_gate(self, audio_path: str, text: str, source: str) -> Optional[float]:
+        """Compress abnormal long internal silence in place.
+
+        Deterministic TTS voices reproduce the same silence on every retry, so
+        rejecting-and-retry is a dead end. Instead, cap each over-long internal
+        silence to a natural pause length and accept the clip. The original
+        bytes are quarantined first for diagnosis.
+
+        Returns the new duration in seconds when the audio was compressed, or
+        ``None`` when no compression was needed.
+        """
         try:
-            enforce_tts_silence_quality(audio_path, text)
-        except TTSLongInternalSilenceError as e:
-            append_shadow_log(
-                self.silence_guard_log_path,
-                e.report,
-                source=source,
-                action="reject_and_retry",
-                provider=self.provider,
-                voice=self.voice,
-            )
-            quarantined = self._quarantine_audio(audio_path)
-            logger.warning(
-                "⚠️  TTS 静音质量门拒绝音频："
-                f"longest={e.report['longest_internal_silence_ms']}ms, "
-                f"source={source}, quarantine={quarantined}, text={text[:50]}..."
-            )
-            raise
+            report = analyze_tts_silence(audio_path, text)
         except Exception as e:
             raise TTSGenerationError(f"TTS silence quality check failed: {e}") from e
+
+        if not report.get("would_compress"):
+            return None
+
+        quarantined = self._quarantine_audio(audio_path)
+        try:
+            compression = compress_internal_silences(audio_path, text)
+        except Exception as e:
+            raise TTSGenerationError(f"TTS silence compression failed: {e}") from e
+
+        append_shadow_log(
+            self.silence_guard_log_path,
+            report,
+            source=source,
+            action="compressed",
+            provider=self.provider,
+            voice=self.voice,
+            cap_ms=compression.get("cap_ms"),
+            original_duration_ms=compression.get("original_duration_ms"),
+            new_duration_ms=compression.get("duration_ms"),
+            capped_silences=compression.get("capped_silences", []),
+        )
+        logger.info(
+            "🔧 TTS 静音压缩：longest="
+            f"{report['longest_internal_silence_ms']}ms -> cap={compression.get('cap_ms')}ms, "
+            f"source={source}, quarantine={quarantined}, text={text[:50]}..."
+        )
+        new_duration_ms = compression.get("duration_ms")
+        return new_duration_ms / 1000.0 if new_duration_ms is not None else None
 
     def _invalidate_cache(self, fingerprint: str) -> None:
         if fingerprint in self.cache_index:
