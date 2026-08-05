@@ -12,7 +12,7 @@ manim:
   timeout: 600s
   connect-timeout: 10s
   # 阿里云 CosyVoice TTS key（通过环境变量传给 python 子进程）；也可用系统环境变量 DASHSCOPE_API_KEY
-  dashscope-key: ${DASHSCOPE_API_KEY:}
+  dashscope-key: sk-15ec617f62464094abd7180ad7a1e20c
 
   # 远程微服务地址（/get 接口走 HTTP 客户端模式时用，本方案默认不走）
   base-url: http://localhost:8000
@@ -21,7 +21,7 @@ manim:
 langchain4j:
   open-ai:
     chat-model:
-      api-key: ${ARK_API_KEY:}
+      api-key: ark-2b94bddc-fd0a-4dfa-a291-fa6d7a76807c-66c1c
       model-name: glm-5.2
       base-url: https://ark.cn-beijing.volces.com/api/coding/v3
       log-requests: true
