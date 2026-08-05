@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>讲题视频 · 从一道题到一段讲解视频</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<style>
+  :root{
+    --paper:#F7F8F4; --paper-2:#FFFFFF; --grid:#E6EBE3;
+    --ink:#161E1A; --ink-2:#4B5751; --ink-3:#8A938E;
+    --line:#DEE3DB; --line-2:#ECEFEA;
+    --stage:#12161A; --stage-2:#1B2127; --stage-3:#272E35;
+    --stage-ink:#E8EDEA; --stage-ink-2:#8A968F;
+    --accent:#2E6FE6; --accent-2:#1B4FB0; --accent-soft:#E9F0FC;
+    --ok:#2E8B57; --ok-soft:#E6F2EC;
+    --warn:#B97012; --warn-soft:#FBF0DD;
+    --err:#B23A2E; --err-soft:#F8E7E5;
+    --font-display:'Newsreader','Source Han Serif SC','Noto Serif SC',STSong,SimSun,serif;
+    --font-body:'Hanken Grotesk','PingFang SC','Microsoft YaHei','Noto Sans SC',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',SFMono-Regular,Consolas,monospace;
+    --radius:12px; --radius-sm:7px;
+    --shadow:0 1px 2px rgba(20,32,26,.04),0 6px 20px -12px rgba(20,32,26,.12);
+    --shadow-stage:0 2px 6px rgba(0,0,0,.18),0 30px 60px -28px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; color:var(--ink);
+    font-family:var(--font-body); font-size:15px; line-height:1.6;
+    background-color:var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:30px 30px; background-position:-1px -1px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .muted{color:var(--ink-3)}
+  code{font-family:var(--font-mono)}
+
+  /* ---------- Masthead ---------- */
+  header.mast{padding:40px 0 18px}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--ink-3);margin:0 0 10px}
+  .eyebrow b{color:var(--accent);font-weight:500}
+  h1.title{font-family:var(--font-display);font-weight:600;font-size:38px;line-height:1.08;
+    margin:0;letter-spacing:-.01em}
+  h1.title em{font-style:italic;font-weight:400;color:var(--ink-2)}
+  .thesis{margin:12px 0 0;max-width:60ch;color:var(--ink-2);font-size:15px}
+
+  /* ---------- Stepper ---------- */
+  .stepper{display:flex;align-items:center;gap:0;margin:26px 0 22px;
+    font-family:var(--font-mono);font-size:12px}
+  .step{display:flex;align-items:center;gap:10px;color:var(--ink-3)}
+  .step .dot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+    border:1.5px solid var(--line);background:var(--paper-2);font-size:12px;color:var(--ink-3);
+    transition:all .25s}
+  .step .lbl{display:flex;flex-direction:column;line-height:1.25}
+  .step .lbl b{font-family:var(--font-body);font-weight:600;font-size:13.5px;color:var(--ink-2)}
+  .step .lbl span{color:var(--ink-3);font-size:11px}
+  .step.active .dot{border-color:var(--accent);color:var(--accent);
+    box-shadow:0 0 0 4px var(--accent-soft)}
+  .step.active .lbl b{color:var(--ink)}
+  .step.done .dot{border-color:var(--ok);background:var(--ok);color:#fff}
+  .step.done .lbl b{color:var(--ink)}
+  .step-rule{flex:1;height:1px;background:var(--line);margin:0 14px;min-width:24px}
+
+  /* ---------- Cards ---------- */
+  .card{background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:24px 26px;margin-bottom:22px}
+  .card-head{display:flex;align-items:baseline;gap:12px;margin-bottom:18px;
+    border-bottom:1px solid var(--line-2);padding-bottom:14px}
+  .card-head .num{font-family:var(--font-mono);font-size:12px;color:var(--accent);
+    background:var(--accent-soft);padding:2px 8px;border-radius:20px}
+  .card-head h2{font-family:var(--font-display);font-weight:600;font-size:20px;margin:0;
+    letter-spacing:-.005em}
+  .card-head .sub{color:var(--ink-3);font-size:12.5px;margin-left:auto;font-family:var(--font-mono)}
+
+  /* ---------- Form ---------- */
+  .grid{display:grid;gap:16px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+  .field label .opt{color:var(--ink-3);font-weight:400;margin-left:4px}
+  .field textarea,.field input,.field select{
+    font-family:var(--font-body);font-size:14px;color:var(--ink);
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);
+    padding:10px 12px;width:100%;transition:border-color .15s,box-shadow .15s}
+  .field textarea{resize:vertical;line-height:1.6}
+  .field textarea:focus,.field input:focus,.field select:focus{
+    outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .field textarea#problem{font-family:var(--font-display);font-size:16px;min-height:96px}
+  .form-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
+  .form-actions{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
+
+  /* ---------- Dropzone ---------- */
+  .dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:5px;padding:26px 20px;border:1.5px dashed var(--line);border-radius:var(--radius-sm);
+    background:var(--paper);cursor:pointer;color:var(--ink-2);text-align:center;
+    transition:border-color .15s,background .15s,color .15s}
+  .dropzone:hover,.dropzone:focus{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-2);outline:none}
+  .dropzone.drag{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-2)}
+  .dz-icon{color:var(--ink-3);margin-bottom:2px}
+  .dropzone:hover .dz-icon,.dropzone.drag .dz-icon{color:var(--accent)}
+  .dz-main{margin:0;font-size:14px}
+  .dz-main b{color:var(--ink)}
+  .dz-sub{margin:0;font-size:11.5px;color:var(--ink-3);font-family:var(--font-mono)}
+  .file-chip{display:flex;align-items:center;gap:10px;margin-top:10px;padding:9px 14px;
+    background:var(--ok-soft);border:1px solid #CDE6D9;border-radius:var(--radius-sm);font-size:13px}
+  .fc-name{font-weight:600;color:var(--ink);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fc-size{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
+  .fc-actions{margin-left:auto;display:flex;gap:12px}
+
+  /* ---------- Buttons ---------- */
+  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);
+    font-size:14px;font-weight:600;line-height:1;padding:11px 18px;border-radius:var(--radius-sm);
+    border:1px solid transparent;cursor:pointer;transition:all .15s;white-space:nowrap}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-2)}
+  .btn-primary:disabled{background:var(--ink-3);cursor:not-allowed;opacity:.7}
+  .btn-ghost{background:var(--paper);border-color:var(--line);color:var(--ink-2)}
+  .btn-ghost:hover{border-color:var(--ink-3);color:var(--ink)}
+  .btn-ghost:disabled{opacity:.5;cursor:not-allowed}
+  .btn-sm{padding:6px 11px;font-size:12.5px;font-weight:500}
+  .link-btn{background:none;border:none;color:var(--accent);cursor:pointer;
+    font-family:var(--font-body);font-size:12.5px;padding:2px 0}
+  .link-btn:hover{text-decoration:underline}
+
+  /* ---------- Progress ---------- */
+  [hidden]{display:none !important}
+  .progress{margin-top:16px;padding:14px 16px;border-radius:var(--radius-sm);
+    display:flex;align-items:center;gap:14px;border:1px solid transparent}
+  .progress.running{background:var(--accent-soft);border-color:#CFE0FB}
+  .progress.done{background:var(--ok-soft);border-color:#CDE6D9}
+  .progress.error{background:var(--err-soft);border-color:#EFD3CF}
+  .p-icon{width:16px;height:16px;flex:none;display:none}
+  .progress.running .p-icon.spinner{display:block;border:2px solid rgba(46,111,230,.25);
+    border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  .progress.done .p-icon.check{display:grid;place-items:center;color:var(--ok);font-size:14px;font-weight:700}
+  .progress.done .p-icon.check::after{content:"✓"}
+  .progress.error .p-icon.check{display:grid;place-items:center;color:var(--err);font-size:14px;font-weight:700}
+  .progress.error .p-icon.check::after{content:"✕"}
+  .progress-msg{flex:1;font-size:13px;color:var(--ink-2)}
+  .progress.done .progress-msg{color:var(--ink)}
+  .progress-time{font-family:var(--font-mono);font-size:12px;white-space:nowrap;color:var(--ink-3)}
+  .p-cancel{display:none}
+  .progress.running .p-cancel{display:inline}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 0 18px;overflow-x:auto}
+  .tab{background:none;border:none;cursor:pointer;font-family:var(--font-body);font-size:13.5px;
+    font-weight:500;color:var(--ink-3);padding:10px 14px;border-bottom:2px solid transparent;
+    white-space:nowrap;margin-bottom:-1px}
+  .tab:hover{color:var(--ink-2)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  .tab .badge-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);
+    margin-left:6px;vertical-align:middle}
+  .panel{display:none}
+  .panel.active{display:block;animation:rise .3s ease}
+  @keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  .doc-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .seg{display:inline-flex;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+  .seg button{background:none;border:none;cursor:pointer;font-family:var(--font-body);font-size:12px;
+    font-weight:500;color:var(--ink-3);padding:6px 12px}
+  .seg button.active{background:var(--paper-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+  .seg:has(button:only-child) button{opacity:.5;cursor:not-allowed}
+
+  /* ---------- Rendered markdown ---------- */
+  .md-body{font-family:var(--font-display);font-size:16px;line-height:1.78;color:var(--ink);
+    max-width:72ch;padding:4px 2px 8px}
+  .md-body h1,.md-body h2,.md-body h3,.md-body h4{font-family:var(--font-display);font-weight:600;
+    line-height:1.3;margin:1.4em 0 .6em;letter-spacing:-.005em}
+  .md-body h1{font-size:1.6em;border-bottom:1px solid var(--line);padding-bottom:.3em}
+  .md-body h2{font-size:1.32em}
+  .md-body h3{font-size:1.12em}
+  .md-body p{margin:0 0 .85em}
+  .md-body ul,.md-body ol{margin:0 0 .85em;padding-left:1.5em}
+  .md-body li{margin:.25em 0}
+  .md-body code{font-family:var(--font-mono);font-size:.86em;background:var(--line-2);
+    padding:.12em .4em;border-radius:4px}
+  .md-body pre{font-family:var(--font-mono);font-size:13px;background:#F4F6F2;border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;overflow:auto;margin:0 0 1em}
+  .md-body pre code{background:none;padding:0;font-size:1em}
+  .md-body blockquote{margin:0 0 1em;padding:.4em 1em;border-left:3px solid var(--accent);
+    color:var(--ink-2);background:var(--accent-soft);border-radius:0 6px 6px 0}
+  .md-body table{border-collapse:collapse;margin:0 0 1em;font-family:var(--font-body);font-size:14px}
+  .md-body th,.md-body td{border:1px solid var(--line);padding:6px 10px}
+  .md-body th{background:var(--line-2);font-weight:600}
+  .md-body a{color:var(--accent)}
+  .md-body .katex-display{margin:1em 0;overflow:auto;padding:4px 0}
+  .md-body img{max-width:100%}
+  .md-src{font-family:var(--font-mono);font-size:13px;line-height:1.7;color:var(--ink-2);
+    background:#F4F6F2;border:1px solid var(--line);border-radius:8px;padding:16px 18px;
+    white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto}
+
+  /* ---------- YAML editor ---------- */
+  .yaml-edit{font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:var(--ink);
+    background:#F4F6F2;border:1px solid var(--line);border-radius:8px;padding:14px 16px;
+    min-height:320px;resize:vertical;tab-size:2;width:100%;white-space:pre;overflow:auto}
+  .yaml-edit:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .yaml-hint{font-size:11.5px;color:var(--ink-3);margin-top:6px;font-family:var(--font-mono)}
+
+  /* ---------- Validation ---------- */
+  .val-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .badge{font-family:var(--font-body);font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
+  .badge-ok{background:var(--ok-soft);color:var(--ok)}
+  .badge-warn{background:var(--warn-soft);color:var(--warn)}
+  .badge-err{background:var(--err-soft);color:var(--err)}
+  .badge-muted{background:var(--line-2);color:var(--ink-3)}
+  .val-meta{font-size:12.5px;color:var(--ink-3)}
+  .val-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+  .val-cell{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px}
+  .val-key{font-family:var(--font-mono);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .val-val{font-family:var(--font-mono);font-size:13px;color:var(--ink);word-break:break-word}
+  .val-paths{display:flex;flex-direction:column;gap:6px}
+  .path-row{display:flex;align-items:center;gap:10px;font-size:12.5px}
+  .path-key{font-weight:600;color:var(--ink-2);width:64px;flex:none}
+  .path-val{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);flex:1;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--line-2);padding:3px 8px;border-radius:4px}
+
+  /* ---------- Render stage (dark) ---------- */
+  .render-stage{background:var(--stage);border-radius:var(--radius);box-shadow:var(--shadow-stage);
+    padding:18px;margin-top:18px}
+  .stage-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;
+    font-family:var(--font-mono);font-size:11.5px;color:var(--stage-ink-2)}
+  .stage-bar .dots{display:flex;gap:6px}
+  .stage-bar .dots i{width:10px;height:10px;border-radius:50%;background:var(--stage-3);display:block}
+  .stage-bar .label{margin-left:6px;color:var(--stage-ink-2)}
+  .stage-bar .right{margin-left:auto;display:flex;gap:14px;align-items:center}
+  .stage-bar .size{color:var(--stage-ink-2)}
+  .stage-canvas{background:#0C0F12;border-radius:8px;min-height:300px;display:grid;place-items:center;
+    overflow:hidden;position:relative}
+  .stage-canvas video{width:100%;height:auto;max-height:540px;display:block;background:#000}
+  .stage-empty{text-align:center;color:var(--stage-ink-2);padding:50px 20px}
+  .stage-empty .glyph{font-family:var(--font-display);font-size:42px;color:var(--stage-3);margin-bottom:10px}
+  .stage-empty p{margin:0;font-size:13px}
+  .stage-empty p small{color:var(--ink-3);font-family:var(--font-mono);font-size:11px;display:block;margin-top:6px}
+  .stage-canvas .corner{position:absolute;width:18px;height:18px;border:1.5px solid var(--stage-3)}
+  .stage-canvas .corner.tl{top:10px;left:10px;border-right:none;border-bottom:none}
+  .stage-canvas .corner.tr{top:10px;right:10px;border-left:none;border-bottom:none}
+  .stage-canvas .corner.bl{bottom:10px;left:10px;border-right:none;border-top:none}
+  .stage-canvas .corner.br{bottom:10px;right:10px;border-left:none;border-top:none}
+  .download-video{margin-top:12px}
+
+  /* ---------- Footer ---------- */
+  footer{padding:24px 0 60px;color:var(--ink-3);font-size:12px;display:flex;
+    align-items:center;gap:14px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:10px}
+  footer .api{display:flex;align-items:center;gap:6px;margin-left:auto;font-family:var(--font-mono)}
+  footer .api input{font-family:var(--font-mono);font-size:12px;background:var(--paper-2);
+    border:1px solid var(--line);border-radius:5px;padding:4px 8px;width:220px;color:var(--ink-2)}
+  footer .api input:focus{outline:none;border-color:var(--accent)}
+
+  /* ---------- Toast ---------- */
+  .toasts{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;gap:8px;z-index:1000;pointer-events:none}
+  .toast{pointer-events:auto;font-size:13.5px;font-weight:500;padding:11px 18px;border-radius:8px;
+    background:var(--ink);color:#fff;box-shadow:0 8px 30px -8px rgba(0,0,0,.4);
+    animation:toastIn .25s ease;border-left:3px solid var(--accent)}
+  .toast.ok{border-left-color:var(--ok)}
+  .toast.err{border-left-color:var(--err)}
+  .toast.warn{border-left-color:var(--warn)}
+  @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .results-empty{padding:40px 20px;text-align:center;color:var(--ink-3);font-size:13.5px}
+
+  @media (max-width:760px){
+    .form-row{grid-template-columns:1fr 1fr}
+    h1.title{font-size:30px}
+    .val-grid{grid-template-columns:1fr}
+    footer .api{margin-left:0;width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <p class="eyebrow">题目 → 备课 · 讲稿 · yaml → <b>讲解视频</b></p>
+    <h1 class="title">讲题视频 <em>流水线</em></h1>
+    <p class="thesis">输入一道题，依次生成备课、讲稿与场景 yaml，再把 yaml 渲染成带配音的讲解视频。两步走完，从纸面推导到屏幕投影。</p>
+  </header>
+
+  <!-- Stepper -->
+  <div class="stepper" role="list">
+    <div class="step active" id="step1" role="listitem">
+      <div class="dot">1</div>
+      <div class="lbl"><b>生成讲题文档</b><span>备课 · 讲稿 · yaml</span></div>
+    </div>
+    <div class="step-rule"></div>
+    <div class="step" id="step2" role="listitem">
+      <div class="dot">2</div>
+      <div class="lbl"><b>渲染讲解视频</b><span>Manim + 配音</span></div>
+    </div>
+  </div>
+
+  <!-- Stage 1: generate -->
+  <section class="card">
+    <div class="card-head">
+      <span class="num">01</span>
+      <h2>生成讲题文档</h2>
+      <span class="sub">POST /langchain/lecture/generate</span>
+    </div>
+    <div class="grid">
+      <div class="field">
+        <label>题目文件 <span class="opt">上传 .txt，内容回显后用于生成</span></label>
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="上传题目 TXT 文件">
+          <input type="file" id="fileInput" accept=".txt,text/plain" hidden>
+          <svg class="dz-icon" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+            <path d="M12 16V4m0 0L7 9m5-5l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p class="dz-main">点击选择或拖入 <b>.txt</b> 题目文件</p>
+          <p class="dz-sub">自动识别 UTF-8 / GBK 编码</p>
+        </div>
+        <div class="file-chip" id="fileChip" hidden>
+          <span class="fc-name" id="fcName">file.txt</span>
+          <span class="fc-size" id="fcSize">0 B</span>
+          <span class="fc-actions">
+            <button class="link-btn" id="reuploadBtn" type="button">重新上传</button>
+            <button class="link-btn" id="clearFileBtn" type="button">清除</button>
+          </span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="problem">题目内容回显 <span class="opt">来自 TXT，可编辑后再生成</span></label>
+        <textarea id="problem" placeholder="上传 TXT 文件后，内容回显在此；也可直接粘贴题目。"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="problemId">题目 ID <span class="opt">可选 · 留空自动生成</span></label>
+          <input id="problemId" type="text" placeholder="problem_时间戳">
+        </div>
+        <div class="field">
+          <label for="budget">详略预算</label>
+          <select id="budget">
+            <option value="标准" selected>标准</option>
+            <option value="简洁">简洁</option>
+            <option value="深入">深入</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="answerHint">答案提示 <span class="opt">可选</span></label>
+          <input id="answerHint" type="text" placeholder="题面标注答案">
+        </div>
+        <div class="field">
+          <label for="memberName">成员姓名 <span class="opt">可选</span></label>
+          <input id="memberName" type="text" placeholder="注入讲题偏好">
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="genBtn">生成文档</button>
+      <button class="btn btn-ghost btn-sm" id="sampleBtn">填入示例题目</button>
+      <span class="muted" style="font-size:12px">大模型串行生成三份文档并跑校验，通常需要数分钟。</span>
+    </div>
+    <div class="progress" id="genProgress" hidden>
+      <span class="p-icon spinner"></span>
+      <span class="p-icon check"></span>
+      <span class="progress-msg">正在生成…</span>
+      <span class="progress-time" id="genElapsed"></span>
+      <button class="link-btn p-cancel" id="genCancel">取消</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section class="card" id="results" hidden>
+    <div class="card-head">
+      <span class="num">回显</span>
+      <h2>生成的文档</h2>
+      <span class="sub" id="resultMeta"></span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" data-tab="beike" role="tab">备课.md</button>
+      <button class="tab" data-tab="jianggao" role="tab">讲稿.md</button>
+      <button class="tab" data-tab="yaml" role="tab">YAML</button>
+      <button class="tab" data-tab="validation" role="tab">校验报告</button>
+    </div>
+
+    <!-- beike -->
+    <div class="panel" data-panel="beike">
+      <div class="doc-toolbar">
+        <div class="seg" id="beikeSeg">
+          <button data-view="render" class="active">渲染</button>
+          <button data-view="source">源码</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" data-copy="beike">复制</button>
+        <button class="btn btn-ghost btn-sm" data-download="beike">下载</button>
+        <span class="muted" style="font-size:12px;margin-left:auto" id="beikeLen"></span>
+      </div>
+      <div class="md-body" id="beikeBody"></div>
+    </div>
+
+    <!-- jianggao -->
+    <div class="panel" data-panel="jianggao">
+      <div class="doc-toolbar">
+        <div class="seg" id="jianggaoSeg">
+          <button data-view="render" class="active">渲染</button>
+          <button data-view="source">源码</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" data-copy="jianggao">复制</button>
+        <button class="btn btn-ghost btn-sm" data-download="jianggao">下载</button>
+        <span class="muted" style="font-size:12px;margin-left:auto" id="jianggaoLen"></span>
+      </div>
+      <div class="md-body" id="jianggaoBody"></div>
+    </div>
+
+    <!-- yaml -->
+    <div class="panel" data-panel="yaml">
+      <div class="doc-toolbar">
+        <span class="muted" style="font-size:12px">可在渲染前直接编辑 yaml</span>
+        <button class="btn btn-ghost btn-sm" data-copy="yaml" style="margin-left:auto">复制</button>
+        <button class="btn btn-ghost btn-sm" data-download="yaml">下载</button>
+      </div>
+      <textarea class="yaml-edit" id="yamlEdit" spellcheck="false"></textarea>
+      <p class="yaml-hint">编辑结果会实时保存，点击下方「生成视频」即使用当前内容渲染。</p>
+    </div>
+
+    <!-- validation -->
+    <div class="panel" data-panel="validation">
+      <div id="validationBody"></div>
+    </div>
+  </section>
+
+  <!-- Stage 2: render -->
+  <section class="card">
+    <div class="card-head">
+      <span class="num">02</span>
+      <h2>渲染讲解视频</h2>
+      <span class="sub">POST /seeview/render</span>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr auto">
+      <div class="field">
+        <label for="quality">画质</label>
+        <select id="quality">
+          <option value="medium" selected>medium · 中</option>
+          <option value="low">low · 低（快）</option>
+          <option value="high">high · 高（慢）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="voice">音色 <span class="opt">可选 · TTS 短名</span></label>
+        <input id="voice" type="text" placeholder="如 longwan / liufei">
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button class="btn btn-primary" id="renderBtn" disabled>生成视频</button>
+      </div>
+    </div>
+    <div class="progress" id="renderProgress" hidden>
+      <span class="p-icon spinner"></span>
+      <span class="p-icon check"></span>
+      <span class="progress-msg">正在渲染…</span>
+      <span class="progress-time" id="renderElapsed"></span>
+      <button class="link-btn p-cancel" id="renderCancel">取消</button>
+    </div>
+
+    <div class="render-stage">
+      <div class="stage-bar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="label">manim scene · output.mp4</span>
+        <span class="right">
+          <span class="size" id="videoSize"></span>
+          <a class="link-btn" id="downloadVideoBtn" style="color:#6EA8FE;display:none">下载视频</a>
+        </span>
+      </div>
+      <div class="stage-canvas" id="stageCanvas">
+        <span class="corner tl"></span><span class="corner tr"></span>
+        <span class="corner bl"></span><span class="corner br"></span>
+        <video id="videoPlayer" controls playsinline style="display:none"></video>
+        <div class="stage-empty" id="videoEmpty">
+          <div class="glyph">▶</div>
+          <p>yaml 就绪后，在此渲染并播放讲解视频</p>
+          <p><small>等待 stage 01 生成 yaml · 然后点「生成视频」</small></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>讲题视频流水线 · 后端端口 8899</span>
+    <span class="api">
+      <label for="apiBase">后端地址</label>
+      <input id="apiBase" type="text" placeholder="同源留空；file:// 打开填 http://localhost:8899">
+    </span>
+  </footer>
+
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  var state={
+    problemId:'', beike:'', jianggao:'', yaml:'',
+    beikePath:'', jianggaoPath:'', yamlPath:'',
+    validation:null, videoUrl:null,
+    view:{beike:'render', jianggao:'render'}
+  };
+  var genAbort=null, renderAbort=null;
+
+  /* ---------- utils ---------- */
+  function escapeHtml(s){return (s==null?'':String(s))
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+  function escapeAttr(s){return escapeHtml(s);}
+  function formatBytes(n){if(!n&&n!==0)return '';if(n<1024)return n+' B';
+    if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(2)+' MB';}
+  function formatDur(s){var m=Math.floor(s/60),ss=s%60;return m+':'+String(ss).padStart(2,'0');}
+  function apiBase(){var v=($('apiBase').value||'').trim().replace(/\/+$/,'');return v;}
+  function toast(msg,type){
+    var t=document.createElement('div');t.className='toast '+(type||'');
+    t.textContent=msg;$('toasts').appendChild(t);
+    setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s';
+      setTimeout(function(){t.remove();},300);},3200);
+  }
+  function canRenderMd(){return !!(window.marked);}
+  function startTimer(elId){
+    var e=$(elId),t0=Date.now();
+    function tick(){e.textContent='已用时 '+formatDur(Math.floor((Date.now()-t0)/1000));}
+    tick();var iv=setInterval(tick,1000);
+    return {stop:function(){clearInterval(iv);}};
+  }
+  function setProgress(id,st,msg){
+    var p=$(id);
+    if(!st||st==='idle'){p.hidden=true;return;}
+    p.hidden=false;
+    p.classList.remove('running','done','error');
+    p.classList.add(st);
+    if(msg)p.querySelector('.progress-msg').textContent=msg;
+  }
+  async function readError(res){
+    var msg='';
+    try{var j=await res.json();msg=j.error||j.message||JSON.stringify(j);}
+    catch(e){try{var t=await res.text();msg=t;}catch(e2){}}
+    msg=(msg||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+    if(!msg)msg='HTTP '+res.status+' '+ (res.statusText||'');
+    return msg.slice(0,400);
+  }
+  function copyText(text){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){toast('已复制到剪贴板','ok');},
+        function(){toast('复制失败','err');});
+    }else{toast('当前浏览器不支持复制','err');}
+  }
+  function downloadText(name,text){
+    var b=new Blob([text],{type:'text/plain;charset=utf-8'});
+    var u=URL.createObjectURL(b);var a=document.createElement('a');
+    a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(u);},2000);
+  }
+
+  /* ---------- TXT upload + echo ---------- */
+  function decodeTxt(buf){
+    var utf8=new TextDecoder('utf-8').decode(buf);
+    if(utf8.indexOf("�")===-1)return utf8;        // 干净的 UTF-8
+    try{return new TextDecoder('gbk').decode(buf);}   // Windows 中文 TXT 常见 GBK
+    catch(e){return utf8;}
+  }
+  function loadFile(file){
+    if(!file)return;
+    var isTxt=/\.txt$/i.test(file.name)||/^text\//.test(file.type||'');
+    if(!isTxt){toast('请上传 .txt 文件','err');return;}
+    var r=new FileReader();
+    r.onload=function(){
+      var text=decodeTxt(r.result);
+      $('problem').value=text;
+      $('fcName').textContent=file.name;
+      $('fcSize').textContent=formatBytes(file.size);
+      $('fileChip').hidden=false;
+      $('dropzone').hidden=true;
+      toast('已加载 '+file.name,'ok');
+    };
+    r.onerror=function(){toast('文件读取失败','err');};
+    r.readAsArrayBuffer(file);
+  }
+  function clearFile(){
+    $('problem').value='';
+    $('fileInput').value='';
+    $('fileChip').hidden=true;
+    $('dropzone').hidden=false;
+  }
+
+  /* ---------- markdown + math ---------- */
+  function renderMarkdown(md){
+    if(!md)return '<p class="muted">（空）</p>';
+    var math=[];var text=md;
+    text=text.replace(/\$\$([\s\S]+?)\$\$/g,function(m,c){math.push({t:c,d:1});return '@@MATH'+(math.length-1)+'@@';});
+    text=text.replace(/\\\[([\s\S]+?)\\\]/g,function(m,c){math.push({t:c,d:1});return '@@MATH'+(math.length-1)+'@@';});
+    text=text.replace(/\\\(([\s\S]+?)\\\)/g,function(m,c){math.push({t:c,d:0});return '@@MATH'+(math.length-1)+'@@';});
+    text=text.replace(/\$([^\$\n]+?)\$/g,function(m,c){math.push({t:c,d:0});return '@@MATH'+(math.length-1)+'@@';});
+    var html=null;
+    try{
+      if(window.marked&&typeof window.marked.parse==='function')html=window.marked.parse(text,{breaks:true,gfm:true});
+      else if(typeof window.marked==='function')html=window.marked(text);
+    }catch(e){html=null;}
+    if(html==null)html='<pre class="md-src">'+escapeHtml(text)+'</pre>';
+    for(var i=0;i<math.length;i++){
+      var m=math[i],rendered;
+      if(window.katex){
+        try{rendered=katex.renderToString(m.t,{displayMode:!!m.d,throwOnError:false});}
+        catch(e){rendered=escapeHtml(m.d?('$$'+m.t+'$$'):('$'+m.t+'$'));}
+      }else{rendered=escapeHtml(m.d?('$$'+m.t+'$$'):('$'+m.t+'$'));}
+      html=html.split('@@MATH'+i+'@@').join(rendered);
+    }
+    return html;
+  }
+
+  /* ---------- render docs ---------- */
+  function renderDoc(kind){
+    var text=state[kind]||'';
+    var body=$(kind+'Body');
+    var mode=state.view[kind];
+    if(mode==='source'||!canRenderMd()){
+      body.className='md-src';
+      body.innerHTML=escapeHtml(text);
+    }else{
+      body.className='md-body';
+      body.innerHTML=renderMarkdown(text);
+    }
+    var len=(text||'').length;
+    $(kind+'Len').textContent=len?len+' 字符':'';
+  }
+  function renderYaml(){
+    var ed=$('yamlEdit');ed.value=state.yaml||'';
+  }
+  function renderValidation(){
+    var v=state.validation,c=$('validationBody');
+    if(!v){c.innerHTML='<p class="muted">尚无校验报告。</p>';return;}
+    var badge;
+    if(v.passed)badge='<span class="badge badge-ok">通过</span>';
+    else if(v.enabled)badge='<span class="badge badge-warn">未通过</span>';
+    else badge='<span class="badge badge-muted">未启用</span>';
+    var items=[['schema',v.schema],['裸中文检查',v.cjk],['normalize_say',v.normalize]];
+    var h='<div class="val-head">'+badge+
+      '<span class="val-meta">修正轮数 '+(v.rounds==null?0:v.rounds)+' · '+escapeHtml(v.notes||'')+'</span></div>';
+    h+='<div class="val-grid">';
+    items.forEach(function(it){
+      h+='<div class="val-cell"><div class="val-key">'+escapeHtml(it[0])+'</div>'+
+        '<div class="val-val">'+escapeHtml(it[1]==null?'n/a':String(it[1]))+'</div></div>';
+    });
+    h+='</div><div class="val-paths">';
+    [['备课.md',state.beikePath],['讲稿.md',state.jianggaoPath],['yaml',state.yamlPath]].forEach(function(p){
+      if(p[1])h+='<div class="path-row"><span class="path-key">'+escapeHtml(p[0])+'</span>'+
+        '<code class="path-val" title="'+escapeAttr(p[1])+'">'+escapeHtml(p[1])+'</code>'+
+        '<button class="link-btn" data-copy="'+escapeAttr(p[1])+'">复制</button></div>';
+    });
+    h+='</div>';
+    c.innerHTML=h;
+    Array.prototype.forEach.call(c.querySelectorAll('[data-copy]'),function(b){
+      b.onclick=function(){copyText(b.getAttribute('data-copy'));};
+    });
+  }
+
+  /* ---------- tabs ---------- */
+  function switchTab(name){
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(t){
+      t.classList.toggle('active',t.dataset.tab===name);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.panel'),function(p){
+      p.classList.toggle('active',p.dataset.panel===name);
+    });
+  }
+
+  /* ---------- stepper ---------- */
+  function updateStepper(){
+    var s1=$('step1'),s2=$('step2');
+    s1.classList.toggle('done',!!state.yaml);
+    s1.classList.toggle('active',!state.yaml);
+    s2.classList.toggle('done',!!state.videoUrl);
+    s2.classList.toggle('active',!!state.yaml&&!state.videoUrl);
+  }
+
+  /* ---------- generate ---------- */
+  function setGenBusy(on){
+    $('genBtn').disabled=on;
+    $('genBtn').textContent=on?'生成中…':'生成文档';
+  }
+  function applyResult(d){
+    state.problemId=d.problemId||'';
+    state.beike=d.beike||'';state.jianggao=d.jianggao||'';state.yaml=d.yaml||'';
+    state.beikePath=d.beikePath||'';state.jianggaoPath=d.jianggaoPath||'';state.yamlPath=d.yamlPath||'';
+    state.validation=d.validation||null;
+    $('resultMeta').textContent='problemId: '+(state.problemId||'-');
+    renderDoc('beike');renderDoc('jianggao');renderYaml();renderValidation();
+    switchTab('beike');
+    // reflect canRender state on seg buttons
+    if(!canRenderMd()){
+      state.view.beike='source';state.view.jianggao='source';
+      Array.prototype.forEach.call(document.querySelectorAll('.seg button[data-view="source"]'),function(b){b.classList.add('active');});
+      Array.prototype.forEach.call(document.querySelectorAll('.seg button[data-view="render"]'),function(b){b.classList.remove('active');b.disabled=true;});
+    }
+  }
+  async function generate(){
+    var problem=$('problem').value.trim();
+    if(!problem){toast('请输入题目内容','err');$('problem').focus();return;}
+    var body={problem:problem};
+    var pid=$('problemId').value.trim();if(pid)body.problemId=pid;
+    var ah=$('answerHint').value.trim();if(ah)body.answerHint=ah;
+    body.budget=$('budget').value;
+    var mn=$('memberName').value.trim();if(mn)body.memberName=mn;
+
+    setGenBusy(true);genAbort=new AbortController();
+    var timer=startTimer('genElapsed');
+    setProgress('genProgress','running','正在生成 备课 · 讲稿 · yaml，并跑校验闭环…');
+    try{
+      var res=await fetch(apiBase()+'/langchain/lecture/generate',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body),signal:genAbort.signal
+      });
+      if(!res.ok)throw new Error(await readError(res));
+      var data=await res.json();
+      applyResult(data);
+      $('results').hidden=false;
+      $('renderBtn').disabled=false;
+      updateStepper();
+      setProgress('genProgress','done','已生成完成 · 备课、讲稿、yaml 已就绪');
+      toast('文档生成完成','ok');
+      $('results').scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(e){
+      if(e.name==='AbortError'){setProgress('genProgress','idle');toast('已取消生成','warn');}
+      else{setProgress('genProgress','error','生成失败：'+e.message);toast('生成失败：'+e.message,'err');}
+    }finally{
+      timer.stop();setGenBusy(false);
+    }
+  }
+
+  /* ---------- render video ---------- */
+  function setRenderBusy(on){
+    $('renderBtn').disabled=on||!state.yaml;
+    $('renderBtn').textContent=on?'渲染中…':'生成视频';
+  }
+  async function renderVideo(){
+    if(!state.yaml){toast('请先生成 yaml','err');return;}
+    state.yaml=$('yamlEdit').value; // pick up edits
+    var fd=new FormData();
+    fd.append('file',new Blob([state.yaml],{type:'text/yaml'}),(state.problemId||'lecture')+'.yaml');
+    fd.append('quality',$('quality').value);
+    var voice=$('voice').value.trim();if(voice)fd.append('voice',voice);
+
+    setRenderBusy(true);renderAbort=new AbortController();
+    var timer=startTimer('renderElapsed');
+    setProgress('renderProgress','running','正在渲染带配音的讲解视频（Manim + TTS）…');
+    try{
+      var res=await fetch(apiBase()+'/seeview/render',{method:'POST',body:fd,signal:renderAbort.signal});
+      if(!res.ok)throw new Error(await readError(res));
+      var blob=await res.blob();
+      if(state.videoUrl)URL.revokeObjectURL(state.videoUrl);
+      state.videoUrl=URL.createObjectURL(blob);
+      var v=$('videoPlayer');v.src=state.videoUrl;v.style.display='block';
+      $('videoEmpty').style.display='none';
+      $('videoSize').textContent=formatBytes(blob.size);
+      var dl=$('downloadVideoBtn');dl.href=state.videoUrl;dl.download=(state.problemId||'lecture')+'.mp4';dl.style.display='inline';
+      updateStepper();
+      setProgress('renderProgress','done','已渲染完成 · 讲解视频已就绪');
+      toast('视频生成完成','ok');
+      v.play().catch(function(){});
+    }catch(e){
+      if(e.name==='AbortError'){setProgress('renderProgress','idle');toast('已取消渲染','warn');}
+      else{setProgress('renderProgress','error','渲染失败：'+e.message);toast('渲染失败：'+e.message,'err');}
+    }finally{
+      timer.stop();setRenderBusy(false);
+    }
+  }
+
+  /* ---------- wire up ---------- */
+  function init(){
+    // api base default
+    if(location.protocol.indexOf('http')!==0){
+      $('apiBase').value='http://localhost:8899';
+    }
+    // tabs
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(t){
+      t.onclick=function(){switchTab(t.dataset.tab);};
+    });
+    // view toggles
+    function bindSeg(segId,kind){
+      Array.prototype.forEach.call(document.querySelectorAll('#'+segId+' button'),function(b){
+        b.onclick=function(){
+          if(b.disabled)return;
+          state.view[kind]=b.dataset.view;
+          Array.prototype.forEach.call(document.querySelectorAll('#'+segId+' button'),function(x){x.classList.toggle('active',x===b);});
+          renderDoc(kind);
+        };
+      });
+    }
+    bindSeg('beikeSeg','beike');bindSeg('jianggaoSeg','jianggao');
+    // yaml live edit
+    $('yamlEdit').addEventListener('input',function(){state.yaml=$('yamlEdit').value;});
+    // copy / download
+    document.querySelector('[data-copy="beike"]').onclick=function(){copyText(state.beike);};
+    document.querySelector('[data-copy="jianggao"]').onclick=function(){copyText(state.jianggao);};
+    document.querySelector('[data-copy="yaml"]').onclick=function(){copyText($('yamlEdit').value);};
+    document.querySelector('[data-download="beike"]').onclick=function(){downloadText((state.problemId||'problem')+'_备课.md',state.beike);};
+    document.querySelector('[data-download="jianggao"]').onclick=function(){downloadText((state.problemId||'problem')+'_讲稿.md',state.jianggao);};
+    document.querySelector('[data-download="yaml"]').onclick=function(){downloadText((state.problemId||'lecture')+'.yaml',$('yamlEdit').value);};
+    // actions
+    $('genBtn').onclick=generate;
+    $('renderBtn').onclick=renderVideo;
+    $('sampleBtn').onclick=function(){
+      $('problem').value='已知 $\\triangle ABC$ 中 $AB=2, AC=3, \\angle A=60^\\circ$，求 $BC$。';
+      $('answerHint').value='$BC=\\sqrt{7}$';
+      if(!$('problemId').value)$('problemId').value='p001';
+      toast('已填入示例题目','ok');
+    };
+    $('genCancel').onclick=function(){if(genAbort)genAbort.abort();};
+    $('renderCancel').onclick=function(){if(renderAbort)renderAbort.abort();};
+    // txt upload + echo
+    var dz=$('dropzone');
+    dz.onclick=function(){$('fileInput').click();};
+    dz.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();$('fileInput').click();}};
+    $('fileInput').onchange=function(){if(this.files&&this.files[0])loadFile(this.files[0]);};
+    $('reuploadBtn').onclick=function(){$('fileInput').click();};
+    $('clearFileBtn').onclick=clearFile;
+    ['dragenter','dragover'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();dz.classList.add('drag');});});
+    ['dragleave','drop'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();dz.classList.remove('drag');});});
+    dz.addEventListener('drop',function(e){var f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f);});
+    updateStepper();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
