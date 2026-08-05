@@ -52,3 +52,5 @@ lecture:
   validate: true
   # yaml 校验闭环最大 LLM 修正轮数
   max-fix-rounds: 2
+  # 多题批量生成的并发度（每并发一路大模型 + 一路 python 校验子进程）
+  batch-concurrency: 3

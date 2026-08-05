@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>讲题视频 · 从一道题到一段讲解视频</title>
+<title>讲题视频 · 多题并发生成</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -94,7 +94,7 @@
   .field textarea{resize:vertical;line-height:1.6}
   .field textarea:focus,.field input:focus,.field select:focus{
     outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .field textarea#problem{font-family:var(--font-display);font-size:16px;min-height:96px}
+  .field textarea#problem{font-family:var(--font-display);font-size:15px;min-height:120px}
   .form-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
   .form-actions{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
 
@@ -115,6 +115,8 @@
   .fc-name{font-weight:600;color:var(--ink);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .fc-size{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3)}
   .fc-actions{margin-left:auto;display:flex;gap:12px}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(46,111,230,.25);
+    border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex:none}
 
   /* ---------- Buttons ---------- */
   .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-body);
@@ -152,6 +154,32 @@
   .progress.running .p-cancel{display:inline}
   @keyframes spin{to{transform:rotate(360deg)}}
 
+  /* ---------- Problem list ---------- */
+  .prob-summary{font-size:13px;color:var(--ink-2);margin:0 0 12px;font-family:var(--font-mono)}
+  .prob-list{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+  .prob-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);
+    border-radius:var(--radius-sm);background:var(--paper);font-size:13px}
+  .prob-row.clickable{cursor:pointer}
+  .prob-row.clickable:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .prob-row.selected{border-color:var(--accent);background:var(--accent-soft)}
+  .prob-idx{font-family:var(--font-mono);font-weight:600;color:var(--ink-3);width:22px;flex:none;text-align:center}
+  .prob-row.selected .prob-idx{color:var(--accent)}
+  .prob-type{font-size:11px;color:var(--ink-2);background:var(--line-2);padding:2px 8px;border-radius:20px;flex:none}
+  .prob-preview{flex:1;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prob-status{display:flex;align-items:center;gap:6px;flex:none}
+  .ps-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;flex:none;padding:2px 8px;border-radius:20px}
+  .ps-pending{background:var(--line-2);color:var(--ink-3)}
+  .ps-running{background:var(--accent-soft);color:var(--accent)}
+  .ps-done{background:var(--ok-soft);color:var(--ok)}
+  .ps-error{background:var(--err-soft);color:var(--err)}
+  .vs-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+  .vs-none{background:var(--line-2);color:var(--ink-3)}
+  .vs-running{background:var(--accent-soft);color:var(--accent)}
+  .vs-done{background:var(--ok-soft);color:var(--ok)}
+  .vs-error{background:var(--err-soft);color:var(--err)}
+  .cur-prob{margin:0 0 14px;font-size:13px;color:var(--ink-2)}
+  .cur-prob b{color:var(--ink)}
+
   /* ---------- Tabs ---------- */
   .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 0 18px;overflow-x:auto}
   .tab{background:none;border:none;cursor:pointer;font-family:var(--font-body);font-size:13.5px;
@@ -159,8 +187,6 @@
     white-space:nowrap;margin-bottom:-1px}
   .tab:hover{color:var(--ink-2)}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
-  .tab .badge-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);
-    margin-left:6px;vertical-align:middle}
   .panel{display:none}
   .panel.active{display:block;animation:rise .3s ease}
   @keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -247,15 +273,6 @@
   .stage-canvas .corner.tr{top:10px;right:10px;border-left:none;border-bottom:none}
   .stage-canvas .corner.bl{bottom:10px;left:10px;border-right:none;border-top:none}
   .stage-canvas .corner.br{bottom:10px;right:10px;border-left:none;border-top:none}
-  .download-video{margin-top:12px}
-
-  /* ---------- Footer ---------- */
-  footer{padding:24px 0 60px;color:var(--ink-3);font-size:12px;display:flex;
-    align-items:center;gap:14px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:10px}
-  footer .api{display:flex;align-items:center;gap:6px;margin-left:auto;font-family:var(--font-mono)}
-  footer .api input{font-family:var(--font-mono);font-size:12px;background:var(--paper-2);
-    border:1px solid var(--line);border-radius:5px;padding:4px 8px;width:220px;color:var(--ink-2)}
-  footer .api input:focus{outline:none;border-color:var(--accent)}
 
   /* ---------- Toast ---------- */
   .toasts{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -274,7 +291,6 @@
     .form-row{grid-template-columns:1fr 1fr}
     h1.title{font-size:30px}
     .val-grid{grid-template-columns:1fr}
-    footer .api{margin-left:0;width:100%}
   }
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
@@ -285,16 +301,16 @@
 <div class="wrap">
 
   <header class="mast">
-    <p class="eyebrow">题目 → 备课 · 讲稿 · yaml → <b>讲解视频</b></p>
+    <p class="eyebrow">多题文档 -> 备课 · 讲稿 · yaml -> <b>讲解视频</b></p>
     <h1 class="title">讲题视频 <em>流水线</em></h1>
-    <p class="thesis">输入一道题，依次生成备课、讲稿与场景 yaml，再把 yaml 渲染成带配音的讲解视频。两步走完，从纸面推导到屏幕投影。</p>
+    <p class="thesis">上传一份含多道题的文件（PDF / TXT / Markdown），后端按 <code>---</code> 切分后并发生成每题的备课、讲稿与 yaml，再逐题渲染成带配音的讲解视频。</p>
   </header>
 
   <!-- Stepper -->
   <div class="stepper" role="list">
     <div class="step active" id="step1" role="listitem">
       <div class="dot">1</div>
-      <div class="lbl"><b>生成讲题文档</b><span>备课 · 讲稿 · yaml</span></div>
+      <div class="lbl"><b>生成讲题文档</b><span>多题并发 · 备课/讲稿/yaml</span></div>
     </div>
     <div class="step-rule"></div>
     <div class="step" id="step2" role="listitem">
@@ -308,36 +324,36 @@
     <div class="card-head">
       <span class="num">01</span>
       <h2>生成讲题文档</h2>
-      <span class="sub">POST /langchain/lecture/generate</span>
     </div>
     <div class="grid">
       <div class="field">
-        <label>题目文件 <span class="opt">上传 .txt，内容回显后用于生成</span></label>
-        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="上传题目 TXT 文件">
-          <input type="file" id="fileInput" accept=".txt,text/plain" hidden>
+        <label>题目文件</label>
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="上传题目文件">
+          <input type="file" id="fileInput" accept=".pdf,.txt,.md,.markdown,text/plain,text/markdown,application/pdf" hidden>
           <svg class="dz-icon" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
             <path d="M12 16V4m0 0L7 9m5-5l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <p class="dz-main">点击选择或拖入 <b>.txt</b> 题目文件</p>
-          <p class="dz-sub">自动识别 UTF-8 / GBK 编码</p>
+          <p class="dz-main">点击选择或拖入 <b>PDF / TXT / Markdown</b> 题目文件</p>
+          <p class="dz-sub">多题用单独一行 <code>---</code> 分隔 · PDF 自动提取文本 · TXT/MD 识别 UTF-8/GBK</p>
         </div>
         <div class="file-chip" id="fileChip" hidden>
+          <span class="fc-spin spin" id="fcSpin" hidden></span>
           <span class="fc-name" id="fcName">file.txt</span>
           <span class="fc-size" id="fcSize">0 B</span>
-          <span class="fc-actions">
+          <span class="fc-actions" id="fcActions">
             <button class="link-btn" id="reuploadBtn" type="button">重新上传</button>
             <button class="link-btn" id="clearFileBtn" type="button">清除</button>
           </span>
         </div>
       </div>
       <div class="field">
-        <label for="problem">题目内容回显 <span class="opt">来自 TXT，可编辑后再生成</span></label>
-        <textarea id="problem" placeholder="上传 TXT 文件后，内容回显在此；也可直接粘贴题目。"></textarea>
+        <label for="problem">题目内容回显</label>
+        <textarea id="problem" placeholder="上传文件后内容回显在此；多道题用单独一行 --- 分隔。也可直接粘贴。"></textarea>
       </div>
       <div class="form-row">
         <div class="field">
-          <label for="problemId">题目 ID <span class="opt">可选 · 留空自动生成</span></label>
+          <label for="problemId">ID 前缀 <span class="opt">可选 · 缺省自动</span></label>
           <input id="problemId" type="text" placeholder="problem_时间戳">
         </div>
         <div class="field">
@@ -349,19 +365,20 @@
           </select>
         </div>
         <div class="field">
-          <label for="answerHint">答案提示 <span class="opt">可选</span></label>
-          <input id="answerHint" type="text" placeholder="题面标注答案">
-        </div>
-        <div class="field">
           <label for="memberName">成员姓名 <span class="opt">可选</span></label>
           <input id="memberName" type="text" placeholder="注入讲题偏好">
+        </div>
+        <div class="field">
+          <label for="concurrency">并发数 <span class="opt">缺省 3</span></label>
+          <input id="concurrency" type="number" min="1" max="10" value="3">
         </div>
       </div>
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" id="genBtn">生成文档</button>
       <button class="btn btn-ghost btn-sm" id="sampleBtn">填入示例题目</button>
-      <span class="muted" style="font-size:12px">大模型串行生成三份文档并跑校验，通常需要数分钟。</span>
+      <span class="muted" id="probCount" style="font-size:12px"></span>
+      <span class="muted" style="font-size:12px;margin-left:auto">多题并发生成，每题数分钟。</span>
     </div>
     <div class="progress" id="genProgress" hidden>
       <span class="p-icon spinner"></span>
@@ -379,55 +396,55 @@
       <h2>生成的文档</h2>
       <span class="sub" id="resultMeta"></span>
     </div>
-    <div class="tabs" role="tablist">
-      <button class="tab" data-tab="beike" role="tab">备课.md</button>
-      <button class="tab" data-tab="jianggao" role="tab">讲稿.md</button>
-      <button class="tab" data-tab="yaml" role="tab">YAML</button>
-      <button class="tab" data-tab="validation" role="tab">校验报告</button>
-    </div>
+    <div class="prob-summary" id="probSummary"></div>
+    <div class="prob-list" id="probList"></div>
+    <div id="detailWrap" hidden>
+      <div class="tabs" role="tablist">
+        <button class="tab" data-tab="beike" role="tab">备课.md</button>
+        <button class="tab" data-tab="jianggao" role="tab">讲稿.md</button>
+        <button class="tab" data-tab="yaml" role="tab">YAML</button>
+        <button class="tab" data-tab="validation" role="tab">校验报告</button>
+      </div>
 
-    <!-- beike -->
-    <div class="panel" data-panel="beike">
-      <div class="doc-toolbar">
-        <div class="seg" id="beikeSeg">
-          <button data-view="render" class="active">渲染</button>
-          <button data-view="source">源码</button>
+      <div class="panel" data-panel="beike">
+        <div class="doc-toolbar">
+          <div class="seg" id="beikeSeg">
+            <button data-view="render" class="active">渲染</button>
+            <button data-view="source">源码</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" data-copy="beike">复制</button>
+          <button class="btn btn-ghost btn-sm" data-download="beike">下载</button>
+          <span class="muted" style="font-size:12px;margin-left:auto" id="beikeLen"></span>
         </div>
-        <button class="btn btn-ghost btn-sm" data-copy="beike">复制</button>
-        <button class="btn btn-ghost btn-sm" data-download="beike">下载</button>
-        <span class="muted" style="font-size:12px;margin-left:auto" id="beikeLen"></span>
+        <div class="md-body" id="beikeBody"></div>
       </div>
-      <div class="md-body" id="beikeBody"></div>
-    </div>
 
-    <!-- jianggao -->
-    <div class="panel" data-panel="jianggao">
-      <div class="doc-toolbar">
-        <div class="seg" id="jianggaoSeg">
-          <button data-view="render" class="active">渲染</button>
-          <button data-view="source">源码</button>
+      <div class="panel" data-panel="jianggao">
+        <div class="doc-toolbar">
+          <div class="seg" id="jianggaoSeg">
+            <button data-view="render" class="active">渲染</button>
+            <button data-view="source">源码</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" data-copy="jianggao">复制</button>
+          <button class="btn btn-ghost btn-sm" data-download="jianggao">下载</button>
+          <span class="muted" style="font-size:12px;margin-left:auto" id="jianggaoLen"></span>
         </div>
-        <button class="btn btn-ghost btn-sm" data-copy="jianggao">复制</button>
-        <button class="btn btn-ghost btn-sm" data-download="jianggao">下载</button>
-        <span class="muted" style="font-size:12px;margin-left:auto" id="jianggaoLen"></span>
+        <div class="md-body" id="jianggaoBody"></div>
       </div>
-      <div class="md-body" id="jianggaoBody"></div>
-    </div>
 
-    <!-- yaml -->
-    <div class="panel" data-panel="yaml">
-      <div class="doc-toolbar">
-        <span class="muted" style="font-size:12px">可在渲染前直接编辑 yaml</span>
-        <button class="btn btn-ghost btn-sm" data-copy="yaml" style="margin-left:auto">复制</button>
-        <button class="btn btn-ghost btn-sm" data-download="yaml">下载</button>
+      <div class="panel" data-panel="yaml">
+        <div class="doc-toolbar">
+          <span class="muted" style="font-size:12px">可在渲染前直接编辑 yaml</span>
+          <button class="btn btn-ghost btn-sm" data-copy="yaml" style="margin-left:auto">复制</button>
+          <button class="btn btn-ghost btn-sm" data-download="yaml">下载</button>
+        </div>
+        <textarea class="yaml-edit" id="yamlEdit" spellcheck="false"></textarea>
+        <p class="yaml-hint">编辑结果会实时保存到当前题目，点击下方「生成视频」即使用当前内容渲染。</p>
       </div>
-      <textarea class="yaml-edit" id="yamlEdit" spellcheck="false"></textarea>
-      <p class="yaml-hint">编辑结果会实时保存，点击下方「生成视频」即使用当前内容渲染。</p>
-    </div>
 
-    <!-- validation -->
-    <div class="panel" data-panel="validation">
-      <div id="validationBody"></div>
+      <div class="panel" data-panel="validation">
+        <div id="validationBody"></div>
+      </div>
     </div>
   </section>
 
@@ -436,9 +453,9 @@
     <div class="card-head">
       <span class="num">02</span>
       <h2>渲染讲解视频</h2>
-      <span class="sub">POST /seeview/render</span>
     </div>
-    <div class="form-row" style="grid-template-columns:1fr 1fr auto">
+    <p class="cur-prob" id="videoTitle">未选择题目的视频</p>
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
       <div class="field">
         <label for="quality">画质</label>
         <select id="quality">
@@ -451,9 +468,15 @@
         <label for="voice">音色 <span class="opt">可选 · TTS 短名</span></label>
         <input id="voice" type="text" placeholder="如 longwan / liufei">
       </div>
-      <div class="field" style="justify-content:flex-end">
-        <button class="btn btn-primary" id="renderBtn" disabled>生成视频</button>
+      <div class="field">
+        <label for="videoConcurrency">视频并发 <span class="opt">缺省 2</span></label>
+        <input id="videoConcurrency" type="number" min="1" max="6" value="2">
       </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="renderAllBtn" disabled>全部生成视频</button>
+      <button class="btn btn-ghost" id="renderBtn" disabled>生成视频（当前题）</button>
+      <span class="muted" style="font-size:12px;margin-left:auto">manim 较重，建议并发 2；逐题完成后可在上方题目列表点 ✓ 视频查看。</span>
     </div>
     <div class="progress" id="renderProgress" hidden>
       <span class="p-icon spinner"></span>
@@ -478,20 +501,12 @@
         <video id="videoPlayer" controls playsinline style="display:none"></video>
         <div class="stage-empty" id="videoEmpty">
           <div class="glyph">▶</div>
-          <p>yaml 就绪后，在此渲染并播放讲解视频</p>
-          <p><small>等待 stage 01 生成 yaml · 然后点「生成视频」</small></p>
+          <p>选中一道题查看其视频，或点「全部生成视频」批量渲染</p>
+          <p><small>先在上方完成文档生成 · 再点题目 · 再点「生成视频」或「全部生成视频」</small></p>
         </div>
       </div>
     </div>
   </section>
-
-  <footer>
-    <span>讲题视频流水线 · 后端端口 8899</span>
-    <span class="api">
-      <label for="apiBase">后端地址</label>
-      <input id="apiBase" type="text" placeholder="同源留空；file:// 打开填 http://localhost:8899">
-    </span>
-  </footer>
 
 </div>
 
@@ -499,15 +514,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
 (function(){
   "use strict";
   var $=function(id){return document.getElementById(id);};
+
+  /* 多题状态：problems 数组，每项一道题；selected 为当前查看的题目下标 */
   var state={
-    problemId:'', beike:'', jianggao:'', yaml:'',
-    beikePath:'', jianggaoPath:'', yamlPath:'',
-    validation:null, videoUrl:null,
-    view:{beike:'render', jianggao:'render'}
+    problems:[], selected:-1,
+    view:{beike:'render', jianggao:'render'},
+    genBusy:false, parsing:false, renderBusy:false,
+    total:0, doneCount:0, failedCount:0
   };
   var genAbort=null, renderAbort=null;
 
@@ -519,7 +537,8 @@
   function formatBytes(n){if(!n&&n!==0)return '';if(n<1024)return n+' B';
     if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(2)+' MB';}
   function formatDur(s){var m=Math.floor(s/60),ss=s%60;return m+':'+String(ss).padStart(2,'0');}
-  function apiBase(){var v=($('apiBase').value||'').trim().replace(/\/+$/,'');return v;}
+  /* 后端地址：同源（http(s)）留空用相对路径；#apiBase 不存在时也返回空 */
+  function apiBase(){var el=$('apiBase');return el?((el.value||'').trim().replace(/\/+$/,'')):'';}
   function toast(msg,type){
     var t=document.createElement('div');t.className='toast '+(type||'');
     t.textContent=msg;$('toasts').appendChild(t);
@@ -561,36 +580,102 @@
     a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(function(){URL.revokeObjectURL(u);},2000);
   }
+  function countProblems(text){return (text||'').split('【题干】').length-1;}
+  function cur(){return state.problems[state.selected];}
+  function makeProblem(i){
+    return {idx:i, problemId:'', type:'', preview:'', status:'pending',
+      beike:'', jianggao:'', yaml:'', beikePath:'', jianggaoPath:'', yamlPath:'',
+      validation:null, error:'', videoUrl:null, videoStatus:'none', videoError:'', videoSize:0};
+  }
 
-  /* ---------- TXT upload + echo ---------- */
+  /* ---------- TXT/PDF upload + echo ---------- */
   function decodeTxt(buf){
     var utf8=new TextDecoder('utf-8').decode(buf);
-    if(utf8.indexOf("�")===-1)return utf8;        // 干净的 UTF-8
+    if(utf8.indexOf('\uFFFD')===-1)return utf8;        // 干净的 UTF-8
     try{return new TextDecoder('gbk').decode(buf);}   // Windows 中文 TXT 常见 GBK
     catch(e){return utf8;}
   }
-  function loadFile(file){
+  function isSupportedFile(file){
+    return /\.(pdf|txt|md|markdown)$/i.test(file.name)
+      || /^text\/(plain|markdown)$/i.test(file.type||'')
+      || file.type==='application/pdf';
+  }
+  function isPdf(file){return /\.pdf$/i.test(file.name)||file.type==='application/pdf';}
+  async function extractPdfText(buf){
+    if(!window.pdfjsLib)throw new Error('PDF 解析库未加载，请检查网络后刷新重试');
+    var pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+    var parts=[];
+    for(var i=1;i<=pdf.numPages;i++){
+      var page=await pdf.getPage(i);
+      var content=await page.getTextContent();
+      var line='';
+      content.items.forEach(function(it){if(it.str!=null)line+=it.str;if(it.hasEOL)line+='\n';});
+      parts.push(line);
+    }
+    try{await pdf.cleanup();}catch(e){}
+    return parts.join('\n\n').trim();
+  }
+  async function loadFile(file){
     if(!file)return;
-    var isTxt=/\.txt$/i.test(file.name)||/^text\//.test(file.type||'');
-    if(!isTxt){toast('请上传 .txt 文件','err');return;}
-    var r=new FileReader();
-    r.onload=function(){
-      var text=decodeTxt(r.result);
-      $('problem').value=text;
-      $('fcName').textContent=file.name;
-      $('fcSize').textContent=formatBytes(file.size);
-      $('fileChip').hidden=false;
-      $('dropzone').hidden=true;
-      toast('已加载 '+file.name,'ok');
-    };
-    r.onerror=function(){toast('文件读取失败','err');};
-    r.readAsArrayBuffer(file);
+    if(!isSupportedFile(file)){toast('请上传 PDF、TXT 或 Markdown 文件','err');return;}
+    $('fcName').textContent=file.name;
+    $('fcSize').textContent=formatBytes(file.size);
+    $('fileChip').hidden=false;
+    $('dropzone').hidden=true;
+    $('fcActions').style.visibility='';
+    $('fcSpin').hidden=true;
+
+    if(isPdf(file)){
+      state.parsing=true;$('genBtn').disabled=true;
+      $('fcSpin').hidden=false;
+      $('fcSize').textContent='解析中…';
+      $('fcActions').style.visibility='hidden';
+      var r=new FileReader();
+      r.onload=async function(){
+        try{
+          var text=await extractPdfText(r.result);
+          $('problem').value=text&&text.trim()?text:'（PDF 未提取到文本，可能是扫描件 / 图片版 PDF，建议另存为 TXT 后上传）';
+          $('fcSize').textContent=formatBytes(file.size);
+          updateProblemCount();
+          toast('已加载 '+file.name,'ok');
+        }catch(e){
+          toast('PDF 解析失败：'+e.message,'err');
+          clearFile();
+        }finally{
+          state.parsing=false;
+          $('fcSpin').hidden=true;
+          $('fcActions').style.visibility='';
+          $('genBtn').disabled=state.genBusy;
+        }
+      };
+      r.onerror=function(){toast('文件读取失败','err');state.parsing=false;$('genBtn').disabled=state.genBusy;clearFile();};
+      r.readAsArrayBuffer(file);
+    }else{
+      var r2=new FileReader();
+      r2.onload=function(){
+        $('problem').value=decodeTxt(r2.result);
+        updateProblemCount();
+        toast('已加载 '+file.name,'ok');
+      };
+      r2.onerror=function(){toast('文件读取失败','err');clearFile();};
+      r2.readAsArrayBuffer(file);
+    }
   }
   function clearFile(){
+    state.parsing=false;
     $('problem').value='';
     $('fileInput').value='';
+    $('fcSpin').hidden=true;
+    $('fcActions').style.visibility='';
     $('fileChip').hidden=true;
     $('dropzone').hidden=false;
+    $('genBtn').disabled=state.genBusy;
+    updateProblemCount();
+  }
+  function updateProblemCount(){
+    var n=countProblems($('problem').value);
+    var el=$('probCount');
+    if(el){el.textContent=n?('检测到 '+n+' 道题'):'';el.style.display=n?'':'none';}
   }
 
   /* ---------- markdown + math ---------- */
@@ -618,9 +703,10 @@
     return html;
   }
 
-  /* ---------- render docs ---------- */
+  /* ---------- render docs (current problem) ---------- */
   function renderDoc(kind){
-    var text=state[kind]||'';
+    var p=cur();if(!p)return;
+    var text=p[kind]||'';
     var body=$(kind+'Body');
     var mode=state.view[kind];
     if(mode==='source'||!canRenderMd()){
@@ -630,15 +716,13 @@
       body.className='md-body';
       body.innerHTML=renderMarkdown(text);
     }
-    var len=(text||'').length;
-    $(kind+'Len').textContent=len?len+' 字符':'';
+    $(kind+'Len').textContent=text?text.length+' 字符':'';
   }
-  function renderYaml(){
-    var ed=$('yamlEdit');ed.value=state.yaml||'';
-  }
+  function renderYaml(){var p=cur();if(!p)return;$('yamlEdit').value=p.yaml||'';}
   function renderValidation(){
-    var v=state.validation,c=$('validationBody');
-    if(!v){c.innerHTML='<p class="muted">尚无校验报告。</p>';return;}
+    var p=cur(),c=$('validationBody');
+    if(!p||!p.validation){c.innerHTML='<p class="muted">尚无校验报告。</p>';return;}
+    var v=p.validation;
     var badge;
     if(v.passed)badge='<span class="badge badge-ok">通过</span>';
     else if(v.enabled)badge='<span class="badge badge-warn">未通过</span>';
@@ -652,10 +736,10 @@
         '<div class="val-val">'+escapeHtml(it[1]==null?'n/a':String(it[1]))+'</div></div>';
     });
     h+='</div><div class="val-paths">';
-    [['备课.md',state.beikePath],['讲稿.md',state.jianggaoPath],['yaml',state.yamlPath]].forEach(function(p){
-      if(p[1])h+='<div class="path-row"><span class="path-key">'+escapeHtml(p[0])+'</span>'+
-        '<code class="path-val" title="'+escapeAttr(p[1])+'">'+escapeHtml(p[1])+'</code>'+
-        '<button class="link-btn" data-copy="'+escapeAttr(p[1])+'">复制</button></div>';
+    [['备课.md',p.beikePath],['讲稿.md',p.jianggaoPath],['yaml',p.yamlPath]].forEach(function(pp){
+      if(pp[1])h+='<div class="path-row"><span class="path-key">'+escapeHtml(pp[0])+'</span>'+
+        '<code class="path-val" title="'+escapeAttr(pp[1])+'">'+escapeHtml(pp[1])+'</code>'+
+        '<button class="link-btn" data-copy="'+escapeAttr(pp[1])+'">复制</button></div>';
     });
     h+='</div>';
     c.innerHTML=h;
@@ -664,7 +748,65 @@
     });
   }
 
-  /* ---------- tabs ---------- */
+  /* ---------- problem list ---------- */
+  function renderProbList(){
+    var c=$('probList');
+    if(!state.problems.length){
+      c.innerHTML='<div class="results-empty">上传多题文件并点击「生成文档」后，每道题的进度与结果在此显示。点击完成的题目可查看详情。</div>';
+      return;
+    }
+    var html='';
+    state.problems.forEach(function(p){
+      if(!p)return;
+      var sel=state.selected===p.idx?' selected':'';
+      var clickable=(p.status==='done'||p.status==='error')?' clickable':'';
+      var st;
+      if(p.status==='pending')st='<span class="ps-badge ps-pending">待生成</span>';
+      else if(p.status==='running')st='<span class="ps-badge ps-running"><span class="spin" style="width:10px;height:10px;border-width:1.5px"></span>生成中</span>';
+      else if(p.status==='done')st='<span class="ps-badge ps-done">✓ 文档</span>';
+      else st='<span class="ps-badge ps-error">✕ 文档</span>';
+      var vst='';
+      if(p.yaml){
+        if(p.videoStatus==='rendering')vst='<span class="vs-badge vs-running"><span class="spin" style="width:9px;height:9px;border-width:1.5px"></span>渲染中</span>';
+        else if(p.videoStatus==='done')vst='<span class="vs-badge vs-done">✓ 视频</span>';
+        else if(p.videoStatus==='error')vst='<span class="vs-badge vs-error">✕ 视频</span>';
+        else vst='<span class="vs-badge vs-none">未渲染</span>';
+      }
+      var prev=p.preview||(p.type||'题目');
+      html+='<div class="prob-row'+sel+clickable+'" data-idx="'+p.idx+'">'+
+        '<span class="prob-idx">'+(p.idx+1)+'</span>'+
+        '<span class="prob-type">'+escapeHtml(p.type||'题目')+'</span>'+
+        '<span class="prob-preview" title="'+escapeAttr(prev)+'">'+escapeHtml(prev)+'</span>'+
+        '<span class="prob-status">'+st+vst+'</span></div>';
+    });
+    c.innerHTML=html;
+    Array.prototype.forEach.call(c.querySelectorAll('.prob-row.clickable'),function(row){
+      row.onclick=function(){selectProblem(parseInt(row.getAttribute('data-idx'),10));};
+    });
+  }
+  function updateBatchSummary(){
+    var s=$('probSummary');if(!s)return;
+    if(!state.problems.length){s.textContent='';return;}
+    var finished=state.doneCount+state.failedCount;
+    s.textContent='共 '+state.total+' 道 · 已完成 '+finished+'/'+state.total+
+      ' · 成功 '+state.doneCount+(state.failedCount?(' · 失败 '+state.failedCount):'');
+  }
+  function selectProblem(idx){
+    var p=state.problems[idx];
+    if(!p)return;
+    state.selected=idx;
+    renderProbList();
+    $('detailWrap').hidden=false;
+    renderDoc('beike');renderDoc('jianggao');renderYaml();renderValidation();
+    switchTab('beike');
+    $('videoTitle').innerHTML='当前题目：<b>第 '+(idx+1)+' 题</b>'+(p.type?(' · '+escapeHtml(p.type)):'')+(p.preview?(' · '+escapeHtml(p.preview)):'');
+    updateRenderBtns();
+    if(p.videoUrl){showVideo(p.videoUrl,p.problemId);}else{hideVideo();}
+    updateStepper();
+    $('detailWrap').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  /* ---------- tabs + stepper ---------- */
   function switchTab(name){
     Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(t){
       t.classList.toggle('active',t.dataset.tab===name);
@@ -673,119 +815,247 @@
       p.classList.toggle('active',p.dataset.panel===name);
     });
   }
-
-  /* ---------- stepper ---------- */
   function updateStepper(){
     var s1=$('step1'),s2=$('step2');
-    s1.classList.toggle('done',!!state.yaml);
-    s1.classList.toggle('active',!state.yaml);
-    s2.classList.toggle('done',!!state.videoUrl);
-    s2.classList.toggle('active',!!state.yaml&&!state.videoUrl);
+    var hasResult=state.problems.some(function(p){return p&&p.status==='done';});
+    var p=cur();
+    var hasVideo=!!(p&&p.videoUrl);
+    var hasYaml=!!(p&&p.yaml);
+    s1.classList.toggle('done',hasResult);
+    s1.classList.toggle('active',!hasResult);
+    s2.classList.toggle('done',hasVideo);
+    s2.classList.toggle('active',hasYaml&&!hasVideo);
   }
 
-  /* ---------- generate ---------- */
+  /* ---------- generate (SSE batch) ---------- */
   function setGenBusy(on){
-    $('genBtn').disabled=on;
+    state.genBusy=on;
     $('genBtn').textContent=on?'生成中…':'生成文档';
-  }
-  function applyResult(d){
-    state.problemId=d.problemId||'';
-    state.beike=d.beike||'';state.jianggao=d.jianggao||'';state.yaml=d.yaml||'';
-    state.beikePath=d.beikePath||'';state.jianggaoPath=d.jianggaoPath||'';state.yamlPath=d.yamlPath||'';
-    state.validation=d.validation||null;
-    $('resultMeta').textContent='problemId: '+(state.problemId||'-');
-    renderDoc('beike');renderDoc('jianggao');renderYaml();renderValidation();
-    switchTab('beike');
-    // reflect canRender state on seg buttons
-    if(!canRenderMd()){
-      state.view.beike='source';state.view.jianggao='source';
-      Array.prototype.forEach.call(document.querySelectorAll('.seg button[data-view="source"]'),function(b){b.classList.add('active');});
-      Array.prototype.forEach.call(document.querySelectorAll('.seg button[data-view="render"]'),function(b){b.classList.remove('active');b.disabled=true;});
-    }
+    $('genBtn').disabled=on||state.parsing;
   }
   async function generate(){
-    var problem=$('problem').value.trim();
-    if(!problem){toast('请输入题目内容','err');$('problem').focus();return;}
-    var body={problem:problem};
-    var pid=$('problemId').value.trim();if(pid)body.problemId=pid;
-    var ah=$('answerHint').value.trim();if(ah)body.answerHint=ah;
+    var doc=$('problem').value.trim();
+    if(!doc){toast('请先上传或输入题目','err');$('problem').focus();return;}
+    var n=countProblems(doc);
+    if(n===0){toast('未识别到题目（需含 【题干】）','err');return;}
+    var body={document:doc};
+    var prefix=$('problemId').value.trim();if(prefix)body.problemIdPrefix=prefix;
     body.budget=$('budget').value;
     var mn=$('memberName').value.trim();if(mn)body.memberName=mn;
+    var c=parseInt(($('concurrency').value||'').trim(),10);if(c>0)body.concurrency=c;
 
     setGenBusy(true);genAbort=new AbortController();
     var timer=startTimer('genElapsed');
-    setProgress('genProgress','running','正在生成 备课 · 讲稿 · yaml，并跑校验闭环…');
+    state.problems=[];state.selected=-1;state.total=n;state.doneCount=0;state.failedCount=0;
+    $('results').hidden=false;
+    $('detailWrap').hidden=true;
+    $('resultMeta').textContent=n+' 道题';
+    $('videoTitle').textContent='未选择题目的视频';
+    hideVideo();
+    setProgress('genProgress','running','正在并发生成 '+n+' 道题…');
+    renderProbList();updateBatchSummary();
     try{
-      var res=await fetch(apiBase()+'/langchain/lecture/generate',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+      var res=await fetch(apiBase()+'/langchain/lecture/generate-batch',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Accept':'text/event-stream'},
         body:JSON.stringify(body),signal:genAbort.signal
       });
       if(!res.ok)throw new Error(await readError(res));
-      var data=await res.json();
-      applyResult(data);
-      $('results').hidden=false;
-      $('renderBtn').disabled=false;
-      updateStepper();
-      setProgress('genProgress','done','已生成完成 · 备课、讲稿、yaml 已就绪');
+      await consumeSSE(res.body);
+      setProgress('genProgress','done','已生成完成 · 共 '+state.total+' 道（成功 '+state.doneCount+'，失败 '+state.failedCount+'）');
       toast('文档生成完成','ok');
+      var first=state.problems.find(function(p){return p&&p.status==='done';});
+      if(first)selectProblem(first.idx);
+      updateStepper();
       $('results').scrollIntoView({behavior:'smooth',block:'start'});
     }catch(e){
-      if(e.name==='AbortError'){setProgress('genProgress','idle');toast('已取消生成','warn');}
+      if(e.name==='AbortError'){setProgress('genProgress','idle');toast('已取消生成（后端可能仍在处理）','warn');}
       else{setProgress('genProgress','error','生成失败：'+e.message);toast('生成失败：'+e.message,'err');}
-    }finally{
-      timer.stop();setGenBusy(false);
+    }finally{timer.stop();setGenBusy(false);updateRenderBtns();}
+  }
+
+  /* SSE 流解析：按 \n\n 切事件，event:/data: 解析 */
+  async function consumeSSE(body){
+    var reader=body.getReader();
+    var dec=new TextDecoder();
+    var buf='';
+    while(true){
+      var chunk=await reader.read();
+      if(chunk.done)break;
+      buf+=dec.decode(chunk.value,{stream:true});
+      var at;
+      while((at=buf.indexOf('\n\n'))>=0){
+        var raw=buf.slice(0,at);
+        buf=buf.slice(at+2);
+        handleSSE(raw);
+      }
+    }
+    if(buf.trim())handleSSE(buf);
+  }
+  function handleSSE(raw){
+    var name='message',dataStr='';
+    raw.split('\n').forEach(function(line){
+      if(line.indexOf('event:')===0)name=line.slice(6).trim();
+      else if(line.indexOf('data:')===0)dataStr+=line.slice(5).trim();
+    });
+    if(!dataStr)return;
+    var data;try{data=JSON.parse(dataStr);}catch(e){return;}
+    if(name==='start'){
+      state.total=data.total||0;
+      state.problems=[];
+      for(var i=0;i<state.total;i++)state.problems.push(makeProblem(i));
+      renderProbList();updateBatchSummary();
+    }else if(name==='start-item'){
+      var p=state.problems[data.index];
+      if(p){p.problemId=data.problemId;p.type=data.type;p.preview=data.preview;p.status='running';}
+      renderProbList();
+    }else if(name==='item'){
+      var p=state.problems[data.index];
+      if(p){
+        if(data.ok){
+          var r=data.result||{};
+          p.status='done';p.problemId=r.problemId||p.problemId;
+          p.beike=r.beike||'';p.jianggao=r.jianggao||'';p.yaml=r.yaml||'';
+          p.beikePath=r.beikePath||'';p.jianggaoPath=r.jianggaoPath||'';p.yamlPath=r.yamlPath||'';
+          p.validation=r.validation||null;
+          state.doneCount++;
+        }else{
+          p.status='error';p.error=data.error||'未知错误';p.problemId=data.problemId||p.problemId;
+          state.failedCount++;
+        }
+      }
+      renderProbList();updateBatchSummary();
+      if(state.genBusy){
+        var fin=state.doneCount+state.failedCount;
+        setProgress('genProgress','running','正在并发生成 '+state.total+' 道题… 已完成 '+fin+'/'+state.total);
+      }
+      if(state.selected===data.index)selectProblem(data.index);
+    }else if(name==='done'){
+      state.total=data.total||state.total;
+      updateBatchSummary();
     }
   }
 
-  /* ---------- render video ---------- */
-  function setRenderBusy(on){
-    $('renderBtn').disabled=on||!state.yaml;
-    $('renderBtn').textContent=on?'渲染中…':'生成视频';
+  /* ---------- render video (current problem) ---------- */
+  function updateRenderBtns(){
+    var hasYaml=state.problems.some(function(p){return p&&p.yaml;});
+    var p=cur();
+    $('renderAllBtn').disabled=state.renderBusy||!hasYaml;
+    $('renderBtn').disabled=state.renderBusy||!(p&&p.yaml);
+    $('renderAllBtn').textContent=state.renderBusy?'渲染中…':'全部生成视频';
+    $('renderBtn').textContent=state.renderBusy?'渲染中…':'生成视频（当前题）';
+  }
+  function refreshVideoStage(){
+    var p=cur();if(!p)return;
+    if(p.videoUrl)showVideo(p.videoUrl,p.problemId,p.videoSize);
+    else hideVideo();
+    updateRenderBtns();
+  }
+  function showVideo(url,pid,size){
+    var v=$('videoPlayer');v.src=url;v.style.display='block';
+    $('videoEmpty').style.display='none';
+    if(size!=null)$('videoSize').textContent=formatBytes(size);
+    var dl=$('downloadVideoBtn');dl.href=url;dl.download=(pid||'lecture')+'.mp4';dl.style.display='inline';
+    v.play().catch(function(){});
+  }
+  function hideVideo(){
+    var v=$('videoPlayer');v.src='';v.style.display='none';
+    $('videoEmpty').style.display='block';
+    $('videoSize').textContent='';
+    $('downloadVideoBtn').style.display='none';
   }
   async function renderVideo(){
-    if(!state.yaml){toast('请先生成 yaml','err');return;}
-    state.yaml=$('yamlEdit').value; // pick up edits
+    var p=cur();
+    if(!p||!p.yaml){toast('请先生成该题 yaml','err');return;}
+    if(state.renderBusy){toast('正在渲染中，请稍候','warn');return;}
+    p.yaml=$('yamlEdit').value; // pick up edits
     var fd=new FormData();
-    fd.append('file',new Blob([state.yaml],{type:'text/yaml'}),(state.problemId||'lecture')+'.yaml');
+    fd.append('file',new Blob([p.yaml],{type:'text/yaml'}),(p.problemId||'lecture')+'.yaml');
     fd.append('quality',$('quality').value);
     var voice=$('voice').value.trim();if(voice)fd.append('voice',voice);
 
-    setRenderBusy(true);renderAbort=new AbortController();
+    state.renderBusy=true;p.videoStatus='rendering';renderProbList();updateRenderBtns();
+    renderAbort=new AbortController();
     var timer=startTimer('renderElapsed');
-    setProgress('renderProgress','running','正在渲染带配音的讲解视频（Manim + TTS）…');
+    setProgress('renderProgress','running','正在渲染第 '+(p.idx+1)+' 题的讲解视频（Manim + TTS）…');
     try{
       var res=await fetch(apiBase()+'/seeview/render',{method:'POST',body:fd,signal:renderAbort.signal});
       if(!res.ok)throw new Error(await readError(res));
       var blob=await res.blob();
-      if(state.videoUrl)URL.revokeObjectURL(state.videoUrl);
-      state.videoUrl=URL.createObjectURL(blob);
-      var v=$('videoPlayer');v.src=state.videoUrl;v.style.display='block';
-      $('videoEmpty').style.display='none';
-      $('videoSize').textContent=formatBytes(blob.size);
-      var dl=$('downloadVideoBtn');dl.href=state.videoUrl;dl.download=(state.problemId||'lecture')+'.mp4';dl.style.display='inline';
+      if(p.videoUrl)URL.revokeObjectURL(p.videoUrl);
+      p.videoUrl=URL.createObjectURL(blob);
+      p.videoStatus='done';p.videoSize=blob.size;
+      showVideo(p.videoUrl,p.problemId,blob.size);
       updateStepper();
-      setProgress('renderProgress','done','已渲染完成 · 讲解视频已就绪');
+      setProgress('renderProgress','done','已渲染完成 · 第 '+(p.idx+1)+' 题讲解视频已就绪');
       toast('视频生成完成','ok');
-      v.play().catch(function(){});
     }catch(e){
-      if(e.name==='AbortError'){setProgress('renderProgress','idle');toast('已取消渲染','warn');}
-      else{setProgress('renderProgress','error','渲染失败：'+e.message);toast('渲染失败：'+e.message,'err');}
+      if(e.name==='AbortError'){setProgress('renderProgress','idle');toast('已取消渲染','warn');p.videoStatus=p.videoUrl?'done':'none';}
+      else{p.videoStatus='error';setProgress('renderProgress','error','渲染失败：'+e.message);toast('渲染失败：'+e.message,'err');}
+    }finally{timer.stop();state.renderBusy=false;renderProbList();updateRenderBtns();}
+  }
+
+  /* 批量并发渲染所有有 yaml 的题目（JS 端 worker pool，受视频并发限制） */
+  async function renderAllVideos(){
+    if(state.renderBusy){toast('正在渲染中，请稍候','warn');return;}
+    var targets=state.problems.filter(function(p){return p&&p.yaml&&p.videoStatus!=='rendering';});
+    if(!targets.length){toast('没有可渲染的题目（需先生成 yaml）','err');return;}
+    var concurrency=Math.max(1,parseInt(($('videoConcurrency').value||'2').trim(),10)||2);
+    var quality=$('quality').value, voice=$('voice').value.trim();
+    targets.forEach(function(p){p.videoStatus='rendering';p.videoError='';});
+    state.renderBusy=true;renderProbList();updateRenderBtns();
+    renderAbort=new AbortController();
+    var timer=startTimer('renderElapsed');
+    var done=0, okCount=0, total=targets.length, cursor=0;
+    setProgress('renderProgress','running','正在并发渲染 '+total+' 个视频… 已完成 0/'+total);
+    async function worker(){
+      while(cursor<total){
+        if(renderAbort.signal.aborted)break;
+        var i=cursor++;var p=targets[i];
+        try{
+          var fd=new FormData();
+          fd.append('file',new Blob([p.yaml],{type:'text/yaml'}),(p.problemId||'lecture')+'.yaml');
+          fd.append('quality',quality);
+          if(voice)fd.append('voice',voice);
+          var res=await fetch(apiBase()+'/seeview/render',{method:'POST',body:fd,signal:renderAbort.signal});
+          if(!res.ok)throw new Error(await readError(res));
+          var blob=await res.blob();
+          if(p.videoUrl)URL.revokeObjectURL(p.videoUrl);
+          p.videoUrl=URL.createObjectURL(blob);
+          p.videoStatus='done';okCount++;p.videoSize=blob.size;
+        }catch(e){
+          if(e.name==='AbortError'){p.videoStatus=p.videoUrl?'done':'none';break;}
+          p.videoStatus='error';p.videoError=e.message;
+        }
+        done++;
+        setProgress('renderProgress','running','正在并发渲染 '+total+' 个视频… 已完成 '+done+'/'+total);
+        renderProbList();
+        if(state.selected===p.idx)refreshVideoStage();
+      }
+    }
+    try{
+      var workers=[];
+      for(var w=0;w<Math.min(concurrency,total);w++)workers.push(worker());
+      await Promise.all(workers);
+      if(renderAbort.signal.aborted){setProgress('renderProgress','idle');toast('已取消渲染','warn');}
+      else{setProgress('renderProgress','done','已渲染完成 · '+okCount+'/'+total+' 个视频就绪');toast('视频渲染完成（'+okCount+'/'+total+'）',okCount<total?'warn':'ok');}
     }finally{
-      timer.stop();setRenderBusy(false);
+      timer.stop();state.renderBusy=false;renderProbList();updateRenderBtns();updateStepper();
+      if(state.selected>=0)refreshVideoStage();
     }
   }
 
   /* ---------- wire up ---------- */
   function init(){
-    // api base default
-    if(location.protocol.indexOf('http')!==0){
-      $('apiBase').value='http://localhost:8899';
+    // pdf.js worker
+    if(window.pdfjsLib){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     }
     // tabs
     Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(t){
       t.onclick=function(){switchTab(t.dataset.tab);};
     });
-    // view toggles
+    // view toggles (global)
     function bindSeg(segId,kind){
       Array.prototype.forEach.call(document.querySelectorAll('#'+segId+' button'),function(b){
         b.onclick=function(){
@@ -797,27 +1067,35 @@
       });
     }
     bindSeg('beikeSeg','beike');bindSeg('jianggaoSeg','jianggao');
-    // yaml live edit
-    $('yamlEdit').addEventListener('input',function(){state.yaml=$('yamlEdit').value;});
-    // copy / download
-    document.querySelector('[data-copy="beike"]').onclick=function(){copyText(state.beike);};
-    document.querySelector('[data-copy="jianggao"]').onclick=function(){copyText(state.jianggao);};
-    document.querySelector('[data-copy="yaml"]').onclick=function(){copyText($('yamlEdit').value);};
-    document.querySelector('[data-download="beike"]').onclick=function(){downloadText((state.problemId||'problem')+'_备课.md',state.beike);};
-    document.querySelector('[data-download="jianggao"]').onclick=function(){downloadText((state.problemId||'problem')+'_讲稿.md',state.jianggao);};
-    document.querySelector('[data-download="yaml"]').onclick=function(){downloadText((state.problemId||'lecture')+'.yaml',$('yamlEdit').value);};
+    if(!canRenderMd()){
+      state.view.beike='source';state.view.jianggao='source';
+      Array.prototype.forEach.call(document.querySelectorAll('.seg button[data-view="source"]'),function(b){b.classList.add('active');});
+      Array.prototype.forEach.call(document.querySelectorAll('.seg button[data-view="render"]'),function(b){b.classList.remove('active');b.disabled=true;});
+    }
+    // yaml live edit -> current problem
+    $('yamlEdit').addEventListener('input',function(){var p=cur();if(p)p.yaml=$('yamlEdit').value;});
+    // copy / download -> current problem
+    document.querySelector('[data-copy="beike"]').onclick=function(){var p=cur();if(p)copyText(p.beike);};
+    document.querySelector('[data-copy="jianggao"]').onclick=function(){var p=cur();if(p)copyText(p.jianggao);};
+    document.querySelector('[data-copy="yaml"]').onclick=function(){var p=cur();if(p)copyText($('yamlEdit').value);};
+    document.querySelector('[data-download="beike"]').onclick=function(){var p=cur();if(p)downloadText((p.problemId||'problem')+'_备课.md',p.beike);};
+    document.querySelector('[data-download="jianggao"]').onclick=function(){var p=cur();if(p)downloadText((p.problemId||'problem')+'_讲稿.md',p.jianggao);};
+    document.querySelector('[data-download="yaml"]').onclick=function(){var p=cur();if(p)downloadText((p.problemId||'lecture')+'.yaml',$('yamlEdit').value);};
     // actions
     $('genBtn').onclick=generate;
     $('renderBtn').onclick=renderVideo;
+    $('renderAllBtn').onclick=renderAllVideos;
     $('sampleBtn').onclick=function(){
-      $('problem').value='已知 $\\triangle ABC$ 中 $AB=2, AC=3, \\angle A=60^\\circ$，求 $BC$。';
-      $('answerHint').value='$BC=\\sqrt{7}$';
-      if(!$('problemId').value)$('problemId').value='p001';
-      toast('已填入示例题目','ok');
+      $('problem').value=
+        '### 【单选题】\n\n【题干】已知 $\\triangle ABC$ 中 $AB=2, AC=3, \\angle A=60^\\circ$，求 $BC$。\n\nA. $\\sqrt{6}$\n\nB. $\\sqrt{7}$\n\nC. $2\\sqrt{3}$\n\nD. $3$\n\n【答案】B\n\n【解析】由余弦定理 $BC^2=AB^2+AC^2-2\\cdot AB\\cdot AC\\cos A=4+9-6\\cdot\\tfrac12=7$，故 $BC=\\sqrt7$。\n\n【难度】PB\n\n【年级】高中一年级\n\n---\n\n### 【填空题】\n\n【题干】设集合 $A=\\{1,2\\}$，$B=\\{2,4,6\\}$，则 $A\\cup B=$ ___。\n\n【答案】$\\{1,2,4,6\\}$\n\n【解析】并集为两集合所有元素不重复合并。\n\n【难度】PB\n\n【年级】高中一年级';
+      if(!$('problemId').value)$('problemId').value='demo';
+      updateProblemCount();
+      toast('已填入 2 道示例题','ok');
     };
     $('genCancel').onclick=function(){if(genAbort)genAbort.abort();};
     $('renderCancel').onclick=function(){if(renderAbort)renderAbort.abort();};
-    // txt upload + echo
+    $('problem').addEventListener('input',updateProblemCount);
+    // txt/pdf upload + echo
     var dz=$('dropzone');
     dz.onclick=function(){$('fileInput').click();};
     dz.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();$('fileInput').click();}};
@@ -827,7 +1105,10 @@
     ['dragenter','dragover'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();dz.classList.add('drag');});});
     ['dragleave','drop'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();dz.classList.remove('drag');});});
     dz.addEventListener('drop',function(e){var f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f);});
+    updateProblemCount();
+    renderProbList();
     updateStepper();
+    updateRenderBtns();
   }
   init();
 })();

@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -67,12 +68,16 @@ public class YamlRenderService {
         Path yamlFile = engineDir.resolve(problemId + ".yaml");
         Files.writeString(yamlFile, yaml, StandardCharsets.UTF_8);
 
+        // 隔离 media 目录：并发渲染时各进程独立，避免 partial_movie_files / Tex 缓存互相覆盖
+        Path mediaDir = engineDir.resolve("media_runs").resolve(problemId);
+        Files.createDirectories(mediaDir);
+
         Path logFile = engineDir.resolve(problemId + ".log");
         Path mp4File = null;
         try {
-            // 2. 构造命令：python -m renderer.render <yaml> --quality <q> [--tts-voice <v>]
+            // 2. 构造命令：python -m renderer.render <yaml> --quality <q> [--tts-voice <v>] [--media-dir <d>]
             List<String> cmd = buildCommand(pythonPath.toString(),
-                    yamlFile.toAbsolutePath().toString(), quality, voice);
+                    yamlFile.toAbsolutePath().toString(), quality, voice, mediaDir.toAbsolutePath().toString());
 
             // 3. 跑进程：cwd=engineDir，输出重定向到文件避免管道死锁
             ProcessBuilder pb = new ProcessBuilder(cmd)
@@ -106,13 +111,13 @@ public class YamlRenderService {
             }
 
             // 4. 找 mp4
-            mp4File = findMp4(engineDir, problemId);
+            mp4File = findMp4(mediaDir, problemId);
             if (mp4File == null) {
                 throw new ManimRenderException("渲染完成但未找到输出视频 " + problemId + ".mp4\n" + output);
             }
             return Files.readAllBytes(mp4File);
         } finally {
-            // 5. 清理临时文件
+            // 5. 清理临时文件（含隔离的 media 目录）
             Files.deleteIfExists(yamlFile);
             Files.deleteIfExists(logFile);
             if (mp4File != null) {
@@ -121,11 +126,17 @@ public class YamlRenderService {
                 } catch (IOException ignored) {
                 }
             }
+            deleteRecursively(mediaDir);
         }
     }
 
     /** 构造渲染命令：python -m renderer.render <yaml> --quality <q> [--tts-voice <v>]。 */
     List<String> buildCommand(String pythonPath, String yamlAbsPath, Quality quality, String voice) {
+        return buildCommand(pythonPath, yamlAbsPath, quality, voice, null);
+    }
+
+    /** 同上，额外支持 --media-dir（并发渲染隔离用）。 */
+    List<String> buildCommand(String pythonPath, String yamlAbsPath, Quality quality, String voice, String mediaDir) {
         List<String> cmd = new ArrayList<>();
         cmd.add(pythonPath);
         cmd.add("-m");
@@ -136,6 +147,10 @@ public class YamlRenderService {
         if (voice != null && !voice.isBlank()) {
             cmd.add("--tts-voice");
             cmd.add(voice);
+        }
+        if (mediaDir != null && !mediaDir.isBlank()) {
+            cmd.add("--media-dir");
+            cmd.add(mediaDir);
         }
         return cmd;
     }
@@ -172,9 +187,9 @@ public class YamlRenderService {
         return p.isAbsolute() ? p : engineDir.resolve(p);
     }
 
-    /** 在 media/videos/** 下找 <problemId>.mp4（manim 按画质分子目录）。 */
-    private Path findMp4(Path engineDir, String problemId) throws IOException {
-        Path videosDir = engineDir.resolve("media").resolve("videos");
+    /** 在 <mediaDir>/videos/** 下找 <problemId>.mp4（manim 按画质分子目录）。 */
+    private Path findMp4(Path mediaDir, String problemId) throws IOException {
+        Path videosDir = mediaDir.resolve("videos");
         if (!Files.isDirectory(videosDir)) {
             return null;
         }
@@ -182,6 +197,22 @@ public class YamlRenderService {
         try (Stream<Path> walk = Files.walk(videosDir)) {
             return walk.filter(p -> p.getFileName().toString().equals(target))
                     .findFirst().orElse(null);
+        }
+    }
+
+    /** 递归删除目录（隔离 media 目录清理用，失败忽略）。 */
+    private void deleteRecursively(Path dir) {
+        if (dir == null || !Files.exists(dir)) {
+            return;
+        }
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (IOException ignored) {
+                }
+            });
+        } catch (IOException ignored) {
         }
     }
 

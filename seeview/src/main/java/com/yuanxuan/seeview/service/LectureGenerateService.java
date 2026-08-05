@@ -1,6 +1,7 @@
 package com.yuanxuan.seeview.service;
 
 import com.yuanxuan.manim.config.ManimProperties;
+import com.yuanxuan.seeview.dto.LectureBatchRequest;
 import com.yuanxuan.seeview.dto.LectureRequest;
 import com.yuanxuan.seeview.dto.LectureResult;
 import com.yuanxuan.seeview.dto.LectureResult.ValidationReport;
@@ -15,12 +16,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 讲题视频三段式生成 Service。
@@ -68,6 +80,10 @@ public class LectureGenerateService {
     /** yaml 校验闭环最大修正轮数 */
     @Value("${lecture.max-fix-rounds:2}")
     private int maxFixRounds;
+
+    /** 多题批量生成的并发度 */
+    @Value("${lecture.batch-concurrency:3}")
+    private int batchConcurrency;
 
     /**
      * 三段式生成主入口。
@@ -233,6 +249,145 @@ public class LectureGenerateService {
                 + "【校验反馈】\n" + feedback + "\n\n"
                 + "【当前 yaml】\n---\n" + currentYaml + "\n---\n\n"
                 + "请只修正校验反馈指出的问题，保持其余内容不变，输出完整 yaml。";
+    }
+
+    // ===================== 多题批量生成（SSE 并发） =====================
+
+    /** 题目分隔符：单独一行的 --- */
+    private static final Pattern PROBLEM_SEP = Pattern.compile("(?m)^---\\s*$");
+    private static final Pattern TYPE_RE = Pattern.compile("###\\s*【(.+?)】");
+    private static final Pattern STEM_RE = Pattern.compile("【题干】([^\\n]*)");
+
+    /** 一道切分后的题目。 */
+    public record ProblemBlock(int index, String text, String type, String preview) {
+    }
+
+    /**
+     * 把多题文档切成多块。规则：按单独一行 {@code ---} 切分；丢弃不含 {@code 【题干】} 的块
+     * （如文件顶部的 {@code # 标题}）；每块截到首个 {@code ###} 之后，剥掉前面的 H1/H2 标题。
+     */
+    public List<ProblemBlock> splitProblems(String document) {
+        List<ProblemBlock> blocks = new ArrayList<>();
+        if (document == null || document.isBlank()) {
+            return blocks;
+        }
+        String[] parts = PROBLEM_SEP.split(document);
+        int idx = 0;
+        for (String p : parts) {
+            String block = stripBeforeFirstHeading(p).trim();
+            if (block.isEmpty() || !block.contains("【题干】")) {
+                continue;
+            }
+            blocks.add(new ProblemBlock(idx++, block, extractType(block), extractPreview(block)));
+        }
+        return blocks;
+    }
+
+    private String stripBeforeFirstHeading(String p) {
+        int i = p.indexOf("###");
+        return i >= 0 ? p.substring(i) : p;
+    }
+
+    private String extractType(String block) {
+        Matcher m = TYPE_RE.matcher(block);
+        return m.find() ? m.group(1) : "题目";
+    }
+
+    private String extractPreview(String block) {
+        Matcher m = STEM_RE.matcher(block);
+        String s = m.find() ? m.group(1) : block;
+        s = s.replaceAll("\\s+", " ").trim();
+        return s.length() > 60 ? s.substring(0, 60) + "…" : s;
+    }
+
+    /**
+     * 多题并发生成，逐题通过 SSE 推送进度。事件序列：
+     * {@code start}（total）-> 每题 {@code start-item} -> 每题 {@code item}（含 result 或 error）-> {@code done}。
+     *
+     * <p>并发度受 {@code concurrency}（或配置 {@code lecture.batch-concurrency}）限制；单题失败不影响其它题。
+     * 每题复用 {@link #generate(LectureRequest)}，problemId 形如 {@code 前缀_01}。
+     */
+    public void generateBatch(LectureBatchRequest req, SseEmitter emitter) {
+        String prefix = blank(req.problemIdPrefix()) ? "problem_" + System.currentTimeMillis() : req.problemIdPrefix();
+        String budget = blank(req.budget()) ? "标准" : req.budget();
+        String outDir = blank(req.outputDir()) ? outputDir : req.outputDir();
+        int concurrency = (req.concurrency() == null || req.concurrency() < 1) ? batchConcurrency : req.concurrency();
+
+        List<ProblemBlock> blocks = splitProblems(req.document());
+        int n = blocks.size();
+        int width = Math.max(2, String.valueOf(n).length());
+        int poolSize = Math.min(concurrency, Math.max(1, n));
+
+        try {
+            emitter.send(SseEmitter.event().name("start").data(Map.of("total", n, "concurrency", poolSize)));
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+            return;
+        }
+        if (n == 0) {
+            try {
+                emitter.send(SseEmitter.event().name("done").data(Map.of("total", 0, "succeeded", 0, "failed", 0)));
+                emitter.complete();
+            } catch (IOException e) {
+                emitter.completeWithError(e);
+            }
+            return;
+        }
+
+        ExecutorService pool = Executors.newFixedThreadPool(poolSize);
+        AtomicInteger succeeded = new AtomicInteger();
+        AtomicInteger failed = new AtomicInteger();
+        AtomicBoolean clientGone = new AtomicBoolean(false);
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        for (ProblemBlock b : blocks) {
+            final ProblemBlock block = b;
+            final String problemId = prefix + "_" + String.format("%0" + width + "d", block.index() + 1);
+            CompletableFuture<Void> f = CompletableFuture.runAsync(() -> {
+                if (clientGone.get()) {
+                    return; // 客户端已断开，跳过尚未开始的题目
+                }
+                try {
+                    emitter.send(SseEmitter.event().name("start-item").data(Map.of(
+                            "index", block.index(), "problemId", problemId,
+                            "type", block.type(), "preview", block.preview())));
+                } catch (IOException e) {
+                    clientGone.set(true);
+                    return; // 客户端断开，不再生成
+                }
+                try {
+                    LectureRequest lr = new LectureRequest(block.text(), problemId, null, budget, outDir, req.memberName());
+                    LectureResult r = generate(lr);
+                    succeeded.incrementAndGet();
+                    emitter.send(SseEmitter.event().name("item").data(Map.of(
+                            "index", block.index(), "ok", true, "result", r)));
+                } catch (Exception e) {
+                    failed.incrementAndGet();
+                    log.warn("题目 {} 生成失败: {}", problemId, e.getMessage(), e);
+                    String msg = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+                    try {
+                        emitter.send(SseEmitter.event().name("item").data(Map.of(
+                                "index", block.index(), "ok", false, "problemId", problemId, "error", msg)));
+                    } catch (IOException ignored) {
+                        clientGone.set(true);
+                    }
+                }
+            }, pool);
+            futures.add(f);
+        }
+
+        final int total = n;
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).whenComplete((v, ex) -> {
+            try {
+                emitter.send(SseEmitter.event().name("done").data(Map.of(
+                        "total", total, "succeeded", succeeded.get(), "failed", failed.get())));
+                emitter.complete();
+            } catch (IOException e) {
+                emitter.completeWithError(e);
+            } finally {
+                pool.shutdown();
+            }
+        });
     }
 
     // ===================== 工具 =====================

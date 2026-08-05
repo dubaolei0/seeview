@@ -428,15 +428,22 @@ def render_lecture(
     tts_voice: str | None = None,
     tts_retries: int = 2,
     hide_statement: bool = False,
+    media_dir: str | None = None,
 ) -> Path:
     """
     主渲染流程。返回最终 mp4 路径。
+
+    media_dir：manim media 输出根目录。并发渲染时各进程传不同 media_dir，
+    避免 partial_movie_files / Tex 缓存在共享 media/ 下互相覆盖。默认 None 用 manim 默认 media/。
     """
     # 0. 让 xelatex 能找到随引擎自带的宏包（multiple-choice 等），免得成员本地 MiKTeX 还要联网下载
     _ensure_vendored_texmf()
     # 0b. 注册自带中文字体给 manim Text(Pango)，使标题等不依赖系统安装（与 xelatex 侧一致）
     from .font_config import register_vendored_fonts
     register_vendored_fonts()
+    # 0c. 隔离 media 目录（并发渲染安全）
+    if media_dir:
+        config.media_dir = Path(media_dir)
 
     # 1. 解析 schema
     doc = LectureDoc.from_yaml_file(yaml_path)
@@ -456,7 +463,7 @@ def render_lecture(
 
     # 3. 生成音频时间线
     problem_id = yaml_path.stem
-    cache_dir = Path("media") / "cache"
+    cache_dir = Path(config.media_dir) / "cache"
 
     if skip_audio:
         print("\n[audio] 跳过 TTS（--no-audio 模式）")
@@ -563,8 +570,9 @@ def _find_latest_output(scene_name: str = "LectureScene2D") -> Path | None:
     """
     candidates = [scene_name, "LectureScene", "LectureScene2D", "LectureScene3D"]
     all_found: list[Path] = []
+    videos_dir = Path(config.media_dir) / "videos"
     for name in candidates:
-        all_found.extend(Path("media/videos").rglob(f"{name}.mp4"))
+        all_found.extend(videos_dir.rglob(f"{name}.mp4"))
     if all_found:
         return max(all_found, key=lambda f: f.stat().st_mtime)
     return None
@@ -641,6 +649,11 @@ def main(argv: list[str] | None = None) -> int:
         "--no-statement", action="store_true",
         help="讲解阶段不显示题干横幅（默认 C/D 布局会在顶部常驻题干卡片）。",
     )
+    parser.add_argument(
+        "--media-dir",
+        default=None,
+        help="manim media 输出目录（并发渲染时隔离用，默认 media/）。",
+    )
     args = parser.parse_args(argv)
 
     yaml_path = Path(args.yaml_file).resolve()
@@ -674,6 +687,7 @@ def main(argv: list[str] | None = None) -> int:
             tts_voice=args.tts_voice,
             tts_retries=args.tts_retries,
             hide_statement=args.no_statement,
+            media_dir=args.media_dir,
         )
         return 0
     except Exception as e:
