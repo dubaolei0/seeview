@@ -285,6 +285,65 @@
   .toast.warn{border-left-color:var(--warn)}
   @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
+  /* ---------- Field label row (with zoom action) ---------- */
+  .lbl-row{display:flex;align-items:center;gap:8px}
+  .lbl-row .link-btn{margin-left:auto;font-weight:500}
+
+  /* ---------- Zoom modal ---------- */
+  .modal{position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;padding:24px}
+  .modal[hidden]{display:none !important}
+  .modal-backdrop{position:absolute;inset:0;background:rgba(18,22,26,.55);backdrop-filter:blur(2px)}
+  .modal-box{position:relative;background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:0 30px 80px -20px rgba(0,0,0,.5);width:min(1080px,96vw);max-height:92vh;
+    display:flex;flex-direction:column;overflow:hidden;animation:rise .25s ease}
+  .modal-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line-2);
+    font-family:var(--font-display);font-weight:600;font-size:16px}
+  .modal-head .link-btn{font-weight:500}
+  .modal-box textarea{flex:1;width:100%;border:none;border-radius:0;resize:none;min-height:62vh;
+    font-family:var(--font-display);font-size:15px;line-height:1.78;padding:18px 22px;background:var(--paper);
+    color:var(--ink);outline:none;tab-size:2}
+  .modal-box textarea:focus{box-shadow:inset 0 0 0 2px var(--accent-soft)}
+
+  /* ---------- Structured problem preview (题干/答案/解析) ---------- */
+  .pp-list{display:flex;flex-direction:column;gap:10px;max-height:380px;overflow:auto;padding:2px;
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px}
+  .pp-card{border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--paper-2);padding:12px 14px}
+  .pp-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .pp-idx{font-family:var(--font-mono);font-weight:600;color:var(--ink-3);width:22px;flex:none;text-align:center}
+  .pp-type{font-size:11px;color:var(--ink-2);background:var(--line-2);padding:2px 8px;border-radius:20px;flex:none}
+  .pp-section{display:flex;gap:10px;padding:6px 0;border-top:1px dashed var(--line-2)}
+  .pp-section:first-of-type{border-top:none}
+  .pp-label{font-family:var(--font-mono);font-size:11px;color:var(--accent);background:var(--accent-soft);
+    padding:2px 7px;border-radius:6px;flex:none;height:fit-content;white-space:nowrap}
+  .pp-md{font-family:var(--font-display);font-size:14px;line-height:1.7;color:var(--ink);flex:1;min-width:0}
+  .pp-md p{margin:0 0 .4em}.pp-md p:last-child{margin-bottom:0}
+  .pp-md ul,.pp-md ol{margin:.2em 0 .4em;padding-left:1.4em}
+  .pp-md li{margin:.15em 0}
+  .pp-md code{font-family:var(--font-mono);font-size:.86em;background:var(--line-2);padding:.1em .35em;border-radius:4px}
+  .pp-md .katex-display{margin:.4em 0;overflow:auto;padding:2px 0}
+  .pp-md img{max-width:100%}
+  .pp-empty{font-size:13px;padding:14px;text-align:center}
+
+  /* ---------- Collapsible fields ---------- */
+  .collapse{border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--paper-2);overflow:hidden}
+  .collapse-head{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;user-select:none;
+    font-size:13.5px;font-weight:600;color:var(--ink-2);background:var(--paper-2);transition:background .15s}
+  .collapse-head:hover{background:var(--paper)}
+  .collapse-head:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .collapse-caret{width:0;height:0;flex:none;
+    border-top:5px solid transparent;border-bottom:5px solid transparent;
+    border-left:6px solid var(--ink-3);transition:transform .2s}
+  .collapse.open .collapse-head .collapse-caret{transform:rotate(90deg)}
+  .collapse-title{color:var(--ink)}
+  .collapse-head .opt{font-weight:400;color:var(--ink-3);font-size:12px}
+  .collapse-meta{margin-left:auto;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);font-weight:400;
+    white-space:nowrap}
+  .collapse.open .collapse-head{border-bottom:1px solid var(--line-2)}
+  .collapse-body{display:none;padding:14px}
+  .collapse.open .collapse-body{display:block;animation:rise .25s ease}
+  .collapse-head .link-btn{font-weight:500}
+  .collapse-head .link-btn:hover{text-decoration:underline}
+
   .results-empty{padding:40px 20px;text-align:center;color:var(--ink-3);font-size:13.5px}
 
   @media (max-width:760px){
@@ -347,9 +406,31 @@
           </span>
         </div>
       </div>
-      <div class="field">
-        <label for="problem">题目内容回显</label>
-        <textarea id="problem" placeholder="上传文件后内容回显在此；多道题用单独一行 --- 分隔。也可直接粘贴。"></textarea>
+      <div class="collapse">
+        <div class="collapse-head" data-toggle tabindex="0" role="button" aria-expanded="false">
+          <span class="collapse-caret"></span>
+          <span class="collapse-title">题目预览</span>
+          <span class="opt">题干 / 答案 / 解析</span>
+          <span class="collapse-meta" id="ppMeta"></span>
+        </div>
+        <div class="collapse-body">
+          <div class="pp-list" id="problemParse">
+            <div class="pp-empty muted">上传或粘贴题目后，按题干 / 答案 / 解析 分项回显在此。</div>
+          </div>
+        </div>
+      </div>
+      <div class="collapse">
+        <div class="collapse-head" data-toggle tabindex="0" role="button" aria-expanded="false">
+          <span class="collapse-caret"></span>
+          <span class="collapse-title">题目内容回显</span>
+          <span class="collapse-meta" id="problemMeta"></span>
+          <button class="link-btn" id="problemZoomBtn" type="button">放大查看</button>
+        </div>
+        <div class="collapse-body">
+          <div class="field">
+            <textarea id="problem" placeholder="上传文件后内容回显在此；多道题用单独一行 --- 分隔。也可直接粘贴。"></textarea>
+          </div>
+        </div>
       </div>
       <div class="form-row">
         <div class="field">
@@ -508,6 +589,19 @@
     </div>
   </section>
 
+</div>
+
+<!-- Problem content zoom modal -->
+<div class="modal" id="problemModal" hidden>
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-label="题目内容回显 放大查看">
+    <div class="modal-head">
+      <span>题目内容回显</span>
+      <span class="muted" id="problemModalMeta" style="font-size:12px;font-weight:400;font-family:var(--font-mono);margin-left:auto"></span>
+      <button class="link-btn" id="problemModalClose" type="button">关闭 Esc</button>
+    </div>
+    <textarea id="problemModalText" spellcheck="false" placeholder="上传文件后内容回显在此；多道题用单独一行 --- 分隔。也可直接粘贴。"></textarea>
+  </div>
 </div>
 
 <div class="toasts" id="toasts"></div>
@@ -676,6 +770,51 @@
     var n=countProblems($('problem').value);
     var el=$('probCount');
     if(el){el.textContent=n?('检测到 '+n+' 道题'):'';el.style.display=n?'':'none';}
+    var pm=$('problemMeta');if(pm)pm.textContent=n?('· '+n+' 道题'):'';
+    scheduleProblemParse();
+  }
+
+  /* ---------- structured preview: 题干 / 答案 / 解析 ---------- */
+  var parseTimer=null;
+  function parseProblems(text){
+    var out=[];
+    (text||'').split(/\r?\n\s*-{3,}\s*\r?\n/).forEach(function(block){
+      block=block.trim();
+      if(!block||block.indexOf('【题干】')<0)return;
+      var type='',tm=block.match(/###\s*【([^】]+)】/);
+      if(tm)type=tm[1];
+      function field(key){
+        var m=block.match(new RegExp('【'+key+'】([\\s\\S]*?)(?=\\n\\s*【[^】]+】|$)'));
+        return m?m[1].trim():'';
+      }
+      out.push({type:type,stem:field('题干'),answer:field('答案'),analysis:field('解析')});
+    });
+    return out;
+  }
+  function ppSection(label,content){
+    if(!content)return '';
+    return '<div class="pp-section"><span class="pp-label">'+label+'</span>'+
+      '<div class="pp-md">'+renderMarkdown(content)+'</div></div>';
+  }
+  function scheduleProblemParse(){
+    if(parseTimer)clearTimeout(parseTimer);
+    parseTimer=setTimeout(renderProblemParse,300);
+  }
+  function renderProblemParse(){
+    var c=$('problemParse');if(!c)return;
+    var problems=parseProblems($('problem').value);
+    var ppm=$('ppMeta');if(ppm)ppm.textContent=problems.length?('· '+problems.length+' 道题'):'';
+    if(!problems.length){
+      c.innerHTML='<div class="pp-empty muted">上传或粘贴题目后，按题干 / 答案 / 解析 分项回显在此。</div>';
+      return;
+    }
+    var html='';
+    problems.forEach(function(p,i){
+      var type=p.type?('<span class="pp-type">'+escapeHtml(p.type)+'</span>'):'';
+      html+='<div class="pp-card"><div class="pp-head"><span class="pp-idx">'+(i+1)+'</span>'+type+'</div>'+
+        ppSection('题干',p.stem)+ppSection('答案',p.answer)+ppSection('解析',p.analysis)+'</div>';
+    });
+    c.innerHTML=html;
   }
 
   /* ---------- markdown + math ---------- */
@@ -1105,6 +1244,42 @@
     ['dragenter','dragover'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();dz.classList.add('drag');});});
     ['dragleave','drop'].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();dz.classList.remove('drag');});});
     dz.addEventListener('drop',function(e){var f=e.dataTransfer&&e.dataTransfer.files[0];if(f)loadFile(f);});
+
+    // problem content zoom modal（放大查看）
+    (function(){
+      var modal=$('problemModal'),src=$('problem'),ta=$('problemModalText'),meta=$('problemModalMeta');
+      function syncMeta(){meta.textContent=ta.value?countProblems(ta.value)+' 道题':'';}
+      function open(){
+        ta.value=src.value;syncMeta();
+        modal.hidden=false;document.body.style.overflow='hidden';
+        setTimeout(function(){ta.focus();},30);
+      }
+      function close(){modal.hidden=true;document.body.style.overflow='';}
+      $('problemZoomBtn').onclick=function(e){e.stopPropagation();open();};
+      $('problemModalClose').onclick=close;
+      modal.querySelector('[data-close]').onclick=close;
+      ta.addEventListener('input',function(){
+        src.value=ta.value;syncMeta();updateProblemCount();
+      });
+      document.addEventListener('keydown',function(e){
+        if(!modal.hidden&&e.key==='Escape'){e.preventDefault();close();}
+      });
+    })();
+
+    // collapsible fields（题目预览 / 题目内容回显：默认收缩，点击展开）
+    Array.prototype.forEach.call(document.querySelectorAll('.collapse-head'),function(h){
+      function toggle(){
+        var c=h.closest('.collapse');
+        var open=c.classList.toggle('open');
+        h.setAttribute('aria-expanded',open?'true':'false');
+      }
+      h.addEventListener('click',toggle);
+      h.addEventListener('keydown',function(e){
+        if(e.target!==h)return;                       // 忽略子元素（如放大查看按钮）的按键
+        if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}
+      });
+    });
+
     updateProblemCount();
     renderProbList();
     updateStepper();
