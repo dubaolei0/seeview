@@ -21,9 +21,11 @@ from .base import Region
 class FigureRegion(Region):
     """几何图栏。静态显示题干图，讲题阶段不变。"""
 
-    def __init__(self, figure: Figure, box: RegionBox = None, referenced_ids=None):
+    def __init__(self, figure: Figure, box: RegionBox = None, referenced_ids=None,
+                 tex_template=None):
         super().__init__(box or FIGURE_BOX, name="Figure")
         self.figure = figure
+        self.tex_template = tex_template
         # 被 beat 用 show:{type:figure, ref:...} 引用的图元 id —— 初始隐藏，到那拍才唤出
         self._referenced_ids = set(referenced_ids or ())
         self._mob_by_id: dict = {}      # id -> mobject
@@ -116,6 +118,7 @@ class FigureRegion(Region):
                     axes, elem["position"],
                     color=elem.get("color", "RED"),
                     label=elem.get("label", ""),
+                    tex_template=self.tex_template,
                 )
                 group.add(pt)
             # 更多类型按需扩展

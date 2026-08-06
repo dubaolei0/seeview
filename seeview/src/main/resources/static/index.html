@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>讲题视频 · 多题并发生成</title>
+<title>讲题视频</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -362,7 +362,7 @@
   <header class="mast">
     <p class="eyebrow">多题文档 -> 备课 · 讲稿 · yaml -> <b>讲解视频</b></p>
     <h1 class="title">讲题视频 <em>流水线</em></h1>
-    <p class="thesis">上传一份题目文件（PDF / TXT / Markdown），生成带配音的讲解视频。</p>
+    <p class="thesis">上传一份题目文件生成带配音的讲解视频。</p>
   </header>
 
   <!-- Stepper -->
@@ -398,7 +398,7 @@
             <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <p class="dz-main">点击选择或拖入 <b>PDF / TXT / Markdown</b> 题目文件</p>
-          <p class="dz-sub">多题用单独一行 <code>---</code> 分隔 · PDF 自动提取文本 · TXT/MD 识别 UTF-8/GBK</p>
+<!--          <p class="dz-sub">多题用单独一行 <code>-&#45;&#45;</code> 分隔 · PDF 自动提取文本 · TXT/MD 识别 UTF-8/GBK</p>-->
         </div>
         <div class="file-chip" id="fileChip" hidden>
           <span class="fc-spin spin" id="fcSpin" hidden></span>
@@ -410,7 +410,7 @@
           </span>
         </div>
       </div>
-      <div class="collapse">
+      <div class="collapse" id="previewCollapse">
         <div class="collapse-head" data-toggle tabindex="0" role="button" aria-expanded="false">
           <span class="collapse-caret"></span>
           <span class="collapse-title">题目预览</span>
@@ -1006,7 +1006,7 @@
     $('resultMeta').textContent=n+' 道题';
     $('videoTitle').textContent='未选择题目的视频';
     hideVideo();
-    setProgress('genProgress','running','正在并发生成 '+n+' 道题…');
+    setProgress('genProgress','running','正在生成 '+n+' 道题…');
     renderProbList();updateBatchSummary();
     try{
       var res=await fetch(apiBase()+'/langchain/lecture/generate-batch',{
@@ -1081,7 +1081,7 @@
       renderProbList();updateBatchSummary();
       if(state.genBusy){
         var fin=state.doneCount+state.failedCount;
-        setProgress('genProgress','running','正在并发生成 '+state.total+' 道题… 已完成 '+fin+'/'+state.total);
+        setProgress('genProgress','running','正在生成 '+state.total+' 道题… 已完成 '+fin+'/'+state.total);
       }
       if(state.selected===data.index)selectProblem(data.index);
     }else if(name==='done'){
@@ -1161,7 +1161,7 @@
     renderAbort=new AbortController();
     var timer=startTimer('renderElapsed');
     var done=0, okCount=0, total=targets.length, cursor=0;
-    setProgress('renderProgress','running','正在并发渲染 '+total+' 个视频… 已完成 0/'+total);
+    setProgress('renderProgress','running','正在渲染 '+total+' 个视频… 已完成 0/'+total);
     async function worker(){
       while(cursor<total){
         if(renderAbort.signal.aborted)break;
@@ -1182,7 +1182,7 @@
           p.videoStatus='error';p.videoError=e.message;
         }
         done++;
-        setProgress('renderProgress','running','正在并发渲染 '+total+' 个视频… 已完成 '+done+'/'+total);
+        setProgress('renderProgress','running','正在渲染 '+total+' 个视频… 已完成 '+done+'/'+total);
         renderProbList();
         if(state.selected===p.idx)refreshVideoStage();
       }

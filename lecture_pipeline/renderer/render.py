@@ -265,6 +265,7 @@ def _run_lecture(self, fixed_frame: bool = False):
         prebuilt_figure = FigureRegion(
             self.doc.core.figure, box=figure_box,
             referenced_ids=self.doc.figure_referenced_ids(),
+            tex_template=self.tex_template,
         )
         prebuilt_figure.build()
 
@@ -302,6 +303,7 @@ def _run_lecture(self, fixed_frame: bool = False):
         figure = prebuilt_figure or FigureRegion(
             self.doc.core.figure, box=figure_box,
             referenced_ids=self.doc.figure_referenced_ids(),
+            tex_template=self.tex_template,
         )
         if prebuilt_figure is None:
             figure.build()
@@ -310,6 +312,7 @@ def _run_lecture(self, fixed_frame: bool = False):
         figure = prebuilt_figure or FigureRegion(
             self.doc.core.figure, box=figure_box,
             referenced_ids=self.doc.figure_referenced_ids(),
+            tex_template=self.tex_template,
         )
         if prebuilt_figure is None:
             figure.build()
