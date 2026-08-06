@@ -442,7 +442,7 @@
 <!--          <input id="problemId" type="text" placeholder="problem_时间戳">-->
 <!--        </div>-->
         <div class="field">
-          <label for="budget">详略预算</label>
+          <label for="budget">生成类型</label>
           <select id="budget">
             <option value="标准" selected>标准</option>
             <option value="简洁">简洁</option>
@@ -539,7 +539,7 @@
       <h2>渲染讲解视频</h2>
     </div>
     <p class="cur-prob" id="videoTitle">未选择题目的视频</p>
-    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="form-row" style="grid-template-columns:1fr 1fr">
       <div class="field">
         <label for="quality">画质</label>
         <select id="quality">
@@ -548,10 +548,22 @@
           <option value="high">high · 高（慢）</option>
         </select>
       </div>
-<!--      <div class="field">-->
-<!--        <label for="voice">音色 <span class="opt">可选 · TTS 短名</span></label>-->
-<!--        <input id="voice" type="text" placeholder="如 longwan / liufei">-->
-<!--      </div>-->
+      <div class="field">
+        <label for="voice">音色 <span class="opt">默认 longcheng</span></label>
+        <select id="voice">
+          <option value="" selected>默认 · longcheng 默认男声（标准播报）</option>
+          <optgroup label="阿里云 CosyVoice">
+            <option value="longcheng">longcheng · 默认男声（标准播报）</option>
+            <option value="longhua">longhua · 浑厚男声（纪录片/解说）</option>
+            <option value="longwan">longwan · 沉稳男声（正式旁白）</option>
+            <option value="longshuo">longshuo · 清朗男声（日常对话）</option>
+            <option value="longxiaochun">longxiaochun · 温柔女声（有声书首选）</option>
+            <option value="longyuan">longyuan · 亲和女声（客服/短视频）</option>
+            <option value="longxiu">longxiu · 知性女声（知识讲解）</option>
+            <option value="longmiao">longmiao · 灵动女声（轻快短视频）</option>
+          </optgroup>
+        </select>
+      </div>
 <!--      <div class="field">-->
 <!--        <label for="videoConcurrency">视频并发 <span class="opt">缺省 2</span></label>-->
 <!--        <input id="videoConcurrency" type="number" min="1" max="6" value="2">-->
