@@ -1139,6 +1139,7 @@
     fd.append('file',new Blob([p.yaml],{type:'text/yaml'}),(p.problemId||'lecture')+'.yaml');
     fd.append('quality',$('quality').value);
     var voice=val('voice').trim();if(voice)fd.append('voice',voice);
+    if(p.yamlPath)fd.append('saveTo',p.yamlPath);
 
     state.renderBusy=true;p.videoStatus='rendering';renderProbList();updateRenderBtns();
     renderAbort=new AbortController();
@@ -1183,6 +1184,7 @@
           fd.append('file',new Blob([p.yaml],{type:'text/yaml'}),(p.problemId||'lecture')+'.yaml');
           fd.append('quality',quality);
           if(voice)fd.append('voice',voice);
+          if(p.yamlPath)fd.append('saveTo',p.yamlPath);
           var res=await fetch(apiBase()+'/seeview/render',{method:'POST',body:fd,signal:renderAbort.signal});
           if(!res.ok)throw new Error(await readError(res));
           var blob=await res.blob();

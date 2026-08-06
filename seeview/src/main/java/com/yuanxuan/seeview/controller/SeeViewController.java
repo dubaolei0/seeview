@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 /**
  * 智能体控制器
@@ -59,7 +60,8 @@ public class SeeViewController {
     public ResponseEntity<?> renderFromYaml(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "quality", defaultValue = "medium") String quality,
-            @RequestParam(value = "voice", required = false) String voice) throws IOException {
+            @RequestParam(value = "voice", required = false) String voice,
+            @RequestParam(value = "saveTo", required = false) String saveTo) throws IOException {
 
         Quality q;
         try {
@@ -70,10 +72,13 @@ public class SeeViewController {
                     .body("{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
         }
 
+        // saveTo 视为 yaml 完整路径：mp4 落盘到同目录、同名换 .mp4（与 yaml 并排）；为空则不落盘
+        Path savePath = resolveSavePath(saveTo);
+
         byte[] mp4;
         try {
             mp4 = yamlRenderService.renderYaml(
-                    new String(file.getBytes(), StandardCharsets.UTF_8), q, voice);
+                    new String(file.getBytes(), StandardCharsets.UTF_8), q, voice, savePath);
         } catch (ManimRenderException e) {
             log.error("render 失败: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -86,6 +91,22 @@ public class SeeViewController {
                 .contentType(MediaType.parseMediaType("video/mp4"))
                 .contentLength(mp4.length)
                 .body(mp4);
+    }
+
+    /** saveTo 视为 yaml 路径，返回同目录同名 .mp4 路径；saveTo 为空或非法返回 null（不落盘）。 */
+    private Path resolveSavePath(String saveTo) {
+        if (saveTo == null || saveTo.isBlank()) {
+            return null;
+        }
+        try {
+            Path yamlPath = Path.of(saveTo).toAbsolutePath().normalize();
+            String fileName = yamlPath.getFileName().toString();
+            int dot = fileName.lastIndexOf('.');
+            String stem = dot > 0 ? fileName.substring(0, dot) : fileName;
+            return yamlPath.resolveSibling(stem + ".mp4");
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private Quality parseQuality(String q) {

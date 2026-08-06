@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -50,6 +51,15 @@ public class YamlRenderService {
      * @throws ManimRenderException 渲染失败、超时或环境缺失
      */
     public byte[] renderYaml(String yaml, Quality quality, String voice) throws IOException {
+        return renderYaml(yaml, quality, voice, null);
+    }
+
+    /**
+     * 渲染 yaml 为 mp4，返回视频字节；可选把 mp4 落盘到 {@code saveTo}（如 yaml 同目录）。
+     *
+     * @param saveTo 可选 mp4 保存路径；null 仅返回字节不落盘。落盘文件不参与临时清理。
+     */
+    public byte[] renderYaml(String yaml, Quality quality, String voice, Path saveTo) throws IOException {
         mapQuality(quality);  // 提前校验画质（PRODUCTION/FOUR_K 不支持，抛错）
 
         Path engineDir = Path.of(props.getEngineDir()).toAbsolutePath().normalize();
@@ -115,7 +125,16 @@ public class YamlRenderService {
             if (mp4File == null) {
                 throw new ManimRenderException("渲染完成但未找到输出视频 " + problemId + ".mp4\n" + output);
             }
-            return Files.readAllBytes(mp4File);
+            byte[] mp4 = Files.readAllBytes(mp4File);
+            // 4.1 可选：落盘到调用方指定路径（如 yaml 同目录），与临时 media 清理无关
+            if (saveTo != null) {
+                Path out = saveTo.toAbsolutePath().normalize();
+                if (out.getParent() != null) {
+                    Files.createDirectories(out.getParent());
+                }
+                Files.copy(mp4File, out, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return mp4;
         } finally {
             // 5. 清理临时文件（含隔离的 media 目录）
             Files.deleteIfExists(yamlFile);
