@@ -701,6 +701,11 @@
   }
 
   /* ---------- TXT/PDF upload + echo ---------- */
+  function openCollapse(id){
+    var c=$(id);if(!c)return;
+    c.classList.add('open');
+    var h=c.querySelector('.collapse-head');if(h)h.setAttribute('aria-expanded','true');
+  }
   function decodeTxt(buf){
     var utf8=new TextDecoder('utf-8').decode(buf);
     if(utf8.indexOf('\uFFFD')===-1)return utf8;        // 干净的 UTF-8
@@ -750,6 +755,7 @@
           $('fcSize').textContent=formatBytes(file.size);
           updateProblemCount();
           toast('已加载 '+file.name,'ok');
+          openCollapse('previewCollapse');
         }catch(e){
           toast('PDF 解析失败：'+e.message,'err');
           clearFile();
@@ -768,6 +774,7 @@
         $('problem').value=decodeTxt(r2.result);
         updateProblemCount();
         toast('已加载 '+file.name,'ok');
+        openCollapse('previewCollapse');
       };
       r2.onerror=function(){toast('文件读取失败','err');clearFile();};
       r2.readAsArrayBuffer(file);
