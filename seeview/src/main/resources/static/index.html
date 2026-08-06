@@ -362,19 +362,23 @@
   <header class="mast">
     <p class="eyebrow">多题文档 -> 备课 · 讲稿 · yaml -> <b>讲解视频</b></p>
     <h1 class="title">讲题视频 <em>流水线</em></h1>
-    <p class="thesis">上传一份含多道题的文件（PDF / TXT / Markdown），后端按 <code>---</code> 切分后并发生成每题的备课、讲稿与 yaml，再逐题渲染成带配音的讲解视频。</p>
+    <p class="thesis">上传一份题目文件（PDF / TXT / Markdown），生成带配音的讲解视频。</p>
   </header>
 
   <!-- Stepper -->
   <div class="stepper" role="list">
     <div class="step active" id="step1" role="listitem">
       <div class="dot">1</div>
-      <div class="lbl"><b>生成讲题文档</b><span>多题并发 · 备课/讲稿/yaml</span></div>
+      <div class="lbl"><b>生成讲题文档</b>
+<!--        <span>多题并发 · 备课/讲稿/yaml</span>-->
+      </div>
     </div>
     <div class="step-rule"></div>
     <div class="step" id="step2" role="listitem">
       <div class="dot">2</div>
-      <div class="lbl"><b>渲染讲解视频</b><span>Manim + 配音</span></div>
+      <div class="lbl"><b>渲染讲解视频</b>
+<!--        <span>Manim + 配音</span>-->
+      </div>
     </div>
   </div>
 
@@ -433,10 +437,10 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="field">
-          <label for="problemId">ID 前缀 <span class="opt">可选 · 缺省自动</span></label>
-          <input id="problemId" type="text" placeholder="problem_时间戳">
-        </div>
+<!--        <div class="field">-->
+<!--          <label for="problemId">ID 前缀 <span class="opt">可选 · 缺省自动</span></label>-->
+<!--          <input id="problemId" type="text" placeholder="problem_时间戳">-->
+<!--        </div>-->
         <div class="field">
           <label for="budget">详略预算</label>
           <select id="budget">
@@ -444,21 +448,21 @@
             <option value="简洁">简洁</option>
           </select>
         </div>
-        <div class="field">
-          <label for="memberName">成员姓名 <span class="opt">可选</span></label>
-          <input id="memberName" type="text" placeholder="注入讲题偏好">
-        </div>
-        <div class="field">
-          <label for="concurrency">并发数 <span class="opt">缺省 3</span></label>
-          <input id="concurrency" type="number" min="1" max="10" value="3">
-        </div>
+<!--        <div class="field">-->
+<!--          <label for="memberName">成员姓名 <span class="opt">可选</span></label>-->
+<!--          <input id="memberName" type="text" placeholder="注入讲题偏好">-->
+<!--        </div>-->
+<!--        <div class="field">-->
+<!--          <label for="concurrency">并发数 <span class="opt">缺省 3</span></label>-->
+<!--          <input id="concurrency" type="number" min="1" max="10" value="3">-->
+<!--        </div>-->
       </div>
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" id="genBtn">生成文档</button>
-      <button class="btn btn-ghost btn-sm" id="sampleBtn">填入示例题目</button>
+<!--      <button class="btn btn-ghost btn-sm" id="sampleBtn">填入示例题目</button>-->
       <span class="muted" id="probCount" style="font-size:12px"></span>
-      <span class="muted" style="font-size:12px;margin-left:auto">多题并发生成，每题数分钟。</span>
+<!--      <span class="muted" style="font-size:12px;margin-left:auto">多题并发生成，每题数分钟。</span>-->
     </div>
     <div class="progress" id="genProgress" hidden>
       <span class="p-icon spinner"></span>
@@ -544,19 +548,19 @@
           <option value="high">high · 高（慢）</option>
         </select>
       </div>
-      <div class="field">
-        <label for="voice">音色 <span class="opt">可选 · TTS 短名</span></label>
-        <input id="voice" type="text" placeholder="如 longwan / liufei">
-      </div>
-      <div class="field">
-        <label for="videoConcurrency">视频并发 <span class="opt">缺省 2</span></label>
-        <input id="videoConcurrency" type="number" min="1" max="6" value="2">
-      </div>
+<!--      <div class="field">-->
+<!--        <label for="voice">音色 <span class="opt">可选 · TTS 短名</span></label>-->
+<!--        <input id="voice" type="text" placeholder="如 longwan / liufei">-->
+<!--      </div>-->
+<!--      <div class="field">-->
+<!--        <label for="videoConcurrency">视频并发 <span class="opt">缺省 2</span></label>-->
+<!--        <input id="videoConcurrency" type="number" min="1" max="6" value="2">-->
+<!--      </div>-->
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" id="renderAllBtn" disabled>全部生成视频</button>
       <button class="btn btn-ghost" id="renderBtn" disabled>生成视频（当前题）</button>
-      <span class="muted" style="font-size:12px;margin-left:auto">manim 较重，建议并发 2；逐题完成后可在上方题目列表点 ✓ 视频查看。</span>
+      <span class="muted" style="font-size:12px;margin-left:auto">逐题完成后可在上方题目列表点 ✓ 视频查看。</span>
     </div>
     <div class="progress" id="renderProgress" hidden>
       <span class="p-icon spinner"></span>
@@ -612,6 +616,8 @@
 (function(){
   "use strict";
   var $=function(id){return document.getElementById(id);};
+  /* 安全读取表单值：元素被隐藏/注释掉时返回空串，避免 null.value 报错中断 init / 事件回调 */
+  function val(id){var el=$(id);return el?el.value:'';}
 
   /* 多题状态：problems 数组，每项一道题；selected 为当前查看的题目下标 */
   var state={
@@ -987,10 +993,10 @@
     var n=countProblems(doc);
     if(n===0){toast('未识别到题目（需含 【题干】）','err');return;}
     var body={document:doc};
-    var prefix=$('problemId').value.trim();if(prefix)body.problemIdPrefix=prefix;
-    body.budget=$('budget').value;
-    var mn=$('memberName').value.trim();if(mn)body.memberName=mn;
-    var c=parseInt(($('concurrency').value||'').trim(),10);if(c>0)body.concurrency=c;
+    var prefix=val('problemId').trim();if(prefix)body.problemIdPrefix=prefix;
+    body.budget=val('budget');
+    var mn=val('memberName').trim();if(mn)body.memberName=mn;
+    var c=parseInt((val('concurrency')||'').trim(),10);if(c>0)body.concurrency=c;
 
     setGenBusy(true);genAbort=new AbortController();
     var timer=startTimer('genElapsed');
@@ -1120,7 +1126,7 @@
     var fd=new FormData();
     fd.append('file',new Blob([p.yaml],{type:'text/yaml'}),(p.problemId||'lecture')+'.yaml');
     fd.append('quality',$('quality').value);
-    var voice=$('voice').value.trim();if(voice)fd.append('voice',voice);
+    var voice=val('voice').trim();if(voice)fd.append('voice',voice);
 
     state.renderBusy=true;p.videoStatus='rendering';renderProbList();updateRenderBtns();
     renderAbort=new AbortController();
@@ -1148,8 +1154,8 @@
     if(state.renderBusy){toast('正在渲染中，请稍候','warn');return;}
     var targets=state.problems.filter(function(p){return p&&p.yaml&&p.videoStatus!=='rendering';});
     if(!targets.length){toast('没有可渲染的题目（需先生成 yaml）','err');return;}
-    var concurrency=Math.max(1,parseInt(($('videoConcurrency').value||'2').trim(),10)||2);
-    var quality=$('quality').value, voice=$('voice').value.trim();
+    var concurrency=Math.max(1,parseInt((val('videoConcurrency')||'2').trim(),10)||2);
+    var quality=val('quality'), voice=val('voice').trim();
     targets.forEach(function(p){p.videoStatus='rendering';p.videoError='';});
     state.renderBusy=true;renderProbList();updateRenderBtns();
     renderAbort=new AbortController();
@@ -1233,10 +1239,10 @@
     $('genBtn').onclick=generate;
     $('renderBtn').onclick=renderVideo;
     $('renderAllBtn').onclick=renderAllVideos;
-    $('sampleBtn').onclick=function(){
+    var sb=$('sampleBtn');if(sb)sb.onclick=function(){
       $('problem').value=
         '### 【单选题】\n\n【题干】已知 $\\triangle ABC$ 中 $AB=2, AC=3, \\angle A=60^\\circ$，求 $BC$。\n\nA. $\\sqrt{6}$\n\nB. $\\sqrt{7}$\n\nC. $2\\sqrt{3}$\n\nD. $3$\n\n【答案】B\n\n【解析】由余弦定理 $BC^2=AB^2+AC^2-2\\cdot AB\\cdot AC\\cos A=4+9-6\\cdot\\tfrac12=7$，故 $BC=\\sqrt7$。\n\n【难度】PB\n\n【年级】高中一年级\n\n---\n\n### 【填空题】\n\n【题干】设集合 $A=\\{1,2\\}$，$B=\\{2,4,6\\}$，则 $A\\cup B=$ ___。\n\n【答案】$\\{1,2,4,6\\}$\n\n【解析】并集为两集合所有元素不重复合并。\n\n【难度】PB\n\n【年级】高中一年级';
-      if(!$('problemId').value)$('problemId').value='demo';
+      var pidEl=$('problemId');if(pidEl&&!pidEl.value)pidEl.value='demo';
       updateProblemCount();
       toast('已填入 2 道示例题','ok');
     };
