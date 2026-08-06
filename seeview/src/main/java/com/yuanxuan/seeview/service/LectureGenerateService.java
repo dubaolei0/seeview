@@ -384,6 +384,7 @@ public class LectureGenerateService {
             final ProblemBlock block = b;
             final String problemId = prefix + "_" + String.format("%0" + width + "d", block.index() + 1);
             CompletableFuture<Void> f = CompletableFuture.runAsync(() -> {
+                log.info("开始生成题目 {}", problemId);
                 if (clientGone.get()) {
                     return; // 客户端已断开，跳过尚未开始的题目
                 }

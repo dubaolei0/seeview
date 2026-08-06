@@ -6,6 +6,9 @@ import com.yuanxuan.manim.enums.Quality;
 import com.yuanxuan.manim.exception.ManimRenderException;
 import com.yuanxuan.manim.service.ManimRenderService;
 import com.yuanxuan.manim.service.YamlRenderService;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -26,6 +29,7 @@ import java.nio.charset.StandardCharsets;
  */
 @RestController
 @RequestMapping("/seeview")
+@Slf4j
 public class SeeViewController {
 
     @Autowired
@@ -71,6 +75,7 @@ public class SeeViewController {
             mp4 = yamlRenderService.renderYaml(
                     new String(file.getBytes(), StandardCharsets.UTF_8), q, voice);
         } catch (ManimRenderException e) {
+            log.error("render 失败: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body("{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
