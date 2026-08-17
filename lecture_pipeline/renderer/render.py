@@ -635,12 +635,12 @@ def main(argv: list[str] | None = None) -> int:
         "--tts-provider",
         choices=["auto", "aliyun", "doubao"],
         default="auto",
-        help="TTS 平台。默认 auto：未指定音色时用阿里云；zh_ 开头音色自动推断为豆包。",
+        help="TTS 平台。默认 auto：未指定音色时用豆包；zh_ 开头音色自动推断为豆包。",
     )
     parser.add_argument(
         "--tts-voice",
         default=None,
-        help="本次渲染使用的音色短名或 ID。默认阿里云 longcheng_v3；例如 longwan、liufei。",
+        help="本次渲染使用的音色短名或 ID。默认豆包 zh_male_jieshuoxiaoming_uranus_bigtts；例如 jieshuoxiaoming、liufei。",
     )
     parser.add_argument(
         "--tts-retries",

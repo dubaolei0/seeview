@@ -189,12 +189,22 @@ public class YamlRenderService {
      * 把子进程需要的环境变量注入 ProcessBuilder：
      * <ul>
      *   <li>{@code PYTHONIOENCODING=utf-8}：强制 python stdout/stderr 走 utf-8，避免 Windows 控制台 GBK 乱码</li>
-     *   <li>{@code DASHSCOPE_API_KEY}：阿里云 CosyVoice TTS key；未配则不注入（python 侧走 .env 或失败）</li>
+     *   <li>{@code DOUBAO_APPID/DOUBAO_TOKEN}：豆包 TTS 凭据（默认音色）；未配则不注入（python 侧走 .env 或失败）</li>
+     *   <li>{@code DASHSCOPE_API_KEY}：阿里云 CosyVoice TTS key（仅选阿里云音色时需要）；未配则不注入</li>
      * </ul>
      * 抽成独立方法便于单测（无需真起进程）。
      */
     void applyEnvironment(ProcessBuilder pb) {
         pb.environment().put("PYTHONIOENCODING", "utf-8");
+        if (props.getDoubaoAppid() != null && !props.getDoubaoAppid().isBlank()) {
+            pb.environment().put("DOUBAO_APPID", props.getDoubaoAppid());
+        }
+        if (props.getDoubaoToken() != null && !props.getDoubaoToken().isBlank()) {
+            pb.environment().put("DOUBAO_TOKEN", props.getDoubaoToken());
+        }
+        if (props.getDoubaoCluster() != null && !props.getDoubaoCluster().isBlank()) {
+            pb.environment().put("DOUBAO_CLUSTER", props.getDoubaoCluster());
+        }
         if (props.getDashscopeKey() != null && !props.getDashscopeKey().isBlank()) {
             pb.environment().put("DASHSCOPE_API_KEY", props.getDashscopeKey());
         }
@@ -258,10 +268,17 @@ public class YamlRenderService {
         if (!commandExists("xelatex")) {
             problems.add("xelatex 未在 PATH（LaTeX 公式渲染需要，装 MiKTeX）");
         }
+        if (isBlank(props.getDoubaoAppid()) || isBlank(props.getDoubaoToken())) {
+            problems.add("未配 manim.doubao-appid / doubao-token（豆包 TTS，默认音色渲染会失败）");
+        }
         if (props.getDashscopeKey() == null || props.getDashscopeKey().isBlank()) {
-            problems.add("未配 manim.dashscope-key（阿里云 TTS，否则配音失败）");
+            problems.add("未配 manim.dashscope-key（阿里云 TTS，仅选阿里云音色时才需要）");
         }
         return problems;
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     private boolean commandExists(String cmd) {

@@ -164,4 +164,37 @@ class YamlRenderServiceTest {
         assertFalse(env.containsKey("DASHSCOPE_API_KEY"),
                 "纯空白 key 视同未配，不应注入 DASHSCOPE_API_KEY");
     }
+
+    @Test
+    void applyEnvironment_injectsDoubaoCredsWhenConfigured() {
+        ManimProperties props = new ManimProperties();
+        props.setPython(PYTHON);
+        props.setEngineDir("/tmp/lecture_pipeline");
+        props.setDoubaoAppid("doubao-appid-1");
+        props.setDoubaoToken("doubao-token-2");
+        props.setDoubaoCluster("seed-tts-2.0");
+        YamlRenderService svc = new YamlRenderService(props);
+        ProcessBuilder pb = new ProcessBuilder("echo", "hi");
+        pb.environment().clear();
+
+        svc.applyEnvironment(pb);
+
+        Map<String, String> env = pb.environment();
+        assertEquals("doubao-appid-1", env.get("DOUBAO_APPID"));
+        assertEquals("doubao-token-2", env.get("DOUBAO_TOKEN"));
+        assertEquals("seed-tts-2.0", env.get("DOUBAO_CLUSTER"));
+    }
+
+    @Test
+    void applyEnvironment_doubaoBlankNotInjected() {
+        YamlRenderService svc = newService(null);
+        ProcessBuilder pb = new ProcessBuilder("echo", "hi");
+        pb.environment().clear();
+
+        svc.applyEnvironment(pb);
+
+        Map<String, String> env = pb.environment();
+        assertFalse(env.containsKey("DOUBAO_APPID"), "未配豆包凭据时不应注入 DOUBAO_APPID");
+        assertFalse(env.containsKey("DOUBAO_TOKEN"), "未配豆包凭据时不应注入 DOUBAO_TOKEN");
+    }
 }

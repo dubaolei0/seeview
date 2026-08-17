@@ -1,9 +1,9 @@
 {
   "version": 1,
   "default": {
-    "alias": "longcheng",
-    "provider": "aliyun",
-    "voice": "longcheng_v3"
+    "alias": "jieshuoxiaoming",
+    "provider": "doubao",
+    "voice": "zh_male_jieshuoxiaoming_uranus_bigtts"
   },
   "aliases": {
     "yingyujiaoxue": {

@@ -29,8 +29,16 @@ public class ManimProperties {
     /** lecture_pipeline 引擎目录（含 renderer/、src/ 等），子进程 cwd */
     private String engineDir = "lecture_pipeline";
 
-    /** 阿里云 CosyVoice TTS key，通过环境变量 DASHSCOPE_API_KEY 传给 python 子进程 */
+    /** 阿里云 CosyVoice TTS key，通过环境变量 DASHSCOPE_API_KEY 传给 python 子进程（仅选阿里云音色时需要） */
     private String dashscopeKey;
+
+    /** 豆包 TTS 凭据，通过环境变量 DOUBAO_APPID/DOUBAO_TOKEN 传给 python 子进程（默认音色走豆包） */
+    private String doubaoAppid;
+
+    private String doubaoToken;
+
+    /** 豆包 TTS 集群，缺省 seed-tts-2.0（python 侧同款默认，可不配） */
+    private String doubaoCluster;
 
     /** 单次渲染读超时（含渲染耗时），默认 600s */
     private Duration timeout = Duration.ofSeconds(600);

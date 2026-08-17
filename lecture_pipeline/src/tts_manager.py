@@ -36,7 +36,8 @@ class TTSGenerationError(RuntimeError):
     """Raised when the configured TTS voice cannot generate usable audio."""
 
 
-DEFAULT_TTS_PROVIDER = "aliyun"
+DEFAULT_TTS_PROVIDER = "doubao"
+DEFAULT_DOUBAO_VOICE = "zh_male_jieshuoxiaoming_uranus_bigtts"
 DEFAULT_ALIYUN_VOICE = "longcheng_v3"
 DEFAULT_ALIYUN_MODEL = "cosyvoice-v3-flash"
 DEFAULT_TTS_VOICE_ALIASES: dict[str, tuple[str, str]] = {
@@ -126,7 +127,7 @@ def resolve_tts_config(provider: Optional[str] = None, voice: Optional[str] = No
     """Resolve render-time TTS provider and voice.
 
     Defaults to the voice specified in tts_voice_aliases.json's "default" field,
-    or falls back to Aliyun CosyVoice / longcheng_v3 if no default is configured.
+    or falls back to Doubao / zh_male_jieshuoxiaoming_uranus_bigtts if no default is configured.
     Short aliases such as "liufei" are resolved before provider inference.
     If only a Doubao-style voice id is provided, infer Doubao so render callers
     can set a single field.
@@ -167,7 +168,7 @@ def resolve_tts_config(provider: Optional[str] = None, voice: Optional[str] = No
         raise ValueError(f"Unsupported TTS provider: {provider}")
 
     if not voice:
-        voice = DEFAULT_ALIYUN_VOICE if provider == "aliyun" else Config.TTS_DEFAULT_VOICE
+        voice = DEFAULT_ALIYUN_VOICE if provider == "aliyun" else DEFAULT_DOUBAO_VOICE
 
     return provider, voice
 
