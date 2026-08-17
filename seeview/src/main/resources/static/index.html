@@ -704,7 +704,19 @@
     a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(function(){URL.revokeObjectURL(u);},2000);
   }
-  function countProblems(text){return (text||'').split('【题干】').length-1;}
+  /* 题数 = 顶层【题干】个数。小题里的【题干】（在【小题N：…】之后、到下一道题之前）不计入：
+     【小题N：…】进入小题区 -> 使后续【题干】不算题；遇到单独一行 --- 或顶层 ### 题型标题（新题开始）退出小题区。
+     兼容：单题（无小题）、用 --- 分隔的多题、平铺多小题的一整道大题。 */
+  function countProblems(text){
+    if(!text)return 0;
+    var n=0,inSub=false;
+    text.split(/\r?\n/).forEach(function(line){
+      if(/^---\s*$/.test(line)||/^#{1,3}\s*【[^】]+】/.test(line)){inSub=false;return;}
+      if(/【\s*小题\s*\d+\s*[:：][^】]*】/.test(line)){inSub=true;return;}
+      if(!inSub&&line.indexOf('【题干】')>=0)n++;
+    });
+    return n;
+  }
   function cur(){return state.problems[state.selected];}
   function makeProblem(i){
     return {idx:i, problemId:'', type:'', preview:'', status:'pending',
