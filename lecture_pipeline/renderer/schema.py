@@ -33,6 +33,34 @@ import yaml
 
 _DOC_SEP_RE = re.compile(r"^---\s*$")
 
+# 双引号标量中反斜杠后合法的转义字符（YAML 规范）；LaTeX 的 \cup、\{ 等不在其中
+_DQ_ESCAPE_CHARS = set('0abtnvfre \t"\\/N_LP')
+
+
+def _fix_unknown_escapes(text: str) -> str:
+    """把双引号标量里非法的反斜杠转义（如 LaTeX 的 ``\\cup``、``\\{``）补成 ``\\\\``。
+
+    模型偶发把 LaTeX 写进双引号标量却未转义反斜杠，``yaml.safe_load`` 会抛
+    ``ScannerError: found unknown escape character``。逐字符扫描双引号标量，
+    把反斜杠后不是合法转义字符的补成双反斜杠后重试；合法转义（``\\n`` 等）保持原样。
+    """
+    dq_re = re.compile(r'"(?:[^"\\]|\\.)*"', re.S)
+
+    def fix_scalar(m: "re.Match[str]") -> str:
+        s = m.group(0)
+        out = []
+        i = 1
+        while i < len(s) - 1:
+            ch = s[i]
+            if ch == "\\" and (i + 1 >= len(s) - 1 or s[i + 1] not in _DQ_ESCAPE_CHARS):
+                out.append("\\\\")
+            else:
+                out.append(ch)
+            i += 1
+        return '"' + "".join(out) + '"'
+
+    return dq_re.sub(fix_scalar, text)
+
 
 def _load_single_yaml_doc(text: str) -> Any:
     """加载 yaml 文本为单个文档。
@@ -43,7 +71,12 @@ def _load_single_yaml_doc(text: str) -> Any:
     故剔除列 1 的 ``---`` 分隔符以合并为单文档后再加载（缩进的 ``---`` 视为块标量内容，保留）。
     """
     cleaned = "\n".join(line for line in text.splitlines() if not _DOC_SEP_RE.match(line))
-    return yaml.safe_load(cleaned)
+    try:
+        return yaml.safe_load(cleaned)
+    except yaml.scanner.ScannerError as e:
+        if "found unknown escape character" not in str(e):
+            raise
+        return yaml.safe_load(_fix_unknown_escapes(cleaned))
 
 
 # =====================================================================
