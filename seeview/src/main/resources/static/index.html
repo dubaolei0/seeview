@@ -813,18 +813,61 @@
 
   /* ---------- structured preview: 题干 / 答案 / 解析 ---------- */
   var parseTimer=null;
+  /* 抽取某段中第一个指定字段 【key】... 到下一个 【...】 为止 */
+  function fieldOf(block,key){
+    if(!block)return '';
+    var m=block.match(new RegExp('【'+key+'】([\\s\\S]*?)(?=\\n\\s*【[^】]+】|$)'));
+    return m?m[1].trim():'';
+  }
+  /* 抽取题目类型：优先 ### 【...】，否则取首个非字段名的 【...】 */
+  function extractType(block){
+    var tm=block.match(/###\s*【([^】]+)】/);
+    if(tm)return tm[1];
+    var keys={'题干':1,'答案':1,'解析':1,'难度':1,'年级':1,'题目来源':1};
+    var re=/【([^】]+)】/g,m;
+    while((m=re.exec(block))!==null){
+      var k=m[1];
+      if(!keys[k]&&!/^小题\s*\d/.test(k))return k;
+    }
+    return '';
+  }
   function parseProblems(text){
     var out=[];
     (text||'').split(/\r?\n\s*-{3,}\s*\r?\n/).forEach(function(block){
       block=block.trim();
       if(!block||block.indexOf('【题干】')<0)return;
-      var type='',tm=block.match(/###\s*【([^】]+)】/);
-      if(tm)type=tm[1];
-      function field(key){
-        var m=block.match(new RegExp('【'+key+'】([\\s\\S]*?)(?=\\n\\s*【[^】]+】|$)'));
-        return m?m[1].trim():'';
+      var type=extractType(block);
+      /* 识别 【小题N：...】 子题标记 */
+      var subMarkers=[];
+      var sre=/【小题\s*\d+\s*[:：][^】]*】/g,sm;
+      while((sm=sre.exec(block))!==null)subMarkers.push({str:sm[0],pos:sm.index});
+      if(subMarkers.length===0){
+        /* 无小题：单题，沿用 题干/答案/解析 分项 */
+        out.push({type:type,stem:fieldOf(block,'题干'),answer:fieldOf(block,'答案'),analysis:fieldOf(block,'解析'),subs:[]});
+        return;
       }
-      out.push({type:type,stem:field('题干'),answer:field('答案'),analysis:field('解析')});
+      /* 主干：首个 【题干】 到第一个子题标记之间 */
+      var head=block.slice(0,subMarkers[0].pos);
+      var mainStem=fieldOf(head,'题干');
+      var subs=[];
+      for(var i=0;i<subMarkers.length;i++){
+        var start=subMarkers[i].pos;
+        var end=i+1<subMarkers.length?subMarkers[i+1].pos:block.length;
+        var slice=block.slice(start,end);
+        var nm=subMarkers[i].str.match(/小题\s*(\d+)/);
+        subs.push({label:subMarkers[i].str,num:nm?parseInt(nm[1],10):i+1,
+          stem:fieldOf(slice,'题干'),answer:fieldOf(slice,'答案'),analysis:fieldOf(slice,'解析')});
+      }
+      /* 题干：主干 + 各子题问法（带 小题标签 / 第N问） */
+      var stemParts=[];
+      if(mainStem)stemParts.push(mainStem);
+      subs.forEach(function(s){if(s.stem)stemParts.push(s.label+'\n【第'+s.num+'问】\n'+s.stem);});
+      var stem=stemParts.join('\n\n');
+      /* 答案：（1）…；（2）…；（3）… */
+      var answer=subs.map(function(s){return s.answer?('（'+s.num+'）'+s.answer):'';}).filter(Boolean).join('；');
+      /* 解析：（1）…\n\n（2）…\n\n（3）… */
+      var analysis=subs.map(function(s){return s.analysis?('（'+s.num+'）'+s.analysis):'';}).filter(Boolean).join('\n\n');
+      out.push({type:type,stem:stem,answer:answer,analysis:analysis,subs:subs});
     });
     return out;
   }

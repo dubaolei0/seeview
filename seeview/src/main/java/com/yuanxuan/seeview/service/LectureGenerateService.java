@@ -252,7 +252,7 @@ public class LectureGenerateService {
                 .append("\n- title: 题目讲解\n- mode: full\n- budget: ").append(budget)
                 .append("\n- output_dir: ").append(outDir).append("\n\n");
         sb.append("【环境说明】tts_读法约定/schema规范/样例均已附上方，无需再读文件；本地无 Python，请按提示词规则做纯文本自检（逐条人工核对），不要运行 grep/python 命令；schema 校验与渲染由下游处理。请直接输出 ")
-                .append(pid).append(".yaml 的完整 YAML 正文，不要「报告」段，不用 markdown 代码围栏包裹整体。");
+                .append(pid).append(".yaml 的完整 YAML 正文，不要「报告」段，不用 markdown 代码围栏包裹整体。回包第一行必须是 `core:`，前面禁止任何叙述/定位/核对（如「我先找到 yaml 文件」「校验反馈只指向 core: 行…」），思考在心里完成，只给成品 yaml。");
         return sb.toString();
     }
 
@@ -260,7 +260,7 @@ public class LectureGenerateService {
         return "下面是已生成的 " + fileName + "，但本地 Python 校验未通过。请依据 yaml 编导提示词修正后，输出完整的 yaml 正文（不要 markdown 代码围栏）。\n\n"
                 + "【校验反馈】\n" + feedback + "\n\n"
                 + "【当前 yaml】\n---\n" + currentYaml + "\n---\n\n"
-                + "请只修正校验反馈指出的问题，保持其余内容不变，输出完整 yaml。";
+                + "请只修正校验反馈指出的问题，保持其余内容不变，输出完整 yaml。回包第一行必须是 `core:`，禁止复述校验反馈或描述你改了什么，只给修好的完整 yaml。";
     }
 
     /**
@@ -287,7 +287,7 @@ public class LectureGenerateService {
                 .append("\n- answer_hint: ").append(blank(req.answerHint()) ? "（无）" : req.answerHint())
                 .append("\n- output_dir: ").append(outDir).append("\n\n");
         sb.append("【环境说明】tts_读法约定/schema规范/样例均已附上方，无需再读文件；本地无 Python，请按提示词规则做纯文本自检（逐条人工核对），不要运行 grep/python 命令；schema 校验与渲染由下游处理。本题为 fast 模式（无备课/讲稿），请按 yaml 提示词「fast 模式」规则：先把答案做对，再自写口语 say（守 budget 上限，仍受全部 say 红线），figure 自判，排版/分幕/schema/自检与 full 一致。请直接输出 ")
-                .append(pid).append(".yaml 的完整 YAML 正文，不要「报告」段，不用 markdown 代码围栏包裹整体。");
+                .append(pid).append(".yaml 的完整 YAML 正文，不要「报告」段，不用 markdown 代码围栏包裹整体。回包第一行必须是 `core:`，前面禁止任何叙述/定位/核对，只给成品 yaml。");
         return sb.toString();
     }
 
@@ -479,9 +479,55 @@ public class LectureGenerateService {
         return text;
     }
 
-    /** yaml 落盘前的统一清洗：去代码围栏 + 去多余的 YAML 文档分隔符。 */
+    /** yaml 落盘前的统一清洗：去代码围栏 + 去前言 + 去多余的 YAML 文档分隔符。 */
     private String cleanYaml(String text) {
-        return stripDocSeparators(stripCodeFence(text));
+        return stripDocSeparators(stripPreamble(stripCodeFence(text)));
+    }
+
+    /**
+     * 删除 yaml 根键 {@code core:} 之前的非 YAML 前言。
+     *
+     * <p>多小题题目时模型偶尔会先输出一段中文叙述 / 答案核对清单再写 yaml，导致
+     * {@code yaml.safe_load} 报 {@code mapping values are not allowed here}。合法 yaml 的文档
+     * 根固定从列 0 的 {@code core:} 起头（样例均如此，core 永不为缩进键），故以首个列 0 的
+     * {@code core:} 行作为文档根起点：仅当其前面存在非 {@code #} 注释、非空白的「实内容」行时，
+     * 才丢弃前导部分，从 {@code core:} 起保留其余内容逐字不动；没有 {@code core:} 或前言只是
+     * 注释/空行时原样返回，避免误伤合法 yaml。
+     */
+    private String stripPreamble(String text) {
+        if (text == null) {
+            return text;
+        }
+        int coreIdx = -1;
+        String[] lines = text.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].matches("^core:.*")) {
+                coreIdx = i;
+                break;
+            }
+        }
+        if (coreIdx <= 0) {
+            return text; // 无 core: 或 core 已在第 0 行 -> 无前言
+        }
+        boolean hasPreamble = false;
+        for (int i = 0; i < coreIdx; i++) {
+            String l = lines[i];
+            if (l.isBlank() || l.trim().startsWith("#")) {
+                continue;
+            }
+            hasPreamble = true;
+            break;
+        }
+        if (!hasPreamble) {
+            return text; // 前面只有注释/空行，保留
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = coreIdx; i < lines.length; i++) {
+            sb.append(lines[i]).append(i + 1 < lines.length ? "\n" : "");
+        }
+        String result = sb.toString().strip();
+        log.warn("已裁掉 yaml 前言（{} 行非 YAML 段落），从 core: 起作为文档根", coreIdx);
+        return result;
     }
 
     /**
