@@ -21,8 +21,8 @@ manim:
 langchain4j:
   open-ai:
     chat-model:
-      api-key: ark-2b94bddc-fd0a-4dfa-a291-fa6d7a76807c-66c1c
-      model-name: glm-5.2
+      api-key: ark-70179204-5484-4c58-bd3a-2077510f4acd-099e6
+      model-name: deepseek-v4-flash
       base-url: https://ark.cn-beijing.volces.com/api/coding/v3
       log-requests: true
       log-responses: true
