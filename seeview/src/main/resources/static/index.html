@@ -200,7 +200,9 @@
 
   /* ---------- Rendered markdown ---------- */
   .md-body{font-family:var(--font-display);font-size:16px;line-height:1.78;color:var(--ink);
-    max-width:72ch;padding:4px 2px 8px}
+    /*max-width:72ch;padding:4px 2px 8px}*/
+    width:100%;padding:14px 18px;background:#F4F6F2;border:1px solid var(--line);
+    border-radius:8px;height:320px;overflow:auto;overscroll-behavior:contain}
   .md-body h1,.md-body h2,.md-body h3,.md-body h4{font-family:var(--font-display);font-weight:600;
     line-height:1.3;margin:1.4em 0 .6em;letter-spacing:-.005em}
   .md-body h1{font-size:1.6em;border-bottom:1px solid var(--line);padding-bottom:.3em}
@@ -223,13 +225,13 @@
   .md-body .katex-display{margin:1em 0;overflow:auto;padding:4px 0}
   .md-body img{max-width:100%}
   .md-src{font-family:var(--font-mono);font-size:13px;line-height:1.7;color:var(--ink-2);
-    background:#F4F6F2;border:1px solid var(--line);border-radius:8px;padding:16px 18px;
-    white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto}
+    background:#F4F6F2;border:1px solid var(--line);border-radius:8px;padding:14px 18px;
+    white-space:pre-wrap;word-break:break-word;width:100%;height:320px;overflow:auto}
 
   /* ---------- YAML editor ---------- */
   .yaml-edit{font-family:var(--font-mono);font-size:12.5px;line-height:1.7;color:var(--ink);
-    background:#F4F6F2;border:1px solid var(--line);border-radius:8px;padding:14px 16px;
-    min-height:320px;resize:vertical;tab-size:2;width:100%;white-space:pre;overflow:auto}
+    background:#F4F6F2;border:1px solid var(--line);border-radius:8px;padding:14px 18px;
+    min-height:320px;max-height:70vh;resize:vertical;tab-size:2;width:100%;white-space:pre;overflow:auto}
   .yaml-edit:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
   .yaml-hint{font-size:11.5px;color:var(--ink-3);margin-top:6px;font-family:var(--font-mono)}
 
@@ -361,7 +363,7 @@
 
   <header class="mast">
     <p class="eyebrow">多题文档 -> 备课 · 讲稿 · yaml -> <b>讲解视频</b></p>
-    <h1 class="title">讲题视频 <em>流水线</em></h1>
+    <h1 class="title">生成题目视频 <em>流水线</em></h1>
     <p class="thesis">上传一份题目文件生成带配音的讲解视频。</p>
   </header>
 
