@@ -224,6 +224,9 @@
   .md-body a{color:var(--accent)}
   .md-body .katex-display{margin:1em 0;overflow:auto;padding:4px 0}
   .md-body img{max-width:100%}
+  .md-body .img-err,.pp-md .img-err{display:block;font-family:var(--font-mono);font-size:12px;
+    color:var(--err);background:var(--err-soft);border:1px dashed #EFD3CF;border-radius:6px;
+    padding:6px 10px;margin:.3em 0;word-break:break-all}
   .md-src{font-family:var(--font-mono);font-size:13px;line-height:1.7;color:var(--ink-2);
     background:#F4F6F2;border:1px solid var(--line);border-radius:8px;padding:14px 18px;
     white-space:pre-wrap;word-break:break-word;width:100%;height:320px;overflow:auto}
@@ -912,9 +915,20 @@
   }
 
   /* ---------- markdown + math ---------- */
+  /* 绝对本地路径（盘符 C:\ 或 C:/、UNC \\host\…）判定：这类图片浏览器加载不了，须走后端预览接口 */
+  function isLocalPath(s){
+    return /^(?:[A-Za-z]:[\\/]|\\\\)/.test(s);
+  }
+  /* 把 md 里的本地路径图片引用改写为 /seeview/local-image?path=…（后端与本机同机，可读该文件） */
+  function localizeImages(md){
+    return (md||'').replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g,function(m,alt,src){
+      if(!isLocalPath(src))return m;
+      return '!['+alt+']('+apiBase()+'/seeview/local-image?path='+encodeURIComponent(src)+')';
+    });
+  }
   function renderMarkdown(md){
     if(!md)return '<p class="muted">（空）</p>';
-    var math=[];var text=md;
+    var math=[];var text=localizeImages(md);
     text=text.replace(/\$\$([\s\S]+?)\$\$/g,function(m,c){math.push({t:c,d:1});return '@@MATH'+(math.length-1)+'@@';});
     text=text.replace(/\\\[([\s\S]+?)\\\]/g,function(m,c){math.push({t:c,d:1});return '@@MATH'+(math.length-1)+'@@';});
     text=text.replace(/\\\(([\s\S]+?)\\\)/g,function(m,c){math.push({t:c,d:0});return '@@MATH'+(math.length-1)+'@@';});
@@ -1292,6 +1306,18 @@
 
   /* ---------- wire up ---------- */
   function init(){
+    // 本地路径图片预览：加载失败（文件不存在/被移动）时以占位提示替换，避免静默裂图
+    document.addEventListener('error',function(e){
+      var t=e.target;
+      if(!(t&&t.tagName==='IMG'))return;
+      if(t.src.indexOf('/seeview/local-image')<0)return;
+      var m=t.src.match(/[?&]path=([^&]*)/);
+      var path=m?decodeURIComponent(m[1]):'';
+      var span=document.createElement('span');
+      span.className='img-err';
+      span.textContent='图片加载失败：'+(path||t.src);
+      if(t.parentNode)t.parentNode.replaceChild(span,t);
+    },true);
     // pdf.js worker
     if(window.pdfjsLib){
       window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';

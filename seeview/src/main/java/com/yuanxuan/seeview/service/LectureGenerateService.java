@@ -23,9 +23,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -98,6 +100,12 @@ public class LectureGenerateService {
         Files.createDirectories(outPath);
         Path pipelineDir = Path.of(props.getEngineDir()).toAbsolutePath().normalize();
 
+        // 题干里的本地图片引用（![...](C:\...png)）复制到输出目录，改写为稳定绝对路径（正斜杠），
+        // 之后注入提示词的 statement / 发给大模型的题目文本都指向副本，原图被移动/删除不影响后续渲染
+        StabilizedProblem sp = stabilizeImages(req.problem(), outPath, problemId);
+        String problem = sp.text();
+        List<String> problemImages = sp.images();
+
         String yamlPrompt = readSkill("yaml.md");
         boolean concise = "简洁".equals(budget); // 简洁：只生成 yaml（fast 模式，无备课/讲稿）
 
@@ -120,7 +128,7 @@ public class LectureGenerateService {
 
             // ① 备课
             beike = chat(beikePrompt,
-                    buildBeikeUser(req, problemId, budget, outPath.toString(), beikeSample));
+                    buildBeikeUser(req, problem, problemId, budget, outPath.toString(), beikeSample));
             beikePath = outPath.resolve(problemId + "_备课.md");
             Files.writeString(beikePath, beike, StandardCharsets.UTF_8);
 
@@ -133,14 +141,22 @@ public class LectureGenerateService {
 
         // ③ yaml（标准=full 模式带备课/讲稿；简洁=fast 模式直接由题目编导）
         String yaml = chat(yamlPrompt, concise
-                ? buildYamlUserFast(req, problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample, profile)
+                ? buildYamlUserFast(problem, req, problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample, profile, problemImages)
                 : buildYamlUser(problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample,
-                        profile, beike, jianggao));
+                        profile, beike, jianggao, problemImages));
         yaml = cleanYaml(yaml);
         Path yamlPath = outPath.resolve(problemId + ".yaml");
         Files.writeString(yamlPath, yaml, StandardCharsets.UTF_8);
 
-        // ④ yaml 校验闭环
+        // ④ 题干图片兜底：题目带图但 yaml 未用 figure.type=image 引用时，定向修正一轮
+        //（标准模式 yaml 只见备课/讲稿，备课可能改画 schematic/geometry3d，图片路径就此丢失）
+        if (!problemImages.isEmpty() && !yaml.contains("type: image")) {
+            log.info("题目 {} 带图片但 yaml 未引用 figure.type=image，触发定向修正", problemId);
+            String fixed = chat(yamlPrompt, buildImageFixUser(yamlPath.getFileName().toString(), yaml, problemImages));
+            Files.writeString(yamlPath, cleanYaml(fixed), StandardCharsets.UTF_8);
+        }
+
+        // ⑤ yaml 校验闭环
         ValidationReport report = validateEnabled ? validateLoop(yamlPath, yamlPrompt) : skipped();
 
         String finalYaml = Files.readString(yamlPath, StandardCharsets.UTF_8); // normalize_say 可能就地改写
@@ -194,14 +210,14 @@ public class LectureGenerateService {
 
     // ===================== user message 构造 =====================
 
-    private String buildBeikeUser(LectureRequest req, String pid, String budget, String outDir, String sample) {
+    private String buildBeikeUser(LectureRequest req, String problem, String pid, String budget, String outDir, String sample) {
         StringBuilder sb = new StringBuilder();
         if (sample != null) {
             sb.append("【备课样例（开工前参考 1 份）】\n").append(sample).append("\n\n");
         }
         sb.append("【本次题目输入】\n");
         sb.append("- problem_id: ").append(pid).append("\n");
-        sb.append("- statement:\n").append(req.problem()).append("\n");
+        sb.append("- statement:\n").append(problem).append("\n");
         sb.append("- answer_hint: ").append(blank(req.answerHint()) ? "（无）" : req.answerHint()).append("\n");
         sb.append("- budget: ").append(budget).append("\n");
         sb.append("- output_dir: ").append(outDir).append("\n\n");
@@ -230,7 +246,7 @@ public class LectureGenerateService {
     }
 
     private String buildYamlUser(String pid, String budget, String outDir, String ttsRules, String schemaSpec,
-                                 String sample, String profile, String beike, String jianggao) {
+                                 String sample, String profile, String beike, String jianggao, List<String> images) {
         StringBuilder sb = new StringBuilder();
         if (ttsRules != null) {
             sb.append("【TTS 读法约定（单一真源，必读）】\n").append(ttsRules).append("\n\n");
@@ -244,6 +260,7 @@ public class LectureGenerateService {
         if (profile != null) {
             sb.append("【成员讲题视频偏好】\n").append(profile).append("\n\n");
         }
+        appendImageDirective(sb, images);
         sb.append("【备课笔记 ").append(pid).append("_备课.md 内容】\n---\n")
                 .append(beike).append("\n---\n\n");
         sb.append("【讲稿 ").append(pid).append("_讲稿.md 内容】\n---\n")
@@ -266,8 +283,9 @@ public class LectureGenerateService {
     /**
      * 简洁预算（fast 模式）的 yaml user message：无备课/讲稿，由题目 statement + answer_hint 直接编导。
      */
-    private String buildYamlUserFast(LectureRequest req, String pid, String budget, String outDir,
-                                     String ttsRules, String schemaSpec, String sample, String profile) {
+    private String buildYamlUserFast(String problem, LectureRequest req, String pid, String budget, String outDir,
+                                     String ttsRules, String schemaSpec, String sample, String profile,
+                                     List<String> images) {
         StringBuilder sb = new StringBuilder();
         if (ttsRules != null) {
             sb.append("【TTS 读法约定（单一真源，必读）】\n").append(ttsRules).append("\n\n");
@@ -281,9 +299,10 @@ public class LectureGenerateService {
         if (profile != null) {
             sb.append("【成员讲题视频偏好】\n").append(profile).append("\n\n");
         }
+        appendImageDirective(sb, images);
         sb.append("【本次输入】\n- problem_id: ").append(pid)
                 .append("\n- title: 题目讲解\n- mode: fast\n- budget: ").append(budget)
-                .append("\n- statement:\n").append(req.problem())
+                .append("\n- statement:\n").append(problem)
                 .append("\n- answer_hint: ").append(blank(req.answerHint()) ? "（无）" : req.answerHint())
                 .append("\n- output_dir: ").append(outDir).append("\n\n");
         sb.append("【环境说明】tts_读法约定/schema规范/样例均已附上方，无需再读文件；本地无 Python，请按提示词规则做纯文本自检（逐条人工核对），不要运行 grep/python 命令；schema 校验与渲染由下游处理。本题为 fast 模式（无备课/讲稿），请按 yaml 提示词「fast 模式」规则：先把答案做对，再自写口语 say（守 budget 上限，仍受全部 say 红线），figure 自判，排版/分幕/schema/自检与 full 一致。请直接输出 ")
@@ -429,6 +448,125 @@ public class LectureGenerateService {
                 pool.shutdown();
             }
         });
+    }
+
+    // ===================== 题干图片本地化 =====================
+
+    /** markdown 图片引用：![alt](path)，path 内不含空白与括号 */
+    private static final Pattern IMG_REF = Pattern.compile("!\\[[^\\]]*\\]\\(([^()\\s]+)\\)");
+    /** 绝对本地路径：盘符（C:\ 或 C:/）或 UNC（\\host\share\…） */
+    private static final Pattern LOCAL_PATH = Pattern.compile("^([A-Za-z]:[\\\\/]|\\\\\\\\).*");
+    /** 可复制的图片扩展名白名单（与 SeeViewController 预览接口一致） */
+    private static final Set<String> IMAGE_EXTS = Set.of(
+            "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg");
+
+    /** 一道题稳定化后的文本与其携带的图片路径（输出目录副本、正斜杠绝对路径）。 */
+    private record StabilizedProblem(String text, List<String> images) {
+    }
+
+    /** 题干图片注入块：yaml 阶段的硬指令（优先级高于备课「○、图形需求」的图类型选择）。 */
+    private void appendImageDirective(StringBuilder sb, List<String> images) {
+        if (images == null || images.isEmpty()) {
+            return;
+        }
+        sb.append("【题干图片（硬性要求，优先级高于备课「○、图形需求」）】\n");
+        sb.append("题干自带图片，已复制为下列稳定路径。core.figure 必须用其中第 1 张：\n");
+        sb.append("figure:\n  type: image\n  path: <第 1 个路径，一字不改照抄>\n  show_in_read: true\n");
+        sb.append("规则：path 不加引号、不改正反斜杠；statement 不得出现 ![](...) 图片语法；");
+        sb.append("不要另画 schematic/geometry3d 重现题图（备课若选了其它图类型，以本条为准）。\n");
+        for (String img : images) {
+            sb.append("- ").append(img).append('\n');
+        }
+        sb.append("\n");
+    }
+
+    /** 题目带图但 yaml 未引用 figure.type=image 时的定向修正 user message。 */
+    private String buildImageFixUser(String fileName, String currentYaml, List<String> images) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("下面是已生成的 ").append(fileName)
+                .append("，但题干自带图片，yaml 必须用 figure.type=image 引用原图（当前缺失或类型不对）。请修正：\n")
+                .append("1. 把 core.figure 改为（path 照抄第 1 个路径，不加引号）：\n")
+                .append("figure:\n  type: image\n  path: ").append(images.get(0)).append("\n  show_in_read: true\n")
+                .append("2. statement 里不得出现 ![](...) 图片语法。\n")
+                .append("3. 若有 beat 的 show 引用了旧 figure 图元（show: {type: figure, ref: ...}），删除该 show 字段、保留 say。\n")
+                .append("4. 其余内容保持不变。\n\n");
+        sb.append("【图片路径】\n");
+        for (String img : images) {
+            sb.append("- ").append(img).append('\n');
+        }
+        sb.append("\n【当前 yaml】\n---\n").append(currentYaml).append("\n---\n\n")
+                .append("请输出修正后的完整 yaml 正文，不要 markdown 代码围栏。回包第一行必须是 `core:`，")
+                .append("禁止复述说明或描述你改了什么，只给修好的完整 yaml。");
+        return sb.toString();
+    }
+
+    /**
+     * 把题目文本里的本地图片引用改写为输出目录副本的绝对路径（正斜杠）。
+     *
+     * <p>上传的 md 里图片常写成原图的绝对路径（如桌面 {@code ![](C:\...\T3.png)}），
+     * 直接进 yaml 会随原图被移动/删除而失效。这里在生成前把图片复制到
+     * {@code {outputDir}/images/{problemId}_img{N}_{原文件名}}，注入提示词的题目文本
+     * 指向副本；路径统一正斜杠，避免 yaml 双引号里反斜杠转义出错。
+     * 引用不存在/非图片时保留原文（log warn），不阻塞生成。
+     *
+     * @return 改写后的文本 + 成功复制的图片路径列表
+     */
+    private StabilizedProblem stabilizeImages(String text, Path outDir, String problemId) {
+        if (text == null || !text.contains("![")) {
+            return new StabilizedProblem(text, List.of());
+        }
+        Matcher m = IMG_REF.matcher(text);
+        StringBuilder sb = new StringBuilder();
+        List<String> images = new ArrayList<>();
+        boolean changed = false;
+        while (m.find()) {
+            String ref = m.group(0);
+            String path = m.group(1);
+            Path copied = copyImageIfLocal(path, outDir, problemId, images.size() + 1);
+            if (copied != null) {
+                String stable = copied.toString().replace('\\', '/');
+                images.add(stable);
+                changed = true;
+                ref = ref.replace(path, stable);
+            }
+            m.appendReplacement(sb, Matcher.quoteReplacement(ref));
+        }
+        m.appendTail(sb);
+        return new StabilizedProblem(changed ? sb.toString() : text, images);
+    }
+
+    /**
+     * 路径为本地绝对路径、扩展名在白名单内且文件存在时，复制到输出目录 images/ 下，
+     * 返回副本路径；否则返回 null（保留原引用）。
+     */
+    private Path copyImageIfLocal(String path, Path outDir, String problemId, int seq) {
+        try {
+            if (!LOCAL_PATH.matcher(path).matches()) {
+                return null;
+            }
+            Path src = Path.of(path);
+            String name = src.getFileName() == null ? "" : src.getFileName().toString();
+            int dot = name.lastIndexOf('.');
+            String ext = dot > 0 ? name.substring(dot + 1).toLowerCase() : "";
+            if (!IMAGE_EXTS.contains(ext)) {
+                return null;
+            }
+            if (!Files.isRegularFile(src)) {
+                log.warn("题目图片不存在，保留原引用: {}", path);
+                return null;
+            }
+            Path imgDir = outDir.resolve("images");
+            Files.createDirectories(imgDir);
+            // 文件名里的路径非法字符替换为下划线，保留中文与常用字符
+            String safeName = name.replaceAll("[^\\w.\\-\u4e00-\u9fa5]", "_");
+            Path dst = imgDir.resolve(problemId + "_img" + seq + "_" + safeName);
+            Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
+            log.info("题目图片已复制: {} -> {}", path, dst);
+            return dst;
+        } catch (Exception e) {
+            log.warn("复制题目图片失败，保留原引用: {} -> {}", path, e.getMessage());
+            return null;
+        }
     }
 
     // ===================== 工具 =====================

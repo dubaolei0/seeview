@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,7 +23,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 
 /**
  * 智能体控制器
@@ -91,6 +94,70 @@ public class SeeViewController {
                 .contentType(MediaType.parseMediaType("video/mp4"))
                 .contentLength(mp4.length)
                 .body(mp4);
+    }
+
+    /** 预览接口允许读取的图片扩展名（白名单，防任意文件读取） */
+    private static final Set<String> IMAGE_EXTS = Set.of(
+            "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg");
+
+    /**
+     * 本地图片预览：浏览器无法直接加载 md 里的绝对本地路径（如 ![](C:\Users\...\T3.png)），
+     * 前端把这类引用改写为本接口，由同机后端读取并回传图片字节。
+     *
+     * @param path 图片绝对路径；须存在且扩展名在白名单内
+     */
+    @GetMapping(value = "/local-image")
+    public ResponseEntity<byte[]> localImage(@RequestParam("path") String path) {
+        if (path == null || path.isBlank()) {
+            return badRequestImage("path 不能为空");
+        }
+        Path p;
+        try {
+            p = Path.of(path).toAbsolutePath().normalize();
+        } catch (Exception e) {
+            return badRequestImage("路径非法");
+        }
+        String name = p.getFileName() == null ? "" : p.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        String ext = dot > 0 ? name.substring(dot + 1).toLowerCase() : "";
+        if (!IMAGE_EXTS.contains(ext)) {
+            return badRequestImage("不支持的图片类型: " + ext);
+        }
+        if (!Files.isRegularFile(p)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(("{\"error\":\"图片不存在: " + escapeJson(p.toString()) + "\"}").getBytes(StandardCharsets.UTF_8));
+        }
+        try {
+            byte[] bytes = Files.readAllBytes(p);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(mediaTypeOf(ext)))
+                    .contentLength(bytes.length)
+                    .body(bytes);
+        } catch (IOException e) {
+            log.warn("读取图片失败: {} -> {}", p, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\":\"读取图片失败\"}".getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private ResponseEntity<byte[]> badRequestImage(String msg) {
+        return ResponseEntity.badRequest()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(("{\"error\":\"" + escapeJson(msg) + "\"}").getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String mediaTypeOf(String ext) {
+        return switch (ext) {
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "gif" -> "image/gif";
+            case "bmp" -> "image/bmp";
+            case "webp" -> "image/webp";
+            case "svg" -> "image/svg+xml";
+            default -> "application/octet-stream";
+        };
     }
 
     /** saveTo 视为 yaml 路径，返回同目录同名 .mp4 路径；saveTo 为空或非法返回 null（不落盘）。 */

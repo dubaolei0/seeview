@@ -78,7 +78,7 @@ figure:
   source: string              # TikZ 源码
   
   # type=image 时
-  path: string                # 图片文件路径（相对 yaml 文件）
+  path: string                # 图片文件路径。相对路径基于 yaml 文件；推荐绝对路径（正斜杠），题干自带图片由后端复制到输出目录后以绝对路径注入
   
   # type=plot 时（Manim 原生绘图，复用 plot_manager）
   x_range: [min, max, step]
