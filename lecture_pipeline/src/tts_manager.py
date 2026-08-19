@@ -181,13 +181,20 @@ class DoubaoDriver:
     支持豆包语音合成模型 2.0 (seed-tts-2.0)
     """
     
-    def __init__(self, voice: Optional[str] = None, request_timeout: float = 30):
+    def __init__(
+        self,
+        voice: Optional[str] = None,
+        request_timeout: float = 30,
+        speech_rate: Optional[float] = None,
+    ):
         self.appid = Config.TTS_APPID
         self.token = Config.TTS_TOKEN
         self.cluster = Config.TTS_CLUSTER
         self.api_url = Config.TTS_API_URL
         self.default_voice = voice or Config.TTS_DEFAULT_VOICE
         self.request_timeout = request_timeout
+        # 用户指定的语速倍率（1.0 = 现有默认），None 表示不调整
+        self.speech_rate = speech_rate
         
         if not self.appid or not self.token:
             logger.warning("⚠️  Doubao TTS credentials not configured.")
@@ -509,7 +516,14 @@ class DoubaoDriver:
             "dictation": -12,
             "inspiring": -12,
         }
-        return speech_rate_map.get(mode, -5)
+        base = speech_rate_map.get(mode, -5)
+
+        # 用户语速倍率换算成 API 偏移量叠加在 mode 基础语速上：
+        # 倍率 1.0 = 偏移 0（与历史默认行为一致），1.2 = +20，0.8 = -20
+        if self.speech_rate is not None and self.speech_rate != 1.0:
+            base = base + int(round((self.speech_rate - 1.0) * 100))
+
+        return max(-50, min(100, base))
     
     def _get_loudness_rate_for_mode(self, mode: str) -> int:
         """
@@ -737,16 +751,25 @@ class TTSManager:
         provider: Optional[str] = None,
         voice: Optional[str] = None,
         retry_count: int = 2,
+        speech_rate: Optional[float] = None,
     ):
         self.provider, self.voice = resolve_tts_config(provider, voice)
         self.retry_count = max(0, int(retry_count))
+        # 语速倍率（0.5~2.0；1.0/None = 现有默认），越界裁剪
+        if speech_rate is not None:
+            speech_rate = max(0.5, min(2.0, float(speech_rate)))
+        self.speech_rate = speech_rate
 
         if self.provider == "aliyun":
-            self.driver = CosyVoiceDriver(voice=self.voice)
+            # CosyVoice 的 speech_rate 是绝对倍率，历史默认 0.9；用户倍率在其上缩放
+            driver_rate = 0.9 * speech_rate if speech_rate is not None else None
+            self.driver = CosyVoiceDriver(voice=self.voice, speech_rate=driver_rate)
             logger.info(f"🎙️  TTS Engine: Aliyun CosyVoice v3 / {self.voice}")
         else:
-            self.driver = DoubaoDriver(voice=self.voice)
+            self.driver = DoubaoDriver(voice=self.voice, speech_rate=speech_rate)
             logger.info(f"🎙️  TTS Engine: Doubao / {self.voice}")
+        if speech_rate is not None and speech_rate != 1.0:
+            logger.info(f"🎙️  Speech rate: {speech_rate}x")
         
         self.cache_index_path = Config.CACHE_DIR / "tts" / "cache_index.json"
         self.failure_log_path = Config.CACHE_DIR / "tts" / "failures.jsonl"
@@ -766,8 +789,10 @@ class TTSManager:
         Returns:
             Tuple of (audio_file_path, duration_in_seconds)
         """
-        # 缓存 key 需要包含 provider/voice/prev_text，避免旧回退缓存或不同上下文串音。
-        cache_key = f"nofallback_v1_{self.provider}_{self.voice}_{text}_{mode}_{prev_text or ''}"
+        # 缓存 key 需要包含 provider/voice/prev_text/语速，避免旧回退缓存、不同上下文或不同语速串音。
+        # 语速为默认（None/1.0）时不带后缀，保持与既有缓存 key 兼容。
+        rate_part = "" if (self.speech_rate is None or self.speech_rate == 1.0) else f"_{self.speech_rate}"
+        cache_key = f"nofallback_v1_{self.provider}_{self.voice}_{text}_{mode}_{prev_text or ''}{rate_part}"
         fingerprint = self.driver._get_fingerprint(cache_key, mode)
         cached = self._get_from_cache(fingerprint)
         

@@ -116,6 +116,28 @@ class YamlRenderServiceTest {
         assertEquals("high", qualityInCommand(svc, Quality.HIGH));
     }
 
+    // ---------------- buildCommand: speech rate ----------------
+
+    @Test
+    void buildCommand_withSpeechRate() {
+        YamlRenderService svc = newService(null);
+        List<String> cmd = svc.buildCommand(PYTHON, YAML, Quality.MEDIUM, null, null, 1.25);
+
+        int idx = cmd.indexOf("--speech-rate");
+        assertNotEquals(-1, idx, "应包含 --speech-rate");
+        assertEquals("1.25", cmd.get(idx + 1));
+    }
+
+    @Test
+    void buildCommand_defaultOrBlankSpeechRateOmitted() {
+        YamlRenderService svc = newService(null);
+        // 1.0 = 默认语速，不应传 --speech-rate（保持与历史命令一致）
+        assertFalse(svc.buildCommand(PYTHON, YAML, Quality.MEDIUM, null, null, 1.0)
+                .contains("--speech-rate"));
+        assertFalse(svc.buildCommand(PYTHON, YAML, Quality.MEDIUM, null, null, null)
+                .contains("--speech-rate"));
+    }
+
     private String qualityInCommand(YamlRenderService svc, Quality q) {
         List<String> cmd = svc.buildCommand(PYTHON, YAML, q, null);
         int idx = cmd.indexOf("--quality");

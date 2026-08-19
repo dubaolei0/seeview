@@ -55,15 +55,17 @@ public class SeeViewController {
     /**
      * 上传 maths 讲题 yaml，本地子进程渲染成带配音 mp4 并返回下载。
      *
-     * @param file    yaml 文件
-     * @param quality 画质：low/medium/high（或 l/m/h），默认 medium
-     * @param voice   可选 TTS 音色短名或 ID（如 longwan / liufei / zh_...）
+     * @param file        yaml 文件
+     * @param quality     画质：low/medium/high（或 l/m/h），默认 medium
+     * @param voice       可选 TTS 音色短名或 ID（如 longwan / liufei / zh_...）
+     * @param speechRate  可选 TTS 语速倍率（0.5~2.0，1.0=默认）
      */
     @PostMapping(value = "/render", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> renderFromYaml(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "quality", defaultValue = "medium") String quality,
             @RequestParam(value = "voice", required = false) String voice,
+            @RequestParam(value = "speechRate", required = false) String speechRate,
             @RequestParam(value = "saveTo", required = false) String saveTo) throws IOException {
 
         Quality q;
@@ -75,13 +77,20 @@ public class SeeViewController {
                     .body("{\"error\":\"" + escapeJson(e.getMessage()) + "\"}");
         }
 
+        Double rate = parseSpeechRate(speechRate);
+        if (rate == null && speechRate != null && !speechRate.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\":\"speechRate 非法：须为 0.5~2.0 的数字（如 0.8 / 1.0 / 1.25）\"}");
+        }
+
         // saveTo 视为 yaml 完整路径：mp4 落盘到同目录、同名换 .mp4（与 yaml 并排）；为空则不落盘
         Path savePath = resolveSavePath(saveTo);
 
         byte[] mp4;
         try {
             mp4 = yamlRenderService.renderYaml(
-                    new String(file.getBytes(), StandardCharsets.UTF_8), q, voice, savePath);
+                    new String(file.getBytes(), StandardCharsets.UTF_8), q, voice, savePath, rate);
         } catch (ManimRenderException e) {
             log.error("render 失败: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -182,6 +191,22 @@ public class SeeViewController {
             case "high", "h" -> Quality.HIGH;
             default -> Quality.MEDIUM;
         };
+    }
+
+    /** 解析语速倍率：空返回 null（用默认）；合法范围 0.5~2.0（含边界），非法返回 null 由调用方报错。 */
+    private Double parseSpeechRate(String speechRate) {
+        if (speechRate == null || speechRate.isBlank()) {
+            return null;
+        }
+        try {
+            double rate = Double.parseDouble(speechRate.trim());
+            if (rate < 0.5 || rate > 2.0) {
+                return null;
+            }
+            return rate;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private String escapeJson(String s) {

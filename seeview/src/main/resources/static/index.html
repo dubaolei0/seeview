@@ -545,13 +545,24 @@
       <h2>渲染讲解视频</h2>
     </div>
     <p class="cur-prob" id="videoTitle">未选择题目的视频</p>
-    <div class="form-row" style="grid-template-columns:1fr 1fr">
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
       <div class="field">
         <label for="quality">画质</label>
         <select id="quality">
           <option value="medium" selected>medium · 中</option>
           <option value="low">low · 低（快）</option>
           <option value="high">high · 高（慢）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="speechRate">语速 <span class="opt">默认 1.0</span></label>
+        <select id="speechRate">
+          <option value="1" selected>1.0 · 标准</option>
+          <option value="0.8">0.8 · 慢（讲解更从容）</option>
+          <option value="0.9">0.9 · 稍慢</option>
+          <option value="1.1">1.1 · 稍快</option>
+          <option value="1.25">1.25 · 快（适合复习）</option>
+          <option value="1.5">1.5 · 很快</option>
         </select>
       </div>
       <div class="field">
@@ -1230,6 +1241,7 @@
     fd.append('file',new Blob([p.yaml],{type:'text/yaml'}),(p.problemId||'lecture')+'.yaml');
     fd.append('quality',$('quality').value);
     var voice=val('voice').trim();if(voice)fd.append('voice',voice);
+    fd.append('speechRate',$('speechRate').value);
     if(p.yamlPath)fd.append('saveTo',p.yamlPath);
 
     state.renderBusy=true;p.videoStatus='rendering';renderProbList();updateRenderBtns();
@@ -1259,7 +1271,7 @@
     var targets=state.problems.filter(function(p){return p&&p.yaml&&p.videoStatus!=='rendering';});
     if(!targets.length){toast('没有可渲染的题目（需先生成 yaml）','err');return;}
     var concurrency=Math.max(1,parseInt((val('videoConcurrency')||'2').trim(),10)||2);
-    var quality=val('quality'), voice=val('voice').trim();
+    var quality=val('quality'), voice=val('voice').trim(), speechRate=val('speechRate');
     targets.forEach(function(p){p.videoStatus='rendering';p.videoError='';});
     state.renderBusy=true;renderProbList();updateRenderBtns();
     renderAbort=new AbortController();
@@ -1275,6 +1287,7 @@
           fd.append('file',new Blob([p.yaml],{type:'text/yaml'}),(p.problemId||'lecture')+'.yaml');
           fd.append('quality',quality);
           if(voice)fd.append('voice',voice);
+          fd.append('speechRate',speechRate);
           if(p.yamlPath)fd.append('saveTo',p.yamlPath);
           var res=await fetch(apiBase()+'/seeview/render',{method:'POST',body:fd,signal:renderAbort.signal});
           if(!res.ok)throw new Error(await readError(res));

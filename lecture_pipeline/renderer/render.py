@@ -430,6 +430,7 @@ def render_lecture(
     tts_provider: str | None = None,
     tts_voice: str | None = None,
     tts_retries: int = 2,
+    tts_speech_rate: float | None = None,
     hide_statement: bool = False,
     media_dir: str | None = None,
 ) -> Path:
@@ -481,6 +482,7 @@ def render_lecture(
             tts_provider=tts_provider,
             tts_voice=tts_voice,
             tts_retries=tts_retries,
+            tts_speech_rate=tts_speech_rate,
         )
         mixed_audio_path = timeline.mixed_path
 
@@ -649,6 +651,12 @@ def main(argv: list[str] | None = None) -> int:
         help="TTS 失败后的同音色重试次数。默认 2。",
     )
     parser.add_argument(
+        "--speech-rate",
+        type=float,
+        default=None,
+        help="TTS 语速倍率（0.5~2.0，1.0=默认）。如 0.8 慢速、1.25 快速。",
+    )
+    parser.add_argument(
         "--no-statement", action="store_true",
         help="讲解阶段不显示题干横幅（默认 C/D 布局会在顶部常驻题干卡片）。",
     )
@@ -689,6 +697,7 @@ def main(argv: list[str] | None = None) -> int:
             tts_provider=args.tts_provider,
             tts_voice=args.tts_voice,
             tts_retries=args.tts_retries,
+            tts_speech_rate=args.speech_rate,
             hide_statement=args.no_statement,
             media_dir=args.media_dir,
         )

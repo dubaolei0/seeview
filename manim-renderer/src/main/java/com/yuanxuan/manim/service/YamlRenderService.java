@@ -60,6 +60,17 @@ public class YamlRenderService {
      * @param saveTo 可选 mp4 保存路径；null 仅返回字节不落盘。落盘文件不参与临时清理。
      */
     public byte[] renderYaml(String yaml, Quality quality, String voice, Path saveTo) throws IOException {
+        return renderYaml(yaml, quality, voice, saveTo, null);
+    }
+
+    /**
+     * 渲染 yaml 为 mp4，返回视频字节；可选把 mp4 落盘到 {@code saveTo}（如 yaml 同目录）。
+     *
+     * @param saveTo 可选 mp4 保存路径；null 仅返回字节不落盘。落盘文件不参与临时清理。
+     * @param speechRate 可选 TTS 语速倍率（0.5~2.0，1.0=默认）；null 不传，由 python 侧用默认语速
+     */
+    public byte[] renderYaml(String yaml, Quality quality, String voice, Path saveTo, Double speechRate)
+            throws IOException {
         mapQuality(quality);  // 提前校验画质（PRODUCTION/FOUR_K 不支持，抛错）
 
         Path engineDir = Path.of(props.getEngineDir()).toAbsolutePath().normalize();
@@ -85,9 +96,10 @@ public class YamlRenderService {
         Path logFile = engineDir.resolve(problemId + ".log");
         Path mp4File = null;
         try {
-            // 2. 构造命令：python -m renderer.render <yaml> --quality <q> [--tts-voice <v>] [--media-dir <d>]
+            // 2. 构造命令：python -m renderer.render <yaml> --quality <q> [--tts-voice <v>] [--speech-rate <r>] [--media-dir <d>]
             List<String> cmd = buildCommand(pythonPath.toString(),
-                    yamlFile.toAbsolutePath().toString(), quality, voice, mediaDir.toAbsolutePath().toString());
+                    yamlFile.toAbsolutePath().toString(), quality, voice, mediaDir.toAbsolutePath().toString(),
+                    speechRate);
 
             // 3. 跑进程：cwd=engineDir，输出重定向到文件避免管道死锁
             ProcessBuilder pb = new ProcessBuilder(cmd)
@@ -151,11 +163,17 @@ public class YamlRenderService {
 
     /** 构造渲染命令：python -m renderer.render <yaml> --quality <q> [--tts-voice <v>]。 */
     List<String> buildCommand(String pythonPath, String yamlAbsPath, Quality quality, String voice) {
-        return buildCommand(pythonPath, yamlAbsPath, quality, voice, null);
+        return buildCommand(pythonPath, yamlAbsPath, quality, voice, null, null);
     }
 
     /** 同上，额外支持 --media-dir（并发渲染隔离用）。 */
     List<String> buildCommand(String pythonPath, String yamlAbsPath, Quality quality, String voice, String mediaDir) {
+        return buildCommand(pythonPath, yamlAbsPath, quality, voice, mediaDir, null);
+    }
+
+    /** 同上，额外支持 --speech-rate（TTS 语速倍率，1.0=默认不传）。 */
+    List<String> buildCommand(String pythonPath, String yamlAbsPath, Quality quality, String voice,
+                               String mediaDir, Double speechRate) {
         List<String> cmd = new ArrayList<>();
         cmd.add(pythonPath);
         cmd.add("-m");
@@ -166,6 +184,10 @@ public class YamlRenderService {
         if (voice != null && !voice.isBlank()) {
             cmd.add("--tts-voice");
             cmd.add(voice);
+        }
+        if (speechRate != null && speechRate > 0 && Math.abs(speechRate - 1.0) > 1e-9) {
+            cmd.add("--speech-rate");
+            cmd.add(String.valueOf(speechRate));
         }
         if (mediaDir != null && !mediaDir.isBlank()) {
             cmd.add("--media-dir");

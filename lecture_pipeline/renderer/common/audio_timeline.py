@@ -69,6 +69,7 @@ def build_audio_timeline(
     tts_provider: str | None = None,
     tts_voice: str | None = None,
     tts_retries: int = 2,
+    tts_speech_rate: float | None = None,
 ) -> AudioTimeline:
     """
     为整个 doc 构建音频时间线。
@@ -77,13 +78,18 @@ def build_audio_timeline(
         doc: 已解析的 LectureDoc
         problem_id: 题目标识（用于输出文件名）
         cache_dir: 音频缓存目录
+        tts_speech_rate: 可选语速倍率（0.5~2.0，1.0=默认）
 
     Returns:
         AudioTimeline 对象
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
-    tts = TTSManager(provider=tts_provider, voice=tts_voice, retry_count=tts_retries)
-    print(f"[audio] TTS 配置：provider={tts.provider}, voice={tts.voice}, retries={tts.retry_count}")
+    tts = TTSManager(
+        provider=tts_provider, voice=tts_voice,
+        retry_count=tts_retries, speech_rate=tts_speech_rate,
+    )
+    print(f"[audio] TTS 配置：provider={tts.provider}, voice={tts.voice}, retries={tts.retry_count}"
+          + (f", speech_rate={tts_speech_rate}" if tts_speech_rate else ""))
 
     # 1. 收集所有 say，按顺序生成音频
     segments_raw: list[dict] = []
