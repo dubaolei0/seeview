@@ -46,6 +46,10 @@ import java.util.regex.Pattern;
  *   <li>yaml（system=yaml.md 提示词 + tts_读法约定 + schema规范 + yaml样例 + 备课 + 讲稿）</li>
  * </ol>
  *
+ * <p>可选的用户补充要求（{@code extraInstructions} + {@code bannedWords}）注入备课、讲稿与
+ * 简洁（fast）模式 yaml 三处；标准模式 yaml 台词来自讲稿，不重复注入。备课/讲稿/fast yaml
+ * 落盘前各做一次禁用词字面量检查，命中则回传大模型修正一轮。
+ *
  * <p>yaml 落盘后进入校验闭环：用 {@link LectureValidateService} 跑 schema/裸中文/normalize_say 三道检查，
  * 未过则把报错回传大模型修 yaml、重新落盘再校验，最多 {@code lecture.max-fix-rounds} 轮。
  */
@@ -119,6 +123,10 @@ public class LectureGenerateService {
         String beike = null, jianggao = null;
         Path beikePath = null, jianggaoPath = null;
 
+        // 用户补充要求：清洗一次，备课/讲稿/fast yaml 三处共用
+        String extra = truncateExtra(req.extraInstructions());
+        List<String> banned = sanitizeBannedWords(req.bannedWords());
+
         if (!concise) {
             // 标准 / 深入：三段式，先生成备课、讲稿
             String beikePrompt = readSkill("备课.md");
@@ -127,24 +135,30 @@ public class LectureGenerateService {
             String jianggaoSample = readResource(pipelineDir, "samples/自然语言讲稿/problem_18_讲稿.md");
 
             // ① 备课
-            beike = chat(beikePrompt,
-                    buildBeikeUser(req, problem, problemId, budget, outPath.toString(), beikeSample));
+            beike = enforceBannedWords(beikePrompt, problemId + "_备课.md",
+                    chat(beikePrompt, buildBeikeUser(req, problem, problemId, budget, outPath.toString(), beikeSample, extra, banned)),
+                    banned);
             beikePath = outPath.resolve(problemId + "_备课.md");
             Files.writeString(beikePath, beike, StandardCharsets.UTF_8);
 
             // ② 讲稿
-            jianggao = chat(jianggaoPrompt,
-                    buildJianggaoUser(problemId, budget, outPath.toString(), ttsRules, jianggaoSample, beike));
+            jianggao = enforceBannedWords(jianggaoPrompt, problemId + "_讲稿.md",
+                    chat(jianggaoPrompt, buildJianggaoUser(problemId, budget, outPath.toString(), ttsRules, jianggaoSample, beike, extra, banned)),
+                    banned);
             jianggaoPath = outPath.resolve(problemId + "_讲稿.md");
             Files.writeString(jianggaoPath, jianggao, StandardCharsets.UTF_8);
         }
 
         // ③ yaml（标准=full 模式带备课/讲稿；简洁=fast 模式直接由题目编导）
         String yaml = chat(yamlPrompt, concise
-                ? buildYamlUserFast(problem, req, problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample, profile, problemImages)
+                ? buildYamlUserFast(problem, req, problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample, profile, problemImages, extra, banned)
                 : buildYamlUser(problemId, budget, outPath.toString(), ttsRules, schemaSpec, yamlSample,
                         profile, beike, jianggao, problemImages));
         yaml = cleanYaml(yaml);
+        // fast 模式无备课/讲稿兜底，yaml 本身做禁用词校验；标准模式已由讲稿校验覆盖
+        if (concise) {
+            yaml = cleanYaml(enforceBannedWords(yamlPrompt, problemId + ".yaml", yaml, banned));
+        }
         Path yamlPath = outPath.resolve(problemId + ".yaml");
         Files.writeString(yamlPath, yaml, StandardCharsets.UTF_8);
 
@@ -210,11 +224,13 @@ public class LectureGenerateService {
 
     // ===================== user message 构造 =====================
 
-    private String buildBeikeUser(LectureRequest req, String problem, String pid, String budget, String outDir, String sample) {
+    private String buildBeikeUser(LectureRequest req, String problem, String pid, String budget, String outDir,
+                                  String sample, String extra, List<String> banned) {
         StringBuilder sb = new StringBuilder();
         if (sample != null) {
             sb.append("【备课样例（开工前参考 1 份）】\n").append(sample).append("\n\n");
         }
+        appendUserRules(sb, extra, banned);
         sb.append("【本次题目输入】\n");
         sb.append("- problem_id: ").append(pid).append("\n");
         sb.append("- statement:\n").append(problem).append("\n");
@@ -227,7 +243,7 @@ public class LectureGenerateService {
     }
 
     private String buildJianggaoUser(String pid, String budget, String outDir,
-                                     String ttsRules, String sample, String beike) {
+                                     String ttsRules, String sample, String beike, String extra, List<String> banned) {
         StringBuilder sb = new StringBuilder();
         if (ttsRules != null) {
             sb.append("【TTS 读法约定（单一真源，必读）】\n").append(ttsRules).append("\n\n");
@@ -235,6 +251,7 @@ public class LectureGenerateService {
         if (sample != null) {
             sb.append("【讲稿样例（开工前参考 1 份）】\n").append(sample).append("\n\n");
         }
+        appendUserRules(sb, extra, banned);
         sb.append("【备课笔记 ").append(pid).append("_备课.md 内容】\n---\n")
                 .append(beike).append("\n---\n\n");
         sb.append("【本次输入】\n- problem_id: ").append(pid)
@@ -285,7 +302,7 @@ public class LectureGenerateService {
      */
     private String buildYamlUserFast(String problem, LectureRequest req, String pid, String budget, String outDir,
                                      String ttsRules, String schemaSpec, String sample, String profile,
-                                     List<String> images) {
+                                     List<String> images, String extra, List<String> banned) {
         StringBuilder sb = new StringBuilder();
         if (ttsRules != null) {
             sb.append("【TTS 读法约定（单一真源，必读）】\n").append(ttsRules).append("\n\n");
@@ -300,6 +317,7 @@ public class LectureGenerateService {
             sb.append("【成员讲题视频偏好】\n").append(profile).append("\n\n");
         }
         appendImageDirective(sb, images);
+        appendUserRules(sb, extra, banned);
         sb.append("【本次输入】\n- problem_id: ").append(pid)
                 .append("\n- title: 题目讲解\n- mode: fast\n- budget: ").append(budget)
                 .append("\n- statement:\n").append(problem)
@@ -307,6 +325,121 @@ public class LectureGenerateService {
                 .append("\n- output_dir: ").append(outDir).append("\n\n");
         sb.append("【环境说明】tts_读法约定/schema规范/样例均已附上方，无需再读文件；本地无 Python，请按提示词规则做纯文本自检（逐条人工核对），不要运行 grep/python 命令；schema 校验与渲染由下游处理。本题为 fast 模式（无备课/讲稿），请按 yaml 提示词「fast 模式」规则：先把答案做对，再自写口语 say（守 budget 上限，仍受全部 say 红线），figure 自判，排版/分幕/schema/自检与 full 一致。请直接输出 ")
                 .append(pid).append(".yaml 的完整 YAML 正文，不要「报告」段，不用 markdown 代码围栏包裹整体。回包第一行必须是 `core:`，前面禁止任何叙述/定位/核对，只给成品 yaml。");
+        return sb.toString();
+    }
+
+    // ===================== 用户补充要求（前台可配置） =====================
+
+    /** 补充提示词最大长度（字符），防误粘贴长文撑爆上下文 */
+    private static final int MAX_EXTRA_CHARS = 2000;
+    /** 禁用词最大个数 */
+    private static final int MAX_BANNED_WORDS = 50;
+
+    /**
+     * 用户补充要求注入块：不写则不加。措辞上明确「不豁免核心规则」，
+     * 用户不能用这段话解除 TTS 读法约定、schema 红线等硬约束。
+     */
+    private void appendUserRules(StringBuilder sb, String extra, List<String> banned) {
+        boolean hasExtra = extra != null && !extra.isBlank();
+        boolean hasBanned = banned != null && !banned.isEmpty();
+        if (!hasExtra && !hasBanned) {
+            return;
+        }
+        sb.append("【用户补充要求（必须遵守；优先级高于风格建议，但不豁免上文核心规则与禁忌）】\n");
+        if (hasExtra) {
+            sb.append("- 内容与风格要求：\n").append(extra).append('\n');
+        }
+        if (hasBanned) {
+            sb.append("- 禁用词（正文中一律不得出现，需要时换同义表达，题干原文引用除外）：")
+                    .append(String.join("、", banned)).append('\n');
+        }
+        sb.append('\n');
+    }
+
+    /** 去首尾空白并截断到上限；空串返回 null。 */
+    private String truncateExtra(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.strip();
+        if (t.isEmpty()) {
+            return null;
+        }
+        if (t.length() <= MAX_EXTRA_CHARS) {
+            return t;
+        }
+        log.warn("用户补充提示词过长（{} 字符），已截断到 {}", t.length(), MAX_EXTRA_CHARS);
+        return t.substring(0, MAX_EXTRA_CHARS);
+    }
+
+    /** 去空白、去重、截断到上限；只做字面量匹配，不支持通配/正则。 */
+    private List<String> sanitizeBannedWords(List<String> words) {
+        if (words == null || words.isEmpty()) {
+            return List.of();
+        }
+        List<String> out = new ArrayList<>();
+        for (String w : words) {
+            if (w == null) {
+                continue;
+            }
+            String t = w.strip();
+            if (!t.isEmpty() && !out.contains(t)) {
+                out.add(t);
+            }
+            if (out.size() >= MAX_BANNED_WORDS) {
+                log.warn("禁用词超过 {} 个，已截断", MAX_BANNED_WORDS);
+                break;
+            }
+        }
+        return out;
+    }
+
+    /** 字面量命中检查：返回正文里实际出现的禁用词。 */
+    private List<String> findBannedHits(String text, List<String> banned) {
+        List<String> hits = new ArrayList<>();
+        for (String w : banned) {
+            if (text.contains(w)) {
+                hits.add(w);
+            }
+        }
+        return hits;
+    }
+
+    /**
+     * 禁用词兜底：正文命中禁用词时回传大模型修正一轮（最多 1 轮）。
+     * 修正后仍命中只 log warn 不再重试（通常只剩题干原文引用这类应保留的场景）。
+     */
+    private String enforceBannedWords(String systemPrompt, String fileName, String doc, List<String> banned) {
+        if (banned == null || banned.isEmpty() || doc == null) {
+            return doc;
+        }
+        List<String> hits = findBannedHits(doc, banned);
+        if (hits.isEmpty()) {
+            return doc;
+        }
+        log.info("{} 命中禁用词 {}，回传修正一轮", fileName, hits);
+        String fixed = chat(systemPrompt, buildBannedFixUser(fileName, doc, hits));
+        List<String> remain = findBannedHits(fixed, banned);
+        if (!remain.isEmpty()) {
+            log.warn("{} 禁用词修正后仍含 {}（多为题干原文引用，保留）", fileName, remain);
+        }
+        return fixed;
+    }
+
+    /** 禁用词修正轮 user message。 */
+    private String buildBannedFixUser(String fileName, String doc, List<String> hits) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("下面是已生成的 ").append(fileName).append("，但正文中出现了用户禁用词。\n\n")
+                .append("【命中的禁用词】\n").append(String.join("、", hits)).append("\n\n")
+                .append("【当前正文】\n---\n").append(doc).append("\n---\n\n")
+                .append("请把禁用词替换为意思一致的自然表达，避免再次命中任何禁用词；")
+                .append("唯一例外：禁用词若出现在题干原文引用中，保留题干原文不动。")
+                .append("其余内容、结构与排版保持不变。");
+        if (fileName.endsWith(".yaml")) {
+            sb.append("请直接输出完整 YAML 正文，回包第一行必须是 `core:`，禁止 markdown 代码围栏与任何说明。");
+        } else {
+            sb.append("请直接输出完整 Markdown 正文，不要 markdown 代码围栏，不要任何说明或复述。");
+        }
         return sb.toString();
     }
 
@@ -416,7 +549,8 @@ public class LectureGenerateService {
                     return; // 客户端断开，不再生成
                 }
                 try {
-                    LectureRequest lr = new LectureRequest(block.text(), problemId, null, budget, outDir, req.memberName());
+                    LectureRequest lr = new LectureRequest(block.text(), problemId, null, budget, outDir,
+                            req.memberName(), req.extraInstructions(), req.bannedWords());
                     LectureResult r = generate(lr);
                     succeeded.incrementAndGet();
                     emitter.send(SseEmitter.event().name("item").data(Map.of(

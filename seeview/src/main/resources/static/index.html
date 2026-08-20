@@ -98,6 +98,20 @@
   .form-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
   .form-actions{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
 
+  /* ---------- 禁用词 tag 编辑器 ---------- */
+  .tag-box{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);cursor:text}
+  .tag-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .tag-box .tag-list{display:contents}
+  .tag-box .tag{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;font-size:12.5px;
+    background:var(--accent-soft);border:1px solid var(--line);border-radius:999px;color:var(--ink)}
+  .tag-box .tag button{background:none;border:none;cursor:pointer;color:var(--ink-3);
+    font-size:14px;line-height:1;padding:0;font-family:var(--font-body)}
+  .tag-box .tag button:hover{color:#c0392b}
+  .tag-box input{flex:1;min-width:120px;border:none;outline:none;background:transparent;
+    font-family:var(--font-body);font-size:13.5px;color:var(--ink);padding:4px 2px}
+  .tag-box input::placeholder{color:var(--ink-3)}
+
   /* ---------- Dropzone ---------- */
   .dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:5px;padding:26px 20px;border:1.5px dashed var(--line);border-radius:var(--radius-sm);
@@ -463,6 +477,27 @@
 <!--          <input id="concurrency" type="number" min="1" max="10" value="3">-->
 <!--        </div>-->
       </div>
+      <div class="collapse" id="userRulesCollapse">
+        <div class="collapse-head" data-toggle tabindex="0" role="button" aria-expanded="false">
+          <span class="collapse-caret"></span>
+          <span class="collapse-title">生成要求</span>
+          <span class="opt">可选 · 控制生成内容 / 规避词语</span>
+          <span class="collapse-meta" id="userRulesMeta"></span>
+        </div>
+        <div class="collapse-body">
+          <div class="field">
+            <label for="extraInstructions">补充提示词 <span class="opt">不想生成的内容、风格要求等，注入备课 / 讲稿 / 简洁模式 yaml</span></label>
+            <textarea id="extraInstructions" placeholder="例：不要出现「显然」「易得」这类表述；解法只用高中方法，不用洛必达法则；不要引入物理或生活情境的类比。"></textarea>
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label for="bannedInput">禁用词 <span class="opt">回车添加 · 生成结果中出现会自动修正一轮</span></label>
+            <div class="tag-box" id="bannedBox">
+              <span class="tag-list" id="bannedTags"></span>
+              <input id="bannedInput" type="text" placeholder="输入词语后回车，如：显然">
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" id="genBtn">生成文档</button>
@@ -665,7 +700,8 @@
     problems:[], selected:-1,
     view:{beike:'render', jianggao:'render'},
     genBusy:false, parsing:false, renderBusy:false,
-    total:0, doneCount:0, failedCount:0
+    total:0, doneCount:0, failedCount:0,
+    banned:[]                // 禁用词（用户生成要求），随请求提交并 localStorage 持久化
   };
   var genAbort=null, renderAbort=null;
 
@@ -1095,6 +1131,59 @@
     s2.classList.toggle('active',hasYaml&&!hasVideo);
   }
 
+  /* ---------- 用户生成要求（补充提示词 + 禁用词，localStorage 持久化） ---------- */
+  var RULES_KEY='seeUserRules';
+  function saveUserRules(){
+    try{localStorage.setItem(RULES_KEY,JSON.stringify({extra:val('extraInstructions'),banned:state.banned}));}catch(e){}
+  }
+  function updateUserRulesMeta(){
+    var m=$('userRulesMeta');
+    if(m)m.textContent=state.banned.length?state.banned.length+' 个禁用词':'';
+  }
+  function renderBannedTags(){
+    var box=$('bannedTags');if(!box)return;
+    box.innerHTML=state.banned.map(function(w,i){
+      return '<span class="tag">'+escapeHtml(w)
+        +'<button type="button" data-ban="'+i+'" title="移除">×</button></span>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('button[data-ban]'),function(b){
+      b.onclick=function(){
+        state.banned.splice(parseInt(b.getAttribute('data-ban'),10),1);
+        renderBannedTags();saveUserRules();
+      };
+    });
+    updateUserRulesMeta();
+  }
+  function addBannedWord(w){
+    w=(w||'').trim();
+    if(!w)return;
+    if(state.banned.indexOf(w)>=0){toast('该词已在列表中','warn');return;}
+    if(state.banned.length>=50){toast('禁用词最多 50 个','warn');return;}
+    state.banned.push(w);renderBannedTags();saveUserRules();
+  }
+  function initUserRules(){
+    try{
+      var saved=JSON.parse(localStorage.getItem(RULES_KEY)||'{}');
+      if(saved.extra&&$('extraInstructions'))$('extraInstructions').value=saved.extra;
+      state.banned=Array.isArray(saved.banned)
+        ?saved.banned.filter(function(w){return typeof w==='string'&&w.trim();}):[];
+    }catch(e){state.banned=[];}
+    var inp=$('bannedInput');
+    if(inp){
+      inp.addEventListener('keydown',function(e){
+        if(e.key==='Enter'||e.key===','){e.preventDefault();addBannedWord(inp.value);inp.value='';}
+        else if(e.key==='Backspace'&&!inp.value&&state.banned.length){
+          state.banned.pop();renderBannedTags();saveUserRules();
+        }
+      });
+    }
+    var box=$('bannedBox');
+    if(box)box.addEventListener('click',function(){if(inp)inp.focus();});
+    var ta=$('extraInstructions');
+    if(ta)ta.addEventListener('input',saveUserRules);
+    renderBannedTags();
+  }
+
   /* ---------- generate (SSE batch) ---------- */
   function setGenBusy(on){
     state.genBusy=on;
@@ -1111,6 +1200,8 @@
     body.budget=val('budget');
     var mn=val('memberName').trim();if(mn)body.memberName=mn;
     var c=parseInt((val('concurrency')||'').trim(),10);if(c>0)body.concurrency=c;
+    var extra=val('extraInstructions').trim();if(extra)body.extraInstructions=extra;
+    if(state.banned.length)body.bannedWords=state.banned.slice();
 
     setGenBusy(true);genAbort=new AbortController();
     var timer=startTimer('genElapsed');
@@ -1429,6 +1520,7 @@
     renderProbList();
     updateStepper();
     updateRenderBtns();
+    initUserRules();
   }
   init();
 })();
