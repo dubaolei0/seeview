@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 出题 · 智能生成题目</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<style>
+/* ============================================================
+   AI 命题台 -- 简洁工具风
+   母题：黑板绿（交互）/ 红笔红（答案）/ 虚线裁切（分隔）
+   衬线只用于标题；等宽字体只用于序号与数字
+   ============================================================ */
+:root {
+  --bg: #F4F5F1;          /* 页面底色 */
+  --card: #FFFFFF;        /* 卡片 */
+  --ink: #1B1D1A;         /* 正文墨色 */
+  --ink-2: #585C54;       /* 次级文字 */
+  --ink-3: #8F948A;       /* 弱化文字 */
+  --line: #E4E6DF;        /* 边线 */
+  --line-2: #F0F1EB;      /* 浅边线 */
+  --dash: #C6CBBF;        /* 虚线 */
+  --green: #2E5D4A;       /* 黑板绿 */
+  --green-deep: #234A3A;
+  --green-soft: #EBF1EC;
+  --red: #BE3A2B;         /* 红笔：答案与解析专用 */
+  --red-soft: #FBEEEB;
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', serif;
+  --sans: -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --radius: 10px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.7 var(--sans);
+}
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.page { max-width: 840px; margin: 0 auto; padding: 48px 24px 96px; }
+
+/* ---------------- 页头（印刷版式双细线） ---------------- */
+.masthead {
+  padding-bottom: 22px;
+  border-bottom: 2px solid var(--ink);
+  position: relative;
+  margin-bottom: 36px;
+}
+.masthead::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: -5px;
+  border-bottom: 1px solid var(--ink);
+}
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: .35em;
+  color: var(--green);
+}
+.masthead h1 {
+  margin: 0;
+  font: 900 34px/1.2 var(--serif);
+  letter-spacing: .06em;
+}
+.masthead .sub { margin: 10px 0 0; font-size: 14px; color: var(--ink-2); }
+
+/* ---------------- 卡片与步骤 ---------------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 32px 28px;
+  box-shadow: 0 1px 2px rgba(27, 29, 26, .03);
+}
+.step { padding: 24px 0; }
+.step + .step { border-top: 1px dashed var(--dash); }
+.step-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+.step-num { font: 500 13px var(--mono); color: var(--green); letter-spacing: .08em; }
+.step-title { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .02em; }
+.step-tag {
+  margin-left: auto;
+  font-size: 11px; color: var(--ink-3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+/* ---------------- 上传区 ---------------- */
+.drop {
+  border: 1.5px dashed var(--dash);
+  border-radius: var(--radius);
+  padding: 34px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.drop:hover, .drop:focus-visible, .drop.dragover {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.drop svg { display: block; margin: 0 auto 10px; color: var(--ink-3); }
+.drop.dragover svg { color: var(--green); }
+.drop-title { margin: 0; font-size: 14px; font-weight: 600; }
+.drop-hint { margin: 6px 0 0; font-size: 12px; color: var(--ink-3); }
+.file-chip {
+  display: none;
+  align-items: center; gap: 10px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line-2);
+  font-size: 13px;
+}
+.file-chip.show { display: flex; }
+.file-chip .check { color: var(--green); font-weight: 700; }
+.file-chip .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-chip .meta { margin-left: auto; color: var(--ink-3); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.field-error { display: none; margin: 10px 0 0; font-size: 12.5px; color: var(--red); }
+.field-error.show { display: block; }
+
+/* ---------------- 材料预览（可折叠） ---------------- */
+.collapse {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--line-2);
+  overflow: hidden;
+  margin-top: 12px;
+}
+.collapse-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer; user-select: none;
+  font-size: 13px; font-weight: 600;
+}
+.collapse-head:hover { background: var(--card); }
+.collapse-head:focus-visible { outline: 2px solid var(--green); outline-offset: -2px; }
+.collapse-caret {
+  width: 0; height: 0; flex: none;
+  border-left: 5px solid var(--ink-3);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform .15s;
+}
+.collapse.open .collapse-caret { transform: rotate(90deg); }
+.collapse-head .opt { font-weight: 400; color: var(--ink-3); font-size: 12px; }
+.collapse-meta { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); font-weight: 400; white-space: nowrap; }
+.collapse.open .collapse-head { border-bottom: 1px solid var(--line); }
+.collapse-body { display: none; padding: 10px; }
+.collapse.open .collapse-body { display: block; }
+
+/* 预览/编辑切换 */
+.pv-toolbar { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); margin-bottom: 8px; }
+.pv-tab { border: 0; background: transparent; padding: 5px 16px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.pv-tab:hover { color: var(--green); }
+.pv-tab.active { background: var(--green); color: #fff; }
+
+/* 渲染视图：markdown + KaTeX + 图片 */
+.preview-view {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  padding: 12px 16px;
+  font-size: 13.5px;
+  line-height: 1.9;
+  word-break: break-word;
+}
+.preview-view img { max-width: 100%; display: block; margin: 8px auto; border: 1px solid var(--line); border-radius: 4px; }
+.preview-view .katex { font-size: 1.05em; }
+.preview-view .katex-display { margin: 8px 0; overflow-x: auto; padding: 2px 0; }
+.preview-view pre { background: var(--line-2); border-radius: 6px; padding: 10px 12px; overflow: auto; }
+.preview-view code { font-family: var(--mono); font-size: 12px; }
+.preview-view p { margin: 6px 0; }
+.preview-view h1, .preview-view h2, .preview-view h3 { font-size: 15px; margin: 12px 0 6px; }
+.pv-empty { color: var(--ink-3); margin: 0; }
+.pv-src { white-space: pre-wrap; word-break: break-word; font: 12px/1.8 var(--mono); margin: 0; }
+.pv-img-err { color: var(--red); font-size: 12px; margin: 4px 0; }
+
+.preview-box {
+  width: 100%;
+  min-height: 180px;
+  max-height: 320px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font: 13px/1.8 var(--sans);
+  color: var(--ink);
+  background: var(--card);
+}
+.preview-box:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+.preview-img { display: block; max-width: 100%; margin: 0 auto; border: 1px solid var(--line); border-radius: 6px; }
+
+/* ---------------- 设置项 ---------------- */
+.field { margin: 0 0 18px; }
+.field:last-child { margin-bottom: 0; }
+.field-label { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.field-row { display: flex; gap: 36px; flex-wrap: wrap; }
+
+/* 题型 chips */
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  background: var(--card);
+  transition: border-color .12s, background .12s, color .12s;
+  user-select: none;
+}
+.chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+.chip:hover { border-color: var(--green); color: var(--green); }
+.chip:has(input:checked) { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
+.chip:has(input:focus-visible) { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* 难度分段 */
+.seg-row { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg { position: relative; display: inline-flex; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.seg span {
+  display: inline-block;
+  padding: 8px 20px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  border-left: 1px solid var(--line);
+  transition: background .12s, color .12s;
+}
+.seg:first-child span { border-left: 0; }
+.seg:hover span { color: var(--green); }
+.seg:has(input:checked) span { background: var(--green); color: #fff; font-weight: 600; }
+
+/* 题量步进器 */
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stepper button {
+  width: 38px; height: 38px;
+  border: 0; background: var(--card);
+  font-size: 18px; color: var(--ink-2);
+  cursor: pointer;
+}
+.stepper button:hover:not(:disabled) { background: var(--green-soft); color: var(--green); }
+.stepper button:disabled { opacity: .35; cursor: not-allowed; }
+.stepper .count {
+  width: 56px; height: 38px;
+  border: 0;
+  background: var(--card);
+  text-align: center;
+  font: 500 15px var(--mono);
+  color: var(--ink);
+}
+.stepper .count:focus { outline: none; background: var(--green-soft); }
+
+/* 命题要求 */
+.prompt-box {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font: 14px/1.7 var(--sans);
+  color: var(--ink);
+  background: var(--card);
+}
+.prompt-box:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+
+/* ---------------- 提交 ---------------- */
+.submit-row { border-top: 1px dashed var(--dash); padding: 24px 0 4px; }
+.btn-gen {
+  width: 100%; height: 48px;
+  border: 0; border-radius: 8px;
+  background: var(--green); color: #fff;
+  font-size: 16px; font-weight: 700;
+  letter-spacing: .25em; text-indent: .25em;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-gen:hover:not(:disabled) { background: var(--green-deep); }
+.btn-gen:disabled { opacity: .6; cursor: wait; }
+.gen-status { margin: 12px 0 0; text-align: center; font-size: 13px; color: var(--ink-2); min-height: 20px; }
+.gen-status .done { color: var(--green); font-weight: 600; }
+
+/* ---------------- 裁切线：设置区与生成结果的分界 ---------------- */
+.cutline { display: flex; align-items: center; gap: 14px; margin: 40px 0 24px; color: var(--ink-3); }
+.cutline-rule { flex: 1; border-top: 1px dashed var(--dash); }
+.cutline-label { font-size: 12px; letter-spacing: .15em; white-space: nowrap; }
+
+/* ---------------- 生成结果 ---------------- */
+.paper-card { padding: 36px 44px 28px; animation: rise .4s ease both; }
+.paper-head { text-align: center; padding-bottom: 18px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.paper-title { margin: 0; font: 600 24px/1.4 var(--serif); letter-spacing: .08em; }
+.paper-info { margin: 8px 0 0; font-size: 13px; color: var(--ink-2); }
+.paper-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.ans-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.ans-toggle input { accent-color: var(--green); width: 15px; height: 15px; cursor: pointer; }
+.paper-actions { margin-left: auto; display: flex; gap: 8px; }
+.btn {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.btn:hover { border-color: var(--green); color: var(--green); }
+.btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+.btn.primary:hover { background: var(--green-deep); color: #fff; }
+.btn.ghost { border-color: transparent; color: var(--ink-3); }
+.btn.ghost:hover { color: var(--green); border-color: transparent; }
+
+/* 题目列表 */
+.q-sec {
+  display: flex; align-items: center; gap: 12px;
+  margin: 26px 0 4px;
+  font-size: 14px; font-weight: 700;
+  color: var(--green);
+  letter-spacing: .1em;
+}
+.q-sec::after { content: ''; flex: 1; border-top: 1px solid var(--line-2); }
+.q-item { padding: 14px 0; border-bottom: 1px solid var(--line-2); }
+.q-item:last-child { border-bottom: 0; }
+.q-stem { margin: 0; font-size: 15px; line-height: 1.9; }
+.q-opts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px 28px;
+  padding: 6px 0 0 1.5em;
+  font-size: 14.5px;
+  line-height: 1.9;
+}
+.q-opts.wide { grid-template-columns: 1fr; }
+.q-ans {
+  display: none;
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  background: var(--red-soft);
+  border-radius: 6px;
+  color: var(--red);
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+.q-ans.show { display: block; }
+.paper-foot {
+  margin: 22px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* 公式：字号随文，长公式横向滚动 */
+.q-item .katex { font-size: 1.06em; }
+.q-ans .katex { font-size: 1em; }
+.katex-display { margin: 6px 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
+
+/* 题干/选项/解析中的插图（几何图、函数图等） */
+.q-stem img, .q-opts img, .q-ans img {
+  max-width: 100%;
+  vertical-align: middle;
+  margin: 4px 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+/* ---------------- 轻提示 ---------------- */
+.toast {
+  position: fixed; left: 50%; bottom: 36px;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--ink); color: #fff;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 10;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ---------------- 响应式 ---------------- */
+@media (max-width: 640px) {
+  .page { padding: 32px 14px 72px; }
+  .card { padding: 4px 18px 22px; }
+  .masthead h1 { font-size: 27px; }
+  .field-row { gap: 18px; }
+  .paper-card { padding: 26px 18px 20px; }
+  .q-opts { grid-template-columns: 1fr; }
+  .paper-actions { margin-left: 0; width: 100%; }
+  .paper-actions .btn { flex: 1; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- 页头 -->
+  <header class="masthead">
+    <p class="eyebrow">备课工具 · 智能命题</p>
+    <h1>AI 命题台</h1>
+    <p class="sub">上传一份材料，选定题型与难度，AI 自动识别学科与考点，生成一组可复核的题目。</p>
+  </header>
+
+  <!-- 设置卡 -->
+  <main class="card" id="sheet">
+
+    <section class="step">
+      <div class="step-head">
+        <span class="step-num">01</span>
+        <h2 class="step-title">上传材料</h2>
+        <span class="step-tag">必填</span>
+      </div>
+      <div class="drop" id="drop" tabindex="0" role="button"
+           aria-label="上传材料文件，点击或拖入">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+             aria-hidden="true">
+          <path d="M12 16V4"/><path d="m7 9 5-5 5 5"/>
+          <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+        </svg>
+        <p class="drop-title" id="dropTitle">点击上传，或将文件拖入此处</p>
+        <p class="drop-hint">支持 PDF / Word / PPT / 图片 / 文本，讲义、课件、知识点整理都可以</p>
+      </div>
+      <input type="file" id="fileInput" hidden
+             accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.png,.jpg,.jpeg,.zip">
+      <div class="file-chip" id="fileChip">
+        <span class="check">✓</span>
+        <span class="name" id="fileName"></span>
+        <span class="meta" id="fileMeta"></span>
+      </div>
+      <p class="field-error" id="uploadError">请先上传材料。</p>
+
+      <!-- 材料预览：预览模式渲染公式与图片，编辑模式可补正（生成时以编辑内容为准） -->
+      <div class="collapse" id="previewCollapse" hidden>
+        <div class="collapse-head" id="previewHead" tabindex="0" role="button"
+             aria-expanded="false" aria-controls="previewBody">
+          <span class="collapse-caret" aria-hidden="true"></span>
+          <span class="collapse-title">材料预览</span>
+          <span class="opt">生成时以编辑内容为准</span>
+          <span class="collapse-meta" id="previewMeta"></span>
+        </div>
+        <div class="collapse-body" id="previewBody">
+          <div class="pv-toolbar" id="pvToggle" hidden>
+            <button type="button" class="pv-tab active" data-mode="view">预览</button>
+            <button type="button" class="pv-tab" data-mode="edit">编辑</button>
+          </div>
+          <img class="preview-img" id="previewImg" alt="材料图片预览" hidden>
+          <div class="preview-view" id="previewView" hidden></div>
+          <textarea class="preview-box" id="previewBox"
+            placeholder="上传材料后，提取的文本回显在此，可直接修改补正。"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="step-head">
+        <span class="step-num">02</span>
+        <h2 class="step-title">出题设置</h2>
+      </div>
+      <div class="field">
+        <p class="field-label">题型（可多选）</p>
+        <div class="chip-row" id="typeRow"></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <p class="field-label">难度</p>
+          <div class="seg-row" id="diffRow" role="radiogroup" aria-label="难度"></div>
+        </div>
+        <div class="field">
+          <p class="field-label">题量</p>
+          <div class="stepper">
+            <button type="button" id="countDown" aria-label="减少题量">−</button>
+            <input class="count" id="countVal" type="text" inputmode="numeric"
+                   aria-label="题目数量，可手动输入" value="5">
+            <button type="button" id="countUp" aria-label="增加题量">＋</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="step-head">
+        <span class="step-num">03</span>
+        <h2 class="step-title">命题要求</h2>
+        <span class="step-tag">选填</span>
+      </div>
+      <textarea class="prompt-box" id="promptBox"
+        placeholder="例如：侧重基础知识，题目贴近生活情境；解答题需附详细解析；不要出现超纲内容……"></textarea>
+    </section>
+
+    <!-- 生成 -->
+    <div class="submit-row">
+      <button class="btn-gen" id="btnGen">生成题目</button>
+      <p class="gen-status" id="genStatus" aria-live="polite"></p>
+    </div>
+  </main>
+
+  <!-- 生成结果 -->
+  <section class="result" id="paper" hidden>
+    <div class="cutline" aria-hidden="true">
+      <span class="cutline-rule"></span>
+      <span class="cutline-label">✂ 以下为生成的题目</span>
+      <span class="cutline-rule"></span>
+    </div>
+    <div class="card paper-card">
+      <header class="paper-head">
+        <h3 class="paper-title" id="paperTitle"></h3>
+        <p class="paper-info" id="paperInfo"></p>
+      </header>
+      <div class="paper-toolbar">
+        <label class="ans-toggle"><input type="checkbox" id="showAns">显示答案与解析</label>
+        <div class="paper-actions">
+          <button class="btn primary" id="btnWord">下载 Word</button>
+          <button class="btn" id="btnCopy">复制文本</button>
+          <button class="btn ghost" id="btnAgain">重新生成</button>
+        </div>
+      </div>
+      <div class="q-body" id="paperBody"></div>
+      <p class="paper-foot">题目由 AI 依据材料生成，请人工复核后再使用。</p>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+/* ============================================================
+   配置：POST /langchain/question/generate（后端 LangChainController），
+   发 {types, difficulty, count, prompt, fileName, content}，
+   回 {title, topic, difficulty, sections: [{type, items: [{q, o?, a, note?, d?}]}],
+      totalQ, source, prompt}
+   学科不单独设置，由 AI 依据材料自动识别。
+   ============================================================ */
+const CONFIG = { apiEndpoint: '/langchain/question/generate' };
+
+/* ---------------- 常量 ---------------- */
+const TYPES = ['单选题', '多选题', '填空题', '判断题', '解答题'];
+const DIFFS = ['容易', '中等', '较难'];
+const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+
+/* ---------------- 状态 ---------------- */
+const state = {
+  file: null,
+  types: new Set(['单选题']),
+  difficulty: '中等',
+  count: 5,
+  paper: null, // 最近一次生成的题目数据
+  previewMode: 'view',   // 材料预览模式：view（渲染）| edit（编辑）
+  pdfPagesHtml: null,    // 扫描版 PDF 按页渲染的图片 HTML
+  pdfPagesMeta: '',      // PDF 页数信息
+};
+
+/* ---------------- 工具 ---------------- */
+const $ = (id) => document.getElementById(id);
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let toastTimer = null;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+/* ---------------- 渲染题目 ---------------- */
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* codecogs 公式图片（https://latex.codecogs.com/svg.image?<URL 编码的 LaTeX>）：
+   远程图片经常加载失败，这里把链接还原成 LaTeX，交给 KaTeX 本地渲染，不再请求外部图片 */
+const CODECOGS_RE = /^https?:\/\/(?:[a-z0-9-]+\.)*codecogs\.com\/(?:svg|png|gif)\.(?:image|latex)\?(.+)$/i;
+function codecogsToTex(src) {
+  const m = CODECOGS_RE.exec(String(src || '').trim());
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1].replace(/\+/g, ' '));
+  } catch {
+    return null;
+  }
+}
+
+/** 把文本里的 codecogs 公式图片链接替换为 $LaTeX$（页面渲染、复制、导出用同一份源文本） */
+function codecogsToText(s) {
+  return String(s || '').replace(
+    /!\[([^\]]*)\]\(\s*(https?:\/\/[^\s)]*codecogs\.com[^\s)]*)\s*\)/gi,
+    (m, alt, src) => {
+      const tex = codecogsToTex(src);
+      return tex ? `$${tex}$` : m;
+    });
+}
+
+/** 题目数据统一规范化：所有字段的 codecogs 图片链接还原为 LaTeX */
+function normalizePaper(p) {
+  if (!p || !Array.isArray(p.sections)) return p;
+  p.sections.forEach((sec) => {
+    (sec.items || []).forEach((item) => {
+      ['q', 'a', 'note'].forEach((k) => {
+        if (item[k] != null) item[k] = codecogsToText(item[k]);
+      });
+      if (Array.isArray(item.o)) item.o = item.o.map((x) => codecogsToText(x));
+    });
+  });
+  return p;
+}
+
+/* 数学/图片混排渲染：先把公式段与图片标签抽成占位符（保留原始内容，不受 HTML 转义影响），
+   再对剩余文本做 HTML 转义，最后回填 KaTeX 与 <img>。
+   支持 $$...$$、\[...\]（独立公式）与 $...$、\(...\)（行内公式），以及 Markdown 图片：![alt](src) */
+function fmtMath(raw) {
+  if (raw == null) return '';
+  const text = String(raw);
+  const tokens = [];
+  const push = (html) => {
+    tokens.push(html);
+    return `@@FMT${tokens.length - 1}@@`;
+  };
+  const resolveImageSrc = (src) => {
+    const trimmed = String(src || '').trim();
+    if (!trimmed) return '';
+    if (isLocalPath(trimmed)) {
+      return `/seeview/local-image?path=${encodeURIComponent(trimmed)}`;
+    }
+    return trimmed;
+  };
+  const holdMath = (tex, display) => {
+    let rendered;
+    if (window.katex) {
+      try {
+        rendered = katex.renderToString(tex, { displayMode: display, throwOnError: false });
+      } catch {
+        rendered = esc(display ? `$$${tex}$$` : `$${tex}$`);
+      }
+    } else {
+      // KaTeX 未加载成功：按原文显示
+      rendered = esc(display ? `$$${tex}$$` : `$${tex}$`);
+    }
+    return push(rendered);
+  };
+  const holdImage = (alt, src) => {
+    // codecogs 公式图片：还原为 LaTeX 本地渲染，不请求外部图片
+    const tex = codecogsToTex(src);
+    if (tex) return holdMath(tex, false);
+    const resolved = resolveImageSrc(src);
+    if (!resolved) return push('');
+    return push(`<img class="q-inline-img" src="${esc(resolved)}" alt="${esc(alt || '')}">`);
+  };
+  let t = text
+    .replace(/!\[([^\]]*)\]\((?:<([^>]+)>|([^ )\t]+))(?:\s+"[^"]*")?\)/g, (m, alt, src1, src2) => holdImage(alt, src1 || src2))
+    .replace(/\$\$([\s\S]+?)\$\$/g, (m, c) => holdMath(c, true))
+    .replace(/\\\[([\s\S]+?)\\\]/g, (m, c) => holdMath(c, true))
+    .replace(/\\\(([^\n]+?)\\\)/g, (m, c) => holdMath(c, false))
+    .replace(/\$([^$\n]+?)\$/g, (m, c) => holdMath(c, false));
+  t = esc(t).replace(/\r?\n/g, '<br>');
+  return t.replace(/@@FMT(\d+)@@/g, (m, i) => (tokens[+i] !== undefined ? tokens[+i] : m));
+}
+
+function renderPaper(p) {
+  $('paperTitle').textContent = p.title || 'AI 生成题目';
+  const bits = [`主题：${p.topic || '综合复习'}`, `难度：${p.difficulty || '中等'}`, `共 ${p.totalQ} 题`];
+  if (p.source) bits.push(`材料：${p.source}`);
+  $('paperInfo').textContent = bits.join('　·　');
+
+  const body = $('paperBody');
+  let html = '';
+  let n = 0;
+  p.sections.forEach((sec) => {
+    if (!sec.items || !sec.items.length) return;
+    html += `<div class="q-sec">${esc(sec.type)}</div>`;
+    sec.items.forEach((item) => {
+      n++;
+      html += `<div class="q-item">`;
+      html += `<p class="q-stem">${n}．${fmtMath(item.q)}</p>`;
+      if (item.o) {
+        const wide = item.o.some((x) => x.length > 14) ? ' wide' : '';
+        html += `<div class="q-opts${wide}">` +
+          item.o.map((opt, oi) =>
+            `<span>${LETTERS[oi]}．${fmtMath(opt)}</span>`).join('') + `</div>`;
+      }
+      let ans = `【答案】${item.a}`;
+      if (item.note) ans += `　【解析】${item.note}`;
+      html += `<p class="q-ans">${fmtMath(ans)}</p>`;
+      html += `</div>`;
+    });
+  });
+
+  body.innerHTML = html;
+  // 插图（几何图/函数图等）加载失败时给出占位提示，不静默裂图
+  body.querySelectorAll('img').forEach((im) => {
+    im.addEventListener('error', () => {
+      const span = document.createElement('span');
+      span.className = 'pv-img-err';
+      span.textContent = `图片加载失败：${im.getAttribute('alt') || ''}`;
+      im.replaceWith(span);
+    });
+  });
+  $('showAns').checked = false;
+  body.querySelectorAll('.q-ans').forEach((el) => el.classList.remove('show'));
+}
+
+/* ---------------- 生成流程 ---------------- */
+async function generate() {
+  // 校验
+  let ok = true;
+  if (!state.file) { $('uploadError').classList.add('show'); ok = false; }
+  if (state.types.size === 0) { toast('请至少选择一种题型'); ok = false; }
+  if (!ok) {
+    $('sheet').scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
+    return;
+  }
+
+  const btn = $('btnGen');
+  const status = $('genStatus');
+  btn.disabled = true;
+
+  try {
+    // 材料文本：取预览面板内容（上传时已提取，用户可补正），由后端生成题目
+    const content = $('previewBox').value.trim();
+    status.textContent = `正在读取《${state.file.name}》并生成题目……`;
+    const res = await fetch(CONFIG.apiEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        types: [...state.types],
+        difficulty: state.difficulty,
+        count: state.count,
+        prompt: $('promptBox').value.trim(),
+        fileName: state.file.name,
+        content,
+      }),
+    });
+    if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+    state.paper = normalizePaper(await res.json());
+
+    renderPaper(state.paper);
+    $('paper').hidden = false;
+    status.innerHTML = '<span class="done">题目已生成，请人工复核后使用。</span>';
+    toast('题目已生成');
+    $('paper').scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
+  } catch (err) {
+    status.textContent = '生成失败：' + (err.message || '未知错误') + '。请稍后重试。';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ---------------- 导出 ---------------- */
+function paperToText(p) {
+  const lines = [];
+  lines.push(p.title || 'AI 生成题目');
+  lines.push(`主题：${p.topic || '综合复习'}　难度：${p.difficulty || '中等'}　共 ${p.totalQ} 题`);
+  lines.push('');
+  let n = 0;
+  p.sections.forEach((sec) => {
+    if (!sec.items || !sec.items.length) return;
+    lines.push(`【${sec.type}】`);
+    sec.items.forEach((item) => {
+      n++;
+      lines.push(`${n}．${item.q}`);
+      if (item.o) item.o.forEach((opt, oi) => lines.push(`   ${LETTERS[oi]}．${opt}`));
+      lines.push(`   【答案】${item.a}`);
+      if (item.note) lines.push(`   【解析】${item.note}`);
+      lines.push('');
+    });
+  });
+  return lines.join('\n');
+}
+
+function downloadWord() {
+  if (!state.paper) return;
+  const p = state.paper;
+  let h = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:"SimSun",serif;line-height:1.9;font-size:12pt}h1{text-align:center;font-size:16pt;letter-spacing:3pt}.info{text-align:center;font-size:10.5pt;color:#555}h2{font-family:"SimHei";font-size:12pt;margin-top:14pt}.ans{color:#BE3A2B;font-size:10.5pt}</style></head><body>`;
+  h += `<h1>${esc(p.title || 'AI 生成题目')}</h1>`;
+  h += `<p class="info">主题：${esc(p.topic || '综合复习')}　难度：${esc(p.difficulty || '中等')}　共 ${p.totalQ} 题</p>`;
+  let n = 0;
+  p.sections.forEach((sec) => {
+    if (!sec.items || !sec.items.length) return;
+    h += `<h2>${esc(sec.type)}</h2>`;
+    sec.items.forEach((item) => {
+      n++;
+      h += `<p>${n}．${esc(item.q)}</p>`;
+      if (item.o) {
+        h += `<p style="padding-left:2em">${item.o.map((opt, oi) => `${LETTERS[oi]}．${esc(opt)}`).join('　　')}</p>`;
+      }
+      h += `<p class="ans">【答案】${esc(item.a)}${item.note ? `　【解析】${esc(item.note)}` : ''}</p>`;
+    });
+  });
+  h += `</body></html>`;
+
+  const blob = new Blob(['﻿' + h], { type: 'application/msword;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${p.topic || '题目'}_AI生成.doc`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+  toast('已下载 Word 文档');
+}
+
+async function copyText() {
+  if (!state.paper) return;
+  const text = paperToText(state.paper);
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('题目文本已复制');
+  } catch {
+    // 剪贴板不可用时的兜底
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    toast('题目文本已复制');
+  }
+}
+
+/* ---------------- 控件构建 ---------------- */
+function initTypeChips() {
+  const row = $('typeRow');
+  TYPES.forEach((t) => {
+    const label = document.createElement('label');
+    label.className = 'chip';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = t;
+    input.checked = state.types.has(t);
+    input.addEventListener('change', () => {
+      if (input.checked) state.types.add(t);
+      else state.types.delete(t);
+    });
+    const span = document.createElement('span');
+    span.textContent = t;
+    label.append(input, span);
+    row.appendChild(label);
+  });
+}
+
+function initDiffSegs() {
+  const row = $('diffRow');
+  DIFFS.forEach((d) => {
+    const label = document.createElement('label');
+    label.className = 'seg';
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'diff';
+    input.value = d;
+    input.checked = d === state.difficulty;
+    input.addEventListener('change', () => { state.difficulty = input.value; });
+    const span = document.createElement('span');
+    span.textContent = d;
+    label.append(input, span);
+    row.appendChild(label);
+  });
+}
+
+function initStepper() {
+  const min = 1, max = 30;
+  const input = $('countVal');
+  const clamp = (v) => Math.min(max, Math.max(min, v));
+  const update = () => {
+    input.value = state.count;
+    $('countDown').disabled = state.count <= min;
+    $('countUp').disabled = state.count >= max;
+  };
+  $('countDown').addEventListener('click', () => { state.count = clamp(state.count - 1); update(); });
+  $('countUp').addEventListener('click', () => { state.count = clamp(state.count + 1); update(); });
+  // 手动输入：只留数字，实时写入状态
+  input.addEventListener('input', () => {
+    input.value = input.value.replace(/\D/g, '').slice(0, 2);
+    const v = parseInt(input.value, 10);
+    if (!Number.isNaN(v)) state.count = clamp(v);
+  });
+  // 失焦或回车：按上下限归一化显示
+  input.addEventListener('blur', update);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+  update();
+}
+
+/* ---------------- 材料预览 ---------------- */
+const isPdf = (file) => /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+const isImage = (file) => /^image\//.test(file.type || '') || /\.(png|jpe?g)$/i.test(file.name);
+const isTextLike = (file) =>
+  /\.(txt|md|markdown)$/i.test(file.name) || /^text\//.test(file.type || '');
+
+/** UTF-8 优先，出现替换符（乱码）则按 GBK 重解（Windows 中文 TXT 常见） */
+function decodeTxt(buf) {
+  const utf8 = new TextDecoder('utf-8').decode(buf);
+  if (!utf8.includes('�')) return utf8;
+  try { return new TextDecoder('gbk').decode(buf); } catch { return utf8; }
+}
+
+/** pdf.js 逐页提取文本（与 index.html 同一方案） */
+async function extractPdfText(buf) {
+  if (!window.pdfjsLib) throw new Error('PDF 解析库未加载，请检查网络后刷新重试');
+  const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  const parts = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    let line = '';
+    content.items.forEach((it) => {
+      if (it.str != null) line += it.str;
+      if (it.hasEOL) line += '\n';
+    });
+    parts.push(line);
+  }
+  try { await pdf.cleanup(); } catch { /* 忽略清理失败 */ }
+  return parts.join('\n\n').trim();
+}
+
+function openPreview() {
+  $('previewCollapse').hidden = false;
+  $('previewCollapse').classList.add('open');
+  $('previewHead').setAttribute('aria-expanded', 'true');
+}
+
+function updatePreviewMeta() {
+  const n = $('previewBox').value.length;
+  const meta = $('previewMeta');
+  // PDF 按页预览时保留页数信息
+  if (!n && state.pdfPagesMeta) { meta.textContent = state.pdfPagesMeta; return; }
+  meta.textContent = n ? `共 ${n} 字` : (state.pdfPagesMeta || '');
+}
+
+/* 本地绝对路径（盘符 C:\ 或 C:/、UNC \\host\…）图片改写为后端预览接口（与 index.html 同一方案） */
+function isLocalPath(s) {
+  return /^(?:[A-Za-z]:[\\/]|\\\\)/.test(s);
+}
+function localizeImages(md) {
+  return (md || '').replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, src) => {
+    // codecogs 公式图片：还原为 $LaTeX$，交给本地 KaTeX 渲染
+    const tex = codecogsToTex(src);
+    if (tex) return `$${tex}$`;
+    if (!isLocalPath(src)) return m;
+    return `![${alt}](/seeview/local-image?path=${encodeURIComponent(src)})`;
+  });
+}
+
+/* 渲染视图：markdown + 公式（KaTeX）+ 图片；图片加载失败给占位提示，不静默裂图 */
+function setViewHtml(html) {
+  const el = $('previewView');
+  el.innerHTML = html;
+  el.querySelectorAll('img').forEach((im) => {
+    im.addEventListener('error', () => {
+      const p = document.createElement('p');
+      p.className = 'pv-img-err';
+      p.textContent = `图片加载失败：${im.getAttribute('alt') || im.getAttribute('src')}`;
+      im.replaceWith(p);
+    });
+  });
+}
+
+function renderMaterialPreview(text) {
+  if (!text || !text.trim()) {
+    // 无文本的扫描版 PDF：回退到按页渲染的图片
+    if (state.pdfPagesHtml) { setViewHtml(state.pdfPagesHtml); return; }
+    setViewHtml('<p class="pv-empty">（空）</p>');
+    return;
+  }
+  const math = [];
+  const hold = (tex, display) => {
+    math.push({ t: tex, d: display });
+    return `@@MATH${math.length - 1}@@`;
+  };
+  let t = localizeImages(text)
+    .replace(/\$\$([\s\S]+?)\$\$/g, (m, c) => hold(c, true))
+    .replace(/\\\[([\s\S]+?)\\\]/g, (m, c) => hold(c, true))
+    .replace(/\\\(([\s\S]+?)\\\)/g, (m, c) => hold(c, false))
+    .replace(/\$([^$\n]+?)\$/g, (m, c) => hold(c, false));
+  let html = null;
+  try {
+    if (window.marked && typeof window.marked.parse === 'function') {
+      html = window.marked.parse(t, { breaks: true, gfm: true });
+    }
+  } catch { html = null; }
+  if (html == null) html = '<pre class="pv-src">' + esc(t) + '</pre>';
+  for (let i = 0; i < math.length; i++) {
+    const m = math[i];
+    let rendered;
+    if (window.katex) {
+      try { rendered = katex.renderToString(m.t, { displayMode: !!m.d, throwOnError: false }); }
+      catch { rendered = esc(m.d ? `$$${m.t}$$` : `$${m.t}$`); }
+    } else {
+      rendered = esc(m.d ? `$$${m.t}$$` : `$${m.t}$`);
+    }
+    html = html.split(`@@MATH${i}@@`).join(rendered);
+  }
+  setViewHtml(html);
+}
+
+/* 扫描版 PDF：逐页渲染成图片（前 20 页），供预览 */
+async function renderPdfPages(buf) {
+  if (!window.pdfjsLib) throw new Error('PDF 解析库未加载，请检查网络后刷新重试');
+  const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  const cap = Math.min(pdf.numPages, 20);
+  const parts = [];
+  for (let i = 1; i <= cap; i++) {
+    const page = await pdf.getPage(i);
+    const base = page.getViewport({ scale: 1 });
+    const scale = Math.min(1.6, 720 / base.width);
+    const vp = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.floor(vp.width);
+    canvas.height = Math.floor(vp.height);
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    parts.push(`<img src="${canvas.toDataURL('image/jpeg', 0.85)}" alt="第 ${i} 页">`);
+    try { page.cleanup(); } catch { /* 忽略清理失败 */ }
+  }
+  state.pdfPagesMeta = `共 ${pdf.numPages} 页` + (pdf.numPages > cap ? `（预览前 ${cap} 页）` : '');
+  try { await pdf.cleanup(); } catch { /* 忽略清理失败 */ }
+  return parts.join('');
+}
+
+/* 应用预览/编辑模式 */
+function applyPreviewMode() {
+  const box = $('previewBox');
+  const view = $('previewView');
+  const img = $('previewImg');
+  const toolbar = $('pvToggle');
+  toolbar.querySelectorAll('.pv-tab').forEach((b) =>
+    b.classList.toggle('active', b.dataset.mode === state.previewMode));
+  if (!img.hidden) return; // 图片文件：只显示原图，无模式切换
+  if (state.previewMode === 'view') {
+    view.hidden = false;
+    box.hidden = true;
+    renderMaterialPreview(box.value);
+  } else {
+    view.hidden = true;
+    box.hidden = false;
+  }
+}
+
+async function loadPreview(file) {
+  const box = $('previewBox');
+  const img = $('previewImg');
+  const meta = $('previewMeta');
+  box.value = '';
+  box.hidden = false;
+  $('previewView').innerHTML = '';
+  img.hidden = true;
+  if (img.getAttribute('src')) { URL.revokeObjectURL(img.src); img.removeAttribute('src'); }
+  $('previewCollapse').hidden = true;
+  state.previewMode = 'view';
+  state.pdfPagesHtml = null;
+  state.pdfPagesMeta = '';
+
+  if (isImage(file)) {
+    // 图片：显示原图（暂不做文字提取）
+    img.src = URL.createObjectURL(file);
+    img.hidden = false;
+    box.hidden = true;
+    $('pvToggle').hidden = true;
+    meta.textContent = '图片材料';
+    openPreview();
+    return;
+  }
+
+  $('pvToggle').hidden = false;
+
+  const readAsArrayBuffer = () => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('文件读取失败'));
+    r.readAsArrayBuffer(file);
+  });
+
+  try {
+    if (isPdf(file)) {
+      meta.textContent = '解析中…';
+      $('previewCollapse').hidden = false;
+      const buf = await readAsArrayBuffer();
+      // pdf.js 会接管传入的 buffer，故各传一份拷贝
+      const text = await extractPdfText(buf.slice(0));
+      if (text) {
+        box.value = text;
+        updatePreviewMeta();
+        toast('已提取 PDF 文本，可切换编辑补正');
+      } else {
+        // 扫描件/图片版 PDF：按页渲染成图片预览
+        meta.textContent = '渲染页面中…';
+        state.pdfPagesHtml = await renderPdfPages(buf.slice(0));
+        updatePreviewMeta();
+        toast('PDF 未提取到文本（可能是扫描件），已按页预览；生成将以文件名与要求为依据');
+      }
+    } else if (isTextLike(file)) {
+      box.value = decodeTxt(await readAsArrayBuffer());
+      updatePreviewMeta();
+      toast('已加载材料文本，可切换编辑补正');
+    } else {
+      // docx/pptx/zip 等二进制格式：前端提取不了文本，仅提示
+      meta.textContent = '该格式暂不支持文本提取';
+      toast('该格式暂不支持文本预览，将以文件名与命题要求为依据');
+      return;
+    }
+  } catch (err) {
+    meta.textContent = '预览失败';
+    toast('材料预览失败：' + (err.message || '未知错误'));
+    return;
+  }
+  openPreview();
+  applyPreviewMode();
+}
+
+function initPreviewToggle() {
+  const head = $('previewHead');
+  const toggleCollapse = () => {
+    const c = $('previewCollapse');
+    c.classList.toggle('open');
+    head.setAttribute('aria-expanded', c.classList.contains('open') ? 'true' : 'false');
+  };
+  head.addEventListener('click', toggleCollapse);
+  head.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollapse(); }
+  });
+  $('previewBox').addEventListener('input', updatePreviewMeta);
+  $('pvToggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('.pv-tab');
+    if (!btn) return;
+    state.previewMode = btn.dataset.mode;
+    applyPreviewMode();
+  });
+}
+
+function initUpload() {
+  const drop = $('drop');
+  const input = $('fileInput');
+
+  const handleFile = (file) => {
+    if (!file) return;
+    state.file = file;
+    $('dropTitle').textContent = '重新上传';
+    $('fileName').textContent = file.name;
+    $('fileMeta').textContent = fmtSize(file.size);
+    $('fileChip').classList.add('show');
+    $('uploadError').classList.remove('show');
+    loadPreview(file);
+  };
+
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+  });
+  input.addEventListener('change', () => handleFile(input.files[0]));
+
+  ['dragover', 'dragenter'].forEach((evt) =>
+    drop.addEventListener(evt, (e) => { e.preventDefault(); drop.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach((evt) =>
+    drop.addEventListener(evt, (e) => { e.preventDefault(); drop.classList.remove('dragover'); }));
+  drop.addEventListener('drop', (e) => handleFile(e.dataTransfer.files[0]));
+}
+
+/* ---------------- 绑定 ---------------- */
+function init() {
+  // pdf.js worker（库加载失败不阻塞页面，预览会给出提示）
+  if (window.pdfjsLib) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
+  initTypeChips();
+  initDiffSegs();
+  initStepper();
+  initUpload();
+  initPreviewToggle();
+  $('btnGen').addEventListener('click', generate);
+  $('btnWord').addEventListener('click', downloadWord);
+  $('btnCopy').addEventListener('click', copyText);
+  $('showAns').addEventListener('change', (e) => {
+    document.querySelectorAll('.q-ans').forEach((el) =>
+      el.classList.toggle('show', e.target.checked));
+  });
+  $('btnAgain').addEventListener('click', () => {
+    $('paper').hidden = true;
+    $('genStatus').textContent = '';
+    $('sheet').scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
+  });
+}
+
+init();
+</script>
+</body>
+</html>

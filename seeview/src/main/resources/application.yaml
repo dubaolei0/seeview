@@ -24,12 +24,21 @@ manim:
   base-url: http://localhost:8000
 
 
+# AI 生题：题目插图保存目录（远程图片下载、本地图片拷贝到此处，题目内链接改写为副本绝对路径）
+question:
+  image-dir: ${user.dir}/question_output/images
+
 langchain4j:
   open-ai:
     chat-model:
-      api-key: ark-70179204-5484-4c58-bd3a-2077510f4acd-099e6
-      model-name: deepseek-v4-flash
-      base-url: https://ark.cn-beijing.volces.com/api/coding/v3
+#      api-key: ark-70179204-5484-4c58-bd3a-2077510f4acd-099e6
+#      model-name: deepseek-v4-flash
+#      base-url: https://ark.cn-beijing.volces.com/api/coding/v3
+
+      api-key: sk-bec6f20fa8eae687d5019e5694849cb13816caeeb5d5dcba9d2917d6992de360
+      model-name: gpt-5.5
+      base-url: https://code.mmkg.cloud/v1
+
       log-requests: true
       log-responses: true
       # 单次调用读超时：生成长文档（备课/讲稿/yaml，提示词+样例注入后体量较大）常超 60s 默认值
