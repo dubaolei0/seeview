@@ -72,14 +72,14 @@ AI 不写布局名，只决定是否提供 keypoint / figure。
 
 ```yaml
 figure:
-  type: tikz | image | plot   # 必填。图的来源。
-  
+  type: tikz | image | plot | schematic | geometry3d   # 必填。图的来源。
+
   # type=tikz 时
   source: string              # TikZ 源码
-  
+
   # type=image 时
   path: string                # 图片文件路径。相对路径基于 yaml 文件；推荐绝对路径（正斜杠），题干自带图片由后端复制到输出目录后以绝对路径注入
-  
+
   # type=plot 时（Manim 原生绘图，复用 plot_manager）
   x_range: [min, max, step]
   y_range: [min, max, step]
@@ -92,8 +92,55 @@ figure:
       label: "$A$"
     - type: line
       points: [[0, 0], [2, 3]]
-    # 等等
+
+  # type=schematic 时（声明式 2D 示意图，最常用；物理电路/力学图用物理图元）
+  x_range: [min, max]         # 数据坐标系范围，缺省 [-5, 5] x [-5, 5]
+  y_range: [min, max]
+  show_in_read: true          # 可选。读题封面即文左图右（仅布局 C/D）
+  reveal_at_act: N            # 可选。第 N 个 act（0-indexed）开始前出现
+  dismiss_at_act: N           # 可选。第 N 个 act 开始前淡出
+  elements: [...]
+
+  # type=geometry3d 时（3D 几何：sphere/cylinder/cube/cone/plane/segment3d/dot3d/label3d/vector3d）
+  camera_phi: 70              # 可选。相机仰角（度）
+  camera_theta: -30           # 可选。相机方位角（度）
+  camera_rotate: false        # 可选。环境慢转
+  max_size: 4.0               # 可选。整组缩放上限
+  shift: [dx, dy, dz]         # 可选。缩放后位移
 ```
+
+**schematic 基础图元**（`elements` 内 `type` 只能用下列值，禁止发明 `vertices`/`edges`/`from`/`to` 等新字段）：
+
+| type | 必填 | 可选 |
+|---|---|---|
+| rect | x,y,width,height | color,stroke_width,fill_color,fill_opacity |
+| circle | x,y,radius | 同上 |
+| line | x1,y1,x2,y2 | color,stroke_width,dashed |
+| dot | x,y | color |
+| label | x,y,text | font_size,color（text 支持 `$...$`）|
+| arrow（别名 vector） | x1,y1,x2,y2 | color,stroke_width |
+| arc | x,y,radius,start_angle,end_angle(度) | color,stroke_width |
+| polygon | points([[x,y]...]) | color,stroke_width,fill_color,fill_opacity |
+| image | x,y,path | width,height |
+
+**物理图元**（电路/力学；`direction`：'h' 水平=默认 / 'v' 竖直，符号以 (x,y) 为中心）：
+
+| type | 必填 | 可选 | 说明 |
+|---|---|---|---|
+| battery | x,y | direction,cells(1),color,stroke_width | 电池/电池组（长短线） |
+| resistor | x,y | direction,width(1.4),height(0.5),color,stroke_width | 定值电阻（矩形） |
+| rheostat | x,y | direction,width,height,color,stroke_width | 滑动变阻器（矩形+斜箭头） |
+| switch | x,y | direction,width(1.2),closed,angle(40),color,stroke_width | 电键（closed:true 闭合；false 刀闸斜开 angle 度） |
+| bulb | x,y | radius(0.4),color,stroke_width | 小灯泡（圆+叉） |
+| meter | x,y | radius(0.4),kind('A'/'V'/'G'),color,stroke_width | 电流表/电压表/灵敏电流计 |
+| junction | x,y | radius(0.1),color | 导线交叉相接点（实心圆点） |
+| spring | x1,y1,x2,y2 | coils(6),amplitude(0.22),color,stroke_width | 弹簧（两端点定义） |
+| pulley | x,y | radius(0.5),color,stroke_width | 滑轮（圆+轴心） |
+| ground | x1,y1,x2,y2 | hatch('down'/'up'),ticks(6),color,stroke_width | 地面/墙面（线+斜纹） |
+
+括号内为默认尺寸（数据坐标单位）。电路图组装规则：导线用普通 `line` 画到元件端点（留出元件尺寸空隙）；元件竖放传 `direction: v`；交叉**相接**处放 `junction` 实心点，不相接不放；电表 `kind: A` 串联、`kind: V` 并联在被测元件两端（两端各一个 junction）；元件旁配 `label`（坐标离开元件 0.6 以上防重叠）。力学图：物体用 `rect`+`label`，力用 `arrow`（长短示意大小），弹簧连物块与墙面，地面用 `ground`。
+
+**分步出现（reveal）**：给 element 加 `id`，再在 beat 用 `show: {type: figure, ref: <id 或 [id列表]>, anim: create}` 唤出（anim：fadein 默认 / create 描边生长 / grow 中心放大）。被引用的 element 初始隐藏、到那拍才出现；未被引用的整组照常显示。
 
 MVP 支持 type=image 和 type=plot。type=tikz 复用老渲染器能力，Phase 2 加。
 
@@ -269,6 +316,16 @@ show:
   label: string         # 可选。前缀，如 "易错"、"注意"。默认"注意"。
 ```
 
+#### `figure`
+唤出题图里带 `id` 的图元（分步作图/分步出现，不进推导主区、不写 body）。
+
+```yaml
+show:
+  type: figure
+  ref: string | [string]  # 必填。要唤出的图元 id（单个或列表）。
+  anim: string            # 可选。fadein（默认）| create（描边生长）| grow（中心放大）。
+```
+
 ### 升华主区
 
 #### `takeaway`
@@ -376,6 +433,8 @@ root
   - 题图随读题出现，讲解阶段分步引用图形元素
 - **空间向量/立体几何** → `直三棱柱-向量法求平面夹角-T1.yaml`
   - 较新的复杂题样例
+- **物理·电路图** → `串联电路-欧姆定律-T1.yaml`
+  - schematic 物理图元（battery/switch/rheostat/resistor/bulb/meter/junction）+ 电压表支路 reveal 分步描出 + show_in_read；say 物理单位写汉字（伏/安/欧/瓦）
 
 旧版样例已归档到 `samples/yaml样例/_archive/legacy_20260703/`，只作追溯，不作为新稿风格参考。
 

@@ -17,6 +17,12 @@ from ..theme import FIGURE_BOX, BLOCK_SPACING, RegionBox
 from ..schema import Figure, FigureType
 from .base import Region
 
+# schematic 支持的物理图元类型（电路元件 + 力学元件），见 FigureRegion._build_physics_symbol
+_PHYSICS_SYMBOL_TYPES = frozenset({
+    "battery", "resistor", "rheostat", "switch", "bulb", "meter", "junction",
+    "spring", "pulley", "ground",
+})
+
 
 class FigureRegion(Region):
     """几何图栏。静态显示题干图，讲题阶段不变。"""
@@ -182,6 +188,18 @@ class FigureRegion(Region):
     #   arc        {x, y, radius, start_angle, end_angle, color?, stroke_width?}
     #              start_angle / end_angle 单位：度
     #   polygon    {points: [[x1,y1], [x2,y2], ...], color?, stroke_width?, fill_color?, fill_opacity?}
+    #   image      {x, y, path, width?, height?}
+    # 物理图元（详见 _build_physics_symbol 注释）：
+    #   battery    {x, y, direction?: 'h'|'v', cells?, color?, stroke_width?}
+    #   resistor   {x, y, direction?, width?, height?, color?, stroke_width?}
+    #   rheostat   {x, y, direction?, width?, height?, color?, stroke_width?}
+    #   switch     {x, y, direction?, width?, closed?, angle?, color?, stroke_width?}
+    #   bulb       {x, y, radius?, color?, stroke_width?}
+    #   meter      {x, y, radius?, kind?: 'A'|'V'|'G', color?, stroke_width?}
+    #   junction   {x, y, radius?, color?}
+    #   spring     {x1, y1, x2, y2, coils?, amplitude?, color?, stroke_width?}
+    #   pulley     {x, y, radius?, color?, stroke_width?}
+    #   ground     {x1, y1, x2, y2, hatch?: 'down'|'up', ticks?, color?, stroke_width?}
     # 坐标都在一个"自定义坐标系"里，由 figure.x_range / y_range 定义。
     # 若没给 x_range / y_range，默认 [-5, 5] x [-5, 5]。
 
@@ -316,6 +334,11 @@ class FigureRegion(Region):
                     mob.stretch_to_fit_width(target_w)
                     mob.stretch_to_fit_height(target_h)
                     mob.move_to([tx(el.get("x", 0)), ty(el.get("y", 0)), 0])
+                elif t in _PHYSICS_SYMBOL_TYPES:
+                    # 物理图元：电路元件与力学元件（见 _build_physics_symbol 注释）
+                    mob = self._build_physics_symbol(el, tx, ty, tlen)
+                    if mob is None:
+                        continue
                 else:
                     continue
                 group.add(mob)
@@ -327,6 +350,170 @@ class FigureRegion(Region):
                 continue
 
         return self._finalize_content(group)
+
+
+    # ------------------------------------------------------------------
+    # 物理图元：电路元件 + 力学元件
+    # ------------------------------------------------------------------
+    # 全部在"数据坐标系"声明（尺寸经 tlen 缩放），符号以 (x, y) 为中心、
+    # 按 direction 旋转（'h'=水平放置，默认；'v'=竖直放置）。
+    # 导线用普通 line 画到元件端点，交叉相接处用 junction 实心点标出。
+    #   battery    {x, y, direction?, cells?}                  电池/电池组（长短线，cells 节数）
+    #   resistor   {x, y, direction?, width?, height?}          定值电阻（国标矩形）
+    #   rheostat   {x, y, direction?, width?, height?}          滑动变阻器（矩形+斜箭头）
+    #   switch     {x, y, direction?, width?, closed?, angle?}  电键（closed=false 刀闸斜开 angle 度）
+    #   bulb       {x, y, radius?}                              小灯泡（圆+叉）
+    #   meter      {x, y, radius?, kind?}                       电表（kind: A/V/G，电流表/电压表/灵敏电流计）
+    #   junction   {x, y, radius?}                              导线交叉相接点（实心圆点）
+    #   spring     {x1, y1, x2, y2, coils?, amplitude?}         弹簧（锯齿线，两端留直段）
+    #   pulley     {x, y, radius?}                              滑轮（圆+轴心）
+    #   ground     {x1, y1, x2, y2, hatch?, ticks?}             地面/墙面（线+斜纹，hatch: down/up）
+
+    def _build_physics_symbol(self, el, tx, ty, tlen):
+        """构建单个物理图元，返回以数据坐标 (x, y)（或端点）为中心的 VGroup。
+
+        由 _build_schematic 调用，复用其 tx/ty/tlen 坐标映射；id/reveal
+        注册由外层统一处理。无法构建（参数缺失等）返回 None。
+        """
+        import numpy as np
+        from manim import (
+            VGroup as VG, Rectangle, Circle, Line, Dot, Arrow,
+        )
+
+        t = el.get("type")
+        color = el.get("color", "#1F2937")
+        sw = el.get("stroke_width", 2)
+
+        def place(mob):
+            """移动到数据坐标 (x,y)；direction='v' 时先绕中心旋转 90 度。"""
+            if el.get("direction", "h") == "v":
+                mob.rotate(np.pi / 2, about_point=mob.get_center())
+            mob.move_to([tx(el["x"]), ty(el["y"]), 0])
+            return mob
+
+        if t == "battery":
+            cells = max(1, int(el.get("cells", 1)))
+            gap = tlen(el.get("gap", 0.5))            # 每节电池的宽度
+            g = VG()
+            for i in range(cells):
+                off = (i - (cells - 1) / 2) * gap
+                # 每节：左短粗线（负极）+ 右细长线（正极）
+                g.add(Line([off - gap * 0.25, -tlen(0.18), 0],
+                           [off - gap * 0.25, tlen(0.18), 0],
+                           color=color, stroke_width=6))
+                g.add(Line([off + gap * 0.25, -tlen(0.35), 0],
+                           [off + gap * 0.25, tlen(0.35), 0],
+                           color=color, stroke_width=2))
+            return place(g)
+
+        if t == "resistor":
+            w = tlen(el.get("width", 1.4))
+            h = tlen(el.get("height", 0.5))
+            return place(VG(Rectangle(width=w, height=h, color=color, stroke_width=sw)))
+
+        if t == "rheostat":
+            w = tlen(el.get("width", 1.4))
+            h = tlen(el.get("height", 0.5))
+            rect = Rectangle(width=w, height=h, color=color, stroke_width=sw)
+            # 滑片：贯穿矩形的斜箭头
+            arrow = Arrow([-w * 0.7, -h * 1.1, 0], [w * 0.7, h * 1.1, 0],
+                          color=color, buff=0, stroke_width=sw)
+            return place(VG(rect, arrow))
+
+        if t == "switch":
+            w = tlen(el.get("width", 1.2))
+            g = VG(
+                Dot([-w / 2, 0, 0], radius=0.05, color=color),
+                Dot([w / 2, 0, 0], radius=0.05, color=color),
+            )
+            if el.get("closed", False):
+                g.add(Line([-w / 2, 0, 0], [w / 2, 0, 0], color=color, stroke_width=sw))
+            else:
+                # 刀闸斜开：从左触点抬起 angle 度（长度仍为 w）
+                ang = np.deg2rad(el.get("angle", 40))
+                end = np.array([-w / 2 + w * np.cos(ang), w * np.sin(ang), 0])
+                g.add(Line([-w / 2, 0, 0], end, color=color, stroke_width=sw))
+            return place(g)
+
+        if t == "bulb":
+            r = tlen(el.get("radius", 0.4))
+            d = r / np.sqrt(2)
+            return place(VG(
+                Circle(radius=r, color=color, stroke_width=sw),
+                Line([-d, -d, 0], [d, d, 0], color=color, stroke_width=sw),
+                Line([-d, d, 0], [d, -d, 0], color=color, stroke_width=sw),
+            ))
+
+        if t == "meter":
+            r = tlen(el.get("radius", 0.4))
+            kind = str(el.get("kind", "A"))
+            from ..blocks.text_mixin import create_mixed_tex
+            letter = create_mixed_tex(kind, font_size=el.get("font_size", 30), color=color)
+            return place(VG(
+                Circle(radius=r, color=color, stroke_width=sw),
+                letter,
+            ))
+
+        if t == "junction":
+            return place(Dot(
+                [tx(el["x"]), ty(el["y"]), 0],
+                radius=tlen(el.get("radius", 0.1)),
+                color=color,
+            ))
+
+        if t == "spring":
+            p1 = np.array([tx(el["x1"]), ty(el["y1"]), 0])
+            p2 = np.array([tx(el["x2"]), ty(el["y2"]), 0])
+            d = p2 - p1
+            length = float(np.linalg.norm(d))
+            if length < 1e-6:
+                return None
+            u = d / length
+            n = np.array([-u[1], u[0], 0])
+            coils = max(1, int(el.get("coils", 6)))
+            amp = tlen(el.get("amplitude", 0.22))
+            lead = length * 0.15                   # 两端各留一段直簧丝
+            seg = (length - 2 * lead) / coils
+            pts = [p1, p1 + u * lead]
+            for i in range(coils):
+                s = lead + i * seg
+                pts.append(p1 + u * (s + seg / 2) + n * (amp if i % 2 == 0 else -amp))
+            pts.append(p2 - u * lead)
+            pts.append(p2)
+            return VG(*[Line(pts[i], pts[i + 1], color=color, stroke_width=sw)
+                        for i in range(len(pts) - 1)])
+
+        if t == "pulley":
+            r = tlen(el.get("radius", 0.5))
+            return place(VG(
+                Circle(radius=r, color=color, stroke_width=sw),
+                Dot([0, 0, 0], radius=0.05, color=color),
+            ))
+
+        if t == "ground":
+            p1 = np.array([tx(el["x1"]), ty(el["y1"]), 0])
+            p2 = np.array([tx(el["x2"]), ty(el["y2"]), 0])
+            d = p2 - p1
+            length = float(np.linalg.norm(d))
+            if length < 1e-6:
+                return None
+            u = d / length
+            # 斜纹法向：'down' 取指向屏幕下方的法向，'up' 反之
+            n = np.array([-u[1], u[0], 0])
+            if el.get("hatch", "down") == "down" and n[1] > 0:
+                n = -n
+            if el.get("hatch", "down") == "up" and n[1] < 0:
+                n = -n
+            ticks = max(2, int(el.get("ticks", 6)))
+            tick_len = min(tlen(el.get("tick_len", 0.3)), length / ticks * 2)
+            g = VG(Line(p1, p2, color=color, stroke_width=sw + 1))
+            for i in range(ticks):
+                s = (i + 0.5) / ticks
+                base = p1 + u * (length * s)
+                g.add(Line(base, base + n * tick_len, color=color, stroke_width=max(1, sw - 1)))
+            return g
+
+        return None
 
 
     # ------------------------------------------------------------------

@@ -112,11 +112,12 @@ public class LectureGenerateService {
 
         String yamlPrompt = readSkill("yaml.md");
         boolean concise = "简洁".equals(budget); // 简洁：只生成 yaml（fast 模式，无备课/讲稿）
+        boolean physics = looksPhysics(problem); // 物理题：注入物理样例（自动识别，无学科配置）
 
         // 读注入引用（缺失则跳过，不阻塞）
         String ttsRules = readResource(pipelineDir, "rules/tts_读法约定.md");
         String schemaSpec = readResource(pipelineDir, "docs/schema规范.md");
-        String yamlSample = readResource(pipelineDir.resolve("samples/yaml样例"), yamlSampleName(budget));
+        String yamlSample = readResource(pipelineDir.resolve("samples/yaml样例"), yamlSampleName(budget, physics));
         String profile = blank(req.memberName()) ? null
                 : readResource(Paths.get(communityDir), "team/" + req.memberName() + "/profile.md");
 
@@ -131,7 +132,7 @@ public class LectureGenerateService {
             // 标准 / 深入：三段式，先生成备课、讲稿
             String beikePrompt = readSkill("备课.md");
             String jianggaoPrompt = readSkill("讲稿.md");
-            String beikeSample = readResource(pipelineDir.resolve("samples/备课样例"), beikeSampleName(budget));
+            String beikeSample = readResource(pipelineDir.resolve("samples/备课样例"), beikeSampleName(budget, physics));
             String jianggaoSample = readResource(pipelineDir, "samples/自然语言讲稿/problem_18_讲稿.md");
 
             // ① 备课
@@ -720,7 +721,11 @@ public class LectureGenerateService {
         }
     }
 
-    private String beikeSampleName(String budget) {
+    /** 备课样例选择：物理题用电路备课样例（重点看「○、图形需求」怎么写图），数学题按预算选。 */
+    private String beikeSampleName(String budget, boolean physics) {
+        if (physics) {
+            return "problem_physics_circuit_备课.md";
+        }
         return switch (budget) {
             case "简洁" -> "problem_01_备课.md";
             case "深入" -> "problem_19_备课.md";
@@ -728,8 +733,29 @@ public class LectureGenerateService {
         };
     }
 
-    private String yamlSampleName(String budget) {
+    /** yaml 样例选择：物理题用电路样例（schematic 物理图元 + reveal 分步画图），数学题按预算选。 */
+    private String yamlSampleName(String budget, boolean physics) {
+        if (physics) {
+            return "串联电路-欧姆定律-T1.yaml";
+        }
         return "深入".equals(budget) ? "直三棱柱-向量法求平面夹角-T1.yaml" : "simple_fast_complex_subtraction.yaml";
+    }
+
+    // ===================== 物理题自动识别（仅用于样例选择，无学科配置） =====================
+
+    /**
+     * 物理题强特征：电学词汇/符号、力学场景词或物理量符号。
+     * 命中任一即按物理题选样例。只影响注入哪份样例，不影响流程与 schema，
+     * 误判（如数学题带"速度"）也只是换了份参考样例，无正确性风险。
+     * 注意不用 \vec / \mathrm / 频率这类数学题也常用的记号。
+     */
+    private static final Pattern PHYSICS_MARK = Pattern.compile(
+            "Ω|\\\\Omega|电路|电流|电压|电阻|电源|开关|滑动变阻器|灯泡|串联|并联|"
+                    + "欧姆|安培|伏特|电功率|电荷|电场|磁场|重力|摩擦|牛顿|加速度|动能|势能|"
+                    + "机械能|动量|斜面|滑轮|弹簧|光路|折射|入射角|波长|比热容|熔化|凝固");
+
+    private boolean looksPhysics(String problem) {
+        return problem != null && PHYSICS_MARK.matcher(problem).find();
     }
 
     /** 剥掉模型可能包裹的最外层 markdown 代码围栏（仅用于 yaml）。 */

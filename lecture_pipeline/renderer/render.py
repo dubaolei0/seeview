@@ -433,12 +433,16 @@ def render_lecture(
     tts_speech_rate: float | None = None,
     hide_statement: bool = False,
     media_dir: str | None = None,
+    enable_caching: bool = False,
 ) -> Path:
     """
     主渲染流程。返回最终 mp4 路径。
 
     media_dir：manim media 输出根目录。并发渲染时各进程传不同 media_dir，
     避免 partial_movie_files / Tex 缓存在共享 media/ 下互相覆盖。默认 None 用 manim 默认 media/。
+    enable_caching：默认 False 关闭 manim 动画缓存哈希。缓存的哈希计算会把场上全部
+    mobject 反复 JSON 序列化（且 memoizer 集合只增不减），讲题视频 beat 多、LaTeX
+    内容大时直接 MemoryError；本流水线每次渲染的 yaml/输出都不同，缓存收益趋近于零。
     """
     # 0. 让 xelatex 能找到随引擎自带的宏包（multiple-choice 等），免得成员本地 MiKTeX 还要联网下载
     _ensure_vendored_texmf()
@@ -448,6 +452,8 @@ def render_lecture(
     # 0c. 隔离 media 目录（并发渲染安全）
     if media_dir:
         config.media_dir = Path(media_dir)
+    # 0d. 关闭动画缓存哈希（默认）：防止长视频渲染中途 MemoryError，见 render_lecture docstring
+    config.disable_caching = not enable_caching
 
     # 1. 解析 schema
     doc = LectureDoc.from_yaml_file(yaml_path)
@@ -665,6 +671,11 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="manim media 输出目录（并发渲染时隔离用，默认 media/）。",
     )
+    parser.add_argument(
+        "--enable-caching", action="store_true",
+        help="启用 manim 动画缓存哈希（默认关闭）。长视频开缓存会把内存耗尽报 MemoryError，"
+             "仅短视频反复重渲染同一 yaml 想省时间时才开。",
+    )
     args = parser.parse_args(argv)
 
     yaml_path = Path(args.yaml_file).resolve()
@@ -700,6 +711,7 @@ def main(argv: list[str] | None = None) -> int:
             tts_speech_rate=args.speech_rate,
             hide_statement=args.no_statement,
             media_dir=args.media_dir,
+            enable_caching=args.enable_caching,
         )
         return 0
     except Exception as e:
