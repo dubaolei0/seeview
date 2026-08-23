@@ -206,7 +206,10 @@ class DoubaoDriver:
             logger.info(f"   Cluster: {self.cluster}")
         
         # TTSManager owns retries so failures are visible and bounded.
+        # trust_env=False：忽略系统/环境变量代理（如本机 Clash 127.0.0.1:7890 未运行时，
+        # requests 会因走死代理而超时/拒连，豆包 API 本身可直连）
         self.session = requests.Session()
+        self.session.trust_env = False
     
     def generate(self, text: str, mode: str = "normal", prev_text: str = None) -> Tuple[str, float]:
         """
