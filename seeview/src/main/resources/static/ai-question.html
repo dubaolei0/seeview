@@ -367,6 +367,66 @@ body {
 .q-ans .katex { font-size: 1em; }
 .katex-display { margin: 6px 0; overflow-x: auto; overflow-y: hidden; padding: 2px 0; }
 
+/* 题干中的代码块（TikZ 配图源码等）：等宽原样展示，可整段复制 */
+.q-code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 12px/1.8 var(--mono);
+  background: var(--line-2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 6px 0;
+}
+
+/* TikZ 配图 + 编辑入口：图正常显示，下方挂"编辑配图"按钮（源码块隐藏） */
+.q-fig { display: block; margin: 6px 0; }
+.q-fig img { max-width: 100%; }
+.q-fig-btn {
+  font: 12px/1.6 var(--mono);
+  color: #4a6fa5;
+  background: none;
+  border: 1px dashed #b9c6da;
+  border-radius: 4px;
+  padding: 1px 8px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+.q-fig-btn:hover { background: #eef3fa; }
+
+/* TikZ 配图编辑弹窗 */
+.fig-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, .45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.fig-modal[hidden] { display: none; }
+.fig-dialog {
+  width: min(760px, 92vw);
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
+}
+.fig-dialog header { display: flex; justify-content: space-between; align-items: center; }
+.fig-close { border: none; background: none; font-size: 20px; line-height: 1; cursor: pointer; color: #666; }
+.fig-tip { font-size: 12px; color: #777; margin: 6px 0 8px; }
+#figCode {
+  width: 100%;
+  height: 300px;
+  font: 12px/1.7 var(--mono);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+.fig-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; }
+.fig-status { flex: 1; font-size: 12px; color: #b45309; }
+
 /* 题干/选项/解析中的插图（几何图、函数图等） */
 .q-stem img, .q-opts img, .q-ans img {
   max-width: 100%;
@@ -545,6 +605,23 @@ body {
 
 <div class="toast" id="toast" role="status"></div>
 
+<!-- TikZ 配图编辑器：改源码 -> 后端重编译 -> 更新配图 -->
+<div class="fig-modal" id="figModal" hidden>
+  <div class="fig-dialog">
+    <header>
+      <b>编辑配图（TikZ）</b>
+      <button class="fig-close" id="figClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <p class="fig-tip">调整坐标或节点方位（above/below/left/right）可解决文字与符号重叠；改完点"重新生成图片"。</p>
+    <textarea id="figCode" spellcheck="false"></textarea>
+    <div class="fig-actions">
+      <span class="fig-status" id="figStatus" aria-live="polite"></span>
+      <button class="btn" id="figCancel" type="button">取消</button>
+      <button class="btn primary" id="figRender" type="button">重新生成图片</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
@@ -677,7 +754,10 @@ function fmtMath(raw) {
     if (!resolved) return push('');
     return push(`<img class="q-inline-img" src="${esc(resolved)}" alt="${esc(alt || '')}">`);
   };
+  /* 围栏代码块（如 TikZ）整体占位、原样展示：块内 $...$ 等不参与公式渲染 */
+  const holdCode = (code) => push('<pre class="q-code">' + esc(code) + '</pre>');
   let t = text
+    .replace(/```[^\n]*\n[\s\S]*?(?:```|$)/g, (m) => holdCode(m))
     .replace(/!\[([^\]]*)\]\((?:<([^>]+)>|([^ )\t]+))(?:\s+"[^"]*")?\)/g, (m, alt, src1, src2) => holdImage(alt, src1 || src2))
     .replace(/\$\$([\s\S]+?)\$\$/g, (m, c) => holdMath(c, true))
     .replace(/\\\[([\s\S]+?)\\\]/g, (m, c) => holdMath(c, true))
@@ -726,8 +806,115 @@ function renderPaper(p) {
       im.replaceWith(span);
     });
   });
+  // TikZ 配图：源码块隐藏，紧邻的配图挂"编辑配图"入口；
+  // 后端编译失败（没有配图）时源码原样展示 + "生成配图"按钮
+  body.querySelectorAll('pre.q-code').forEach((pre) => {
+    const raw = pre.textContent;
+    if (!/^\s*```tikz/i.test(raw)) return;
+    let img = null;
+    for (let el = pre.previousElementSibling; el && !img; el = el.previousElementSibling) {
+      if (el.tagName === 'IMG') img = el;
+      else if (el.querySelector) img = el.querySelector('img');
+    }
+    const fig = document.createElement('span');
+    fig.className = 'q-fig';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'q-fig-btn';
+    btn.textContent = img ? '✎ 编辑配图' : '⚙ 生成配图';
+    // 每次点击从 pre 取当前源码（编辑重编译后 pre 内容已同步），img 也以 fig 内现图为准
+    btn.addEventListener('click', () => {
+      const code = pre.textContent.replace(/^\s*```[^\n]*\n/, '').replace(/```\s*$/, '').trim();
+      openFigEditor(code, fig.querySelector('img'), pre, fig);
+    });
+    fig.appendChild(btn);
+    if (img) {
+      img.replaceWith(fig);
+      fig.insertBefore(img, btn);
+      pre.hidden = true;
+    } else {
+      pre.after(fig);
+    }
+  });
   $('showAns').checked = false;
   body.querySelectorAll('.q-ans').forEach((el) => el.classList.remove('show'));
+}
+
+/* ---------------- 配图编辑（TikZ 改码重编译） ---------------- */
+/* /seeview/local-image?path=<abs> -> <abs>，其余原样返回 */
+function localImgPath(src) {
+  const m = /local-image\?path=([^&]+)/.exec(src || '');
+  return m ? decodeURIComponent(m[1]) : (src || '');
+}
+
+function openFigEditor(code, img, pre, fig) {
+  state.figEdit = { img, pre, fig, oldPath: img ? localImgPath(img.getAttribute('src')) : '' };
+  $('figCode').value = code;
+  $('figStatus').textContent = '';
+  $('figModal').hidden = false;
+  $('figCode').focus();
+}
+
+async function figRender() {
+  const ctx = state.figEdit;
+  if (!ctx) return;
+  const code = $('figCode').value.trim();
+  if (!code) { $('figStatus').textContent = 'TikZ 源码不能为空'; return; }
+  const btn = $('figRender');
+  btn.disabled = true;
+  $('figStatus').textContent = '编译中（XeLaTeX 约需十几秒）……';
+  try {
+    const res = await fetch('/langchain/question/render-tikz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+    const data = await res.json();
+    if (data.error) { $('figStatus').textContent = '编译失败：' + data.error; return; }
+    applyFigImage(ctx, data.path, code);
+    $('figModal').hidden = true;
+    toast('配图已更新');
+  } catch (err) {
+    $('figStatus').textContent = '请求失败：' + (err.message || '未知错误');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* 新图落位：更新/插入 <img>、隐藏源码块、同步源码与 state.paper 里的图片路径 */
+function applyFigImage(ctx, newPath, code) {
+  const url = `/seeview/local-image?path=${encodeURIComponent(newPath)}`;
+  let img = ctx.img;
+  if (img) {
+    img.setAttribute('src', url);
+    if (ctx.oldPath && ctx.oldPath !== newPath) syncPaperImage(ctx.oldPath, newPath);
+  } else {
+    img = document.createElement('img');
+    img.alt = '配图';
+    img.src = url;
+    ctx.fig.insertBefore(img, ctx.fig.firstChild);
+    ctx.pre.hidden = true;
+    const btn = ctx.fig.querySelector('.q-fig-btn');
+    if (btn) btn.textContent = '✎ 编辑配图';
+  }
+  // 源码块内容同步为最新代码，供再次编辑；刷新编辑上下文
+  ctx.pre.textContent = '```tikz\n' + code + '\n```';
+  state.figEdit = { img, pre: ctx.pre, fig: ctx.fig, oldPath: newPath };
+}
+
+/* state.paper 各字段里的旧图片路径替换为新路径（复制/下载与界面保持一致） */
+function syncPaperImage(oldPath, newPath) {
+  const p = state.paper;
+  if (!p || !Array.isArray(p.sections)) return;
+  p.sections.forEach((sec) => (sec.items || []).forEach((item) => {
+    ['q', 'a', 'note'].forEach((k) => {
+      if (typeof item[k] === 'string') item[k] = item[k].split(oldPath).join(newPath);
+    });
+    if (Array.isArray(item.o)) {
+      item.o = item.o.map((x) => (typeof x === 'string' ? x.split(oldPath).join(newPath) : x));
+    }
+  }));
 }
 
 /* ---------------- 生成流程 ---------------- */
@@ -777,6 +964,15 @@ async function generate() {
 }
 
 /* ---------------- 导出 ---------------- */
+/* 去掉 TikZ 源码块：复制/下载只保留配图链接，不带绘图代码 */
+function stripTikz(s) {
+  if (s == null) return s;
+  return String(s)
+    .replace(/```tikz[^\n]*\n[\s\S]*?```/g, '')
+    .replace(/```tikz[\s\S]*$/g, '')
+    .trim();
+}
+
 function paperToText(p) {
   const lines = [];
   lines.push(p.title || 'AI 生成题目');
@@ -788,7 +984,7 @@ function paperToText(p) {
     lines.push(`【${sec.type}】`);
     sec.items.forEach((item) => {
       n++;
-      lines.push(`${n}．${item.q}`);
+      lines.push(`${n}．${stripTikz(item.q)}`);
       if (item.o) item.o.forEach((opt, oi) => lines.push(`   ${LETTERS[oi]}．${opt}`));
       lines.push(`   【答案】${item.a}`);
       if (item.note) lines.push(`   【解析】${item.note}`);
@@ -810,7 +1006,7 @@ function downloadWord() {
     h += `<h2>${esc(sec.type)}</h2>`;
     sec.items.forEach((item) => {
       n++;
-      h += `<p>${n}．${esc(item.q)}</p>`;
+      h += `<p>${n}．${esc(stripTikz(item.q))}</p>`;
       if (item.o) {
         h += `<p style="padding-left:2em">${item.o.map((opt, oi) => `${LETTERS[oi]}．${esc(opt)}`).join('　　')}</p>`;
       }
@@ -992,11 +1188,17 @@ function renderMaterialPreview(text) {
     return;
   }
   const math = [];
+  const codes = [];
   const hold = (tex, display) => {
     math.push({ t: tex, d: display });
     return `@@MATH${math.length - 1}@@`;
   };
   let t = localizeImages(text)
+    /* 围栏代码块先占位（原样展示），块内 $...$ 不参与公式渲染 */
+    .replace(/```[^\n]*\n[\s\S]*?(?:```|$)/g, (m) => {
+      codes.push(m);
+      return `@@CODE${codes.length - 1}@@`;
+    })
     .replace(/\$\$([\s\S]+?)\$\$/g, (m, c) => hold(c, true))
     .replace(/\\\[([\s\S]+?)\\\]/g, (m, c) => hold(c, true))
     .replace(/\\\(([\s\S]+?)\\\)/g, (m, c) => hold(c, false))
@@ -1018,6 +1220,9 @@ function renderMaterialPreview(text) {
       rendered = esc(m.d ? `$$${m.t}$$` : `$${m.t}$`);
     }
     html = html.split(`@@MATH${i}@@`).join(rendered);
+  }
+  for (let i = 0; i < codes.length; i++) {
+    html = html.split(`@@CODE${i}@@`).join(`<pre class="pv-src">${esc(codes[i])}</pre>`);
   }
   setViewHtml(html);
 }
@@ -1198,6 +1403,12 @@ function init() {
   $('btnGen').addEventListener('click', generate);
   $('btnWord').addEventListener('click', downloadWord);
   $('btnCopy').addEventListener('click', copyText);
+  $('figRender').addEventListener('click', figRender);
+  $('figCancel').addEventListener('click', () => { $('figModal').hidden = true; });
+  $('figClose').addEventListener('click', () => { $('figModal').hidden = true; });
+  $('figModal').addEventListener('click', (e) => {
+    if (e.target.id === 'figModal') $('figModal').hidden = true;
+  });
   $('showAns').addEventListener('change', (e) => {
     document.querySelectorAll('.q-ans').forEach((el) =>
       el.classList.toggle('show', e.target.checked));

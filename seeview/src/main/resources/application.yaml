@@ -27,6 +27,9 @@ manim:
 # AI 生题：题目插图保存目录（远程图片下载、本地图片拷贝到此处，题目内链接改写为副本绝对路径）
 question:
   image-dir: ${user.dir}/question_output/images
+  # TikZ 配图编译：题干中的 ```tikz 代码块由该 python + 脚本编译为 PNG（xelatex）
+  tikz-python: ${user.dir}/lecture_pipeline/.venv/Scripts/python.exe
+  tikz-script: ${user.dir}/tools/题目png生成工具/latex_snippet_tool.py
 
 langchain4j:
   open-ai:

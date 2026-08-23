@@ -28,12 +28,15 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,6 +55,14 @@ public class LangChainController {
     /** 题目插图本地保存目录：远程图片下载、本地图片拷贝到此处，题目内链接改写为副本绝对路径 */
     @Value("${question.image-dir:${user.dir}/question_output/images}")
     private String questionImageDir;
+
+    /** TikZ 配图编译用 python（lecture_pipeline venv，带 pdf2image/PIL/numpy） */
+    @Value("${question.tikz-python:${user.dir}/lecture_pipeline/.venv/Scripts/python.exe}")
+    private String tikzPython;
+
+    /** TikZ -> PNG 编译脚本（xelatex 编译并裁剪透明背景） */
+    @Value("${question.tikz-script:${user.dir}/tools/题目png生成工具/latex_snippet_tool.py}")
+    private String tikzScript;
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10)).build();
@@ -107,6 +118,25 @@ public class LangChainController {
     }
 
     /**
+     * TikZ 配图重新编译（智能命题工作台"编辑配图"用）：前端改完 TikZ 源码后调此接口重出图。
+     *
+     * @param body {@code {"code": "TikZ 源码"}}
+     * @return 成功 {@code {"path": PNG 绝对路径}}；失败 {@code {"error": 错误摘要}}（HTTP 均 200，前端按字段区分）
+     */
+    @PostMapping("/question/render-tikz")
+    public Map<String, String> renderTikz(@RequestBody Map<String, String> body) {
+        String code = body == null ? null : body.get("code");
+        if (code == null || code.isBlank()) {
+            return Map.of("error", "code 不能为空");
+        }
+        TikzResult r = compileTikz(sanitizeTikz(code.strip()));
+        if (!r.ok()) {
+            return Map.of("error", r.error() == null ? "TikZ 编译失败" : r.error());
+        }
+        return Map.of("path", r.path().toString().replace('\\', '/'));
+    }
+
+    /**
      * AI 生题（智能命题工作台）：依据上传材料与命题参数生成一组题目。
      *
      * <p>学科不单独指定，由大模型依据材料内容自动识别，任意学科通用；
@@ -136,6 +166,8 @@ public class LangChainController {
         }
         // 题目里的图片落地保存（远程下载/本地拷贝），链接改写为副本路径
         paper = persistImages(paper);
+        // 题干中的 ```tikz 代码块编译为配图 PNG，代码块改写为图片链接
+        paper = renderTikzFigures(paper);
         return finalizePaper(paper, request);
     }
 
@@ -164,7 +196,15 @@ public class LangChainController {
                    （1）对于知识点关联相对充分的题目：请根据 XXX 知识点，挑选 XX 道高考题，并根据每道高考题在 XXX 层级改编 XXX 道题。
                        请围绕原题中的概念、公式、模型、具体应用等要素特征进行改编，可以替换原题中的数字，可以调整物理场景设定，
                        尽可能保留原始题目的特征和命题逻辑。如果题目配有图片，在已改编的题目中可以不使用图片、使用原图片，
-                       或者在必要的情况下用 TikZ 重新绘制题目配图（TikZ 代码用代码块包裹，放在题干末尾）。
+                       或者在必要的情况下用 TikZ 重新绘制题目配图（系统会把 TikZ 代码自动编译为配图；
+                       TikZ 代码用 ```tikz 围栏代码块包裹，放在题干末尾；
+                       代码中的节点标签：纯文字标签（如 A、B、E）不用 $ 包裹；
+                       含下标/上标的标签必须整体用 $ 包裹成数学模式，如 node[left] {$A_1$}，严禁写裸下标 node[left] {A_1}；
+                       绘图时注意标签与标签、标签与线条之间错开不重叠：节点用 above left/below right 等组合方位引出，
+                       必要时加大 scale 或拉大坐标间距，相邻顶点标签方位错开）。
+                       若用户补充要求不得直接使用原图片，则必须用 TikZ 重绘配图、不得输出原图片链接；
+                       重绘时按改编后的实际尺寸取比例，改编数字尽量打破原图的等比关系（如长宽高改为不同比例），
+                       使新配图与原图有肉眼可辨的差异。
                        使用原图片时必须原样保留材料中的 Markdown 图片语法（如 ![](C:\\Users\\...\\T3.png) 的本地路径原样复制，不要改写或省略）；
                        不使用图片时题干中不得出现"如图"等指代图片的表述，需改写为不含图的说法。
                    （2）对于知识点关联不充分的题目：请围绕 XXX 题，根据 XXX 知识点进行改编。
@@ -263,7 +303,128 @@ public class LangChainController {
                 req.prompt() == null ? "" : req.prompt());
     }
 
-    // ===================== AI 生题：题目图片落地保存 =====================
+    // ===================== AI 生题：TikZ 配图编译 =====================
+
+    /** ```tikz 围栏代码块（大模型重绘的题目配图源码，由后端编译为图片） */
+    private static final Pattern TIKZ_BLOCK = Pattern.compile("```tikz[^\\n]*\\n([\\s\\S]*?)```");
+
+    /**
+     * TikZ 节点标签里的裸下标：如 node[left] {A_1} -- 文本模式下划线是 LaTeX 语法错误
+     * （级联报错导致整图编译失败），整体补成 $A_1$ 修复。兼容 node[选项]、node at (坐标) 两种形式。
+     */
+    private static final Pattern NODE_LABEL_UNDERSCORE =
+            Pattern.compile("(node(?:\\[[^\\]]*\\])?(?:\\s+at\\s+\\([^()]*\\))?\\s*\\{)([^{}$]*_[^{}$]*)(\\})");
+
+    /** 编译前的 TikZ 源码修正：裸下标标签补数学模式包裹等；已合法的代码不受影响 */
+    private String sanitizeTikz(String code) {
+        if (code == null || !code.contains("_")) return code;
+        return NODE_LABEL_UNDERSCORE.matcher(code).replaceAll("$1\\$$2\\$$3");
+    }
+
+    /**
+     * 把题目里的 ```tikz 代码块编译成配图 PNG（调用 latex_snippet_tool.py，xelatex 编译并裁剪），
+     * 保存到题目插图目录，代码块改写为 Markdown 图片链接。
+     * 编译失败时保留原代码块（前端等宽展示源码），不阻塞出题主流程。
+     */
+    private QuestionPaper renderTikzFigures(QuestionPaper paper) {
+        if (paper.sections() == null) return paper;
+        List<QuestionPaper.Section> sections = paper.sections().stream().map(sec -> {
+            if (sec.items() == null) return sec;
+            List<QuestionPaper.Item> items = sec.items().stream().map(item -> new QuestionPaper.Item(
+                    localizeTikzBlocks(item.q()),
+                    item.o() == null ? null : item.o().stream().map(this::localizeTikzBlocks).toList(),
+                    localizeTikzBlocks(item.a()),
+                    localizeTikzBlocks(item.note()),
+                    item.d())).toList();
+            return new QuestionPaper.Section(sec.type(), items);
+        }).toList();
+        return new QuestionPaper(paper.title(), paper.topic(), paper.difficulty(),
+                sections, paper.totalQ(), paper.source(), paper.prompt());
+    }
+
+    /** 改写一段文本里的 ```tikz 代码块为配图链接；无代码块或编译失败时原样返回 */
+    private String localizeTikzBlocks(String text) {
+        if (text == null || !text.contains("```tikz")) return text;
+        Matcher m = TIKZ_BLOCK.matcher(text);
+        StringBuilder sb = new StringBuilder();
+        boolean changed = false;
+        while (m.find()) {
+            String replacement = m.group(0);
+            // 裸下标标签等常见语法问题先修正（修正后的源码存回题干，前端编辑器里即合法代码）
+            String code = sanitizeTikz(m.group(1).trim());
+            TikzResult r = compileTikz(code);
+            if (r.ok()) {
+                // 统一用正斜杠，与 persistImages 的图片链接写法一致；
+                // TikZ 源码随图保留在题干末尾，前端"编辑配图"据此改码重编译
+                replacement = "![配图](" + r.path().toString().replace('\\', '/')
+                        + ")\n```tikz\n" + code + "\n```";
+                changed = true;
+            }
+            m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        m.appendTail(sb);
+        return changed ? sb.toString() : text;
+    }
+
+    /**
+     * 单个 TikZ 代码块 -> PNG：{@code python latex_snippet_tool.py --file <tmp.tex> --out <dst.png>}。
+     * 子进程模式照搬 LectureValidateService：PYTHONIOENCODING=utf-8 防乱码、
+     * redirectErrorStream + redirectOutput 到日志文件防管道死锁。
+     */
+    private TikzResult compileTikz(String code) {
+        Path script = Path.of(tikzScript);
+        if (!Files.isRegularFile(script)) {
+            log.warn("TikZ 渲染脚本不存在，保留代码块: {}", script);
+            return new TikzResult(null, "渲染脚本不存在: " + script);
+        }
+        Path logFile = null;
+        try {
+            Path dir = Path.of(questionImageDir);
+            Files.createDirectories(dir);
+            // 时间戳前缀防多实例/多次运行撞名（IMG_SEQ 仅进程内计数）
+            Path dst = dir.resolve("tikz" + System.currentTimeMillis() + "_" + IMG_SEQ.incrementAndGet() + ".png");
+            Path tex = Files.createTempFile("tikz_", ".tex");
+            logFile = Files.createTempFile("tikz_", ".log");
+            Files.writeString(tex, code, StandardCharsets.UTF_8);
+            ProcessBuilder pb = new ProcessBuilder(Path.of(tikzPython).toString(), script.toString(),
+                            "--file", tex.toString(), "--width", "10", "--out", dst.toString())
+                    .redirectErrorStream(true)
+                    .redirectOutput(logFile.toFile());
+            pb.environment().put("PYTHONIOENCODING", "utf-8");
+            Process p = pb.start();
+            // 工具内部 xelatex 上限 120s（MiKTeX 后台装包时会慢），外层超时留足余量
+            if (!p.waitFor(200, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                log.warn("TikZ 编译超时（>200s），保留代码块");
+                return new TikzResult(null, "编译超时（>200s），请检查 TikZ 代码是否过于复杂");
+            }
+            if (p.exitValue() != 0 || !Files.isRegularFile(dst)) {
+                String out = Files.readString(logFile, StandardCharsets.UTF_8);
+                log.warn("TikZ 编译失败，保留代码块:\n{}", out);
+                return new TikzResult(null, "XeLaTeX 编译失败，请检查 TikZ 代码（括号配对/命令拼写）");
+            }
+            log.info("TikZ 配图已生成: {}", dst);
+            return new TikzResult(dst, null);
+        } catch (Exception e) {
+            log.warn("TikZ 编译异常，保留代码块: {}", e.getMessage());
+            return new TikzResult(null, "编译异常: " + e.getMessage());
+        } finally {
+            if (logFile != null) {
+                try {
+                    Files.deleteIfExists(logFile);
+                } catch (IOException ignored) {
+                }
+            }
+        }
+    }
+
+    /** TikZ 编译结果：成功带生成的 PNG 路径，失败带错误摘要（回传前端编辑器提示） */
+    private record TikzResult(Path path, String error) {
+        boolean ok() {
+            return path != null;
+        }
+    }
+
 
     /**
      * 把题目里引用的图片保存到本地目录：远程图片（http/https）下载，本地绝对路径图片拷贝，
