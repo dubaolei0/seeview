@@ -7,6 +7,7 @@ import com.yuanxuan.seeview.dto.LectureRequest;
 import com.yuanxuan.seeview.dto.LectureResult;
 import com.yuanxuan.seeview.dto.QuestionGenerateRequest;
 import com.yuanxuan.seeview.dto.QuestionPaper;
+import com.yuanxuan.seeview.dto.TikzFixRequest;
 import com.yuanxuan.seeview.service.LectureGenerateService;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -137,6 +138,137 @@ public class LangChainController {
     }
 
     /**
+     * AI 修正配图（智能命题工作台"调整配图"对话用）：题干 + 当前 TikZ 源码 + 对话历史
+     * 交给大模型按用户最新要求修正，修正结果直接编译为 PNG，一次请求同时返回新代码与新图。
+     *
+     * <p>模型输出的代码编译失败时，自动把错误信息回传模型重修一轮（与生题 JSON 修正同模式），
+     * 仍失败才返回 error。
+     *
+     * @param request {@code {"stem": 题干, "code": TikZ 源码, "messages": [{role, content}]}}
+     *                （messages 最新一条 user 即本次修改要求）
+     * @return 成功 {@code {"code": 新源码, "note": 修改说明, "path": PNG 绝对路径}}；
+     *         失败 {@code {"error": 错误摘要}}（HTTP 均 200，前端按字段区分）
+     */
+    @PostMapping("/question/fix-tikz")
+    public Map<String, String> fixTikz(@RequestBody TikzFixRequest request) {
+        String code = request == null ? null : request.code();
+        String instruction = latestUserMessage(request);
+        if (code == null || code.isBlank()) {
+            return Map.of("error", "code 不能为空");
+        }
+        if (instruction == null) {
+            return Map.of("error", "messages 缺少 user 修改要求");
+        }
+
+        String system = tikzFixSystemPrompt();
+        String raw = chat(system, tikzFixUserPrompt(request, instruction));
+        String fixed = extractTikzCode(raw);
+        String note = tikzFixNote(raw);
+        if (fixed == null) {
+            return Map.of("error", "大模型未返回 TikZ 代码，请重试");
+        }
+        TikzResult r = compileTikz(sanitizeTikz(fixed));
+        if (!r.ok()) {
+            // 编译失败：带错误信息回传重修一轮，要求最小修正不推翻结构
+            String retry = chat(system, "你修改后的 TikZ 代码编译失败，错误信息如下：" + r.error()
+                    + "\n请在该代码基础上做最小修正（不要推翻已有结构），重新输出修改说明与完整代码。你输出的代码：\n```tikz\n"
+                    + fixed + "\n```");
+            String retryCode = extractTikzCode(retry);
+            if (retryCode == null) {
+                return Map.of("error", "修正后的代码编译失败：" + r.error());
+            }
+            fixed = retryCode;
+            note = tikzFixNote(retry);
+            r = compileTikz(sanitizeTikz(fixed));
+            if (!r.ok()) {
+                return Map.of("error", "修正后的代码仍编译失败：" + r.error());
+            }
+        }
+        return Map.of("code", fixed,
+                "note", note.isBlank() ? "已按要求修改配图" : note,
+                "path", r.path().toString().replace('\\', '/'));
+    }
+
+    /** 对话历史上限：更早轮次的修改已体现在当前代码里，截掉省 token */
+    private static final int TIKZ_FIX_HISTORY_LIMIT = 6;
+
+    private String tikzFixSystemPrompt() {
+        return """
+                你是一名 TikZ 配图修正专家。用户会给你一道题的题干、当前配图的 TikZ 源码，以及对配图的修改要求
+                （如标签压线、方向错误、比例失调、虚实线遮挡关系不对等）。你的任务：在原有代码基础上做最小必要修改，满足用户要求。
+
+                修改原则：
+                1. 保持与题干一致：字母命名、数量关系、比例（题干说 AB=2、BC=1，图中 AB 就应约为 BC 的两倍长）；
+                2. 只改用户指出的问题及其连带位置，不要重构整张图、不要改动与要求无关的部分；
+                3. 严格遵守以下绘图规范（与生图时相同）：
+                """ + TIKZ_RULES + """
+                输出要求：先用一句话说明你改了什么，然后输出修改后的完整 TikZ 代码（用 ```tikz 围栏代码块包裹，不要省略任何行）。
+                不要输出其他内容。
+                """;
+    }
+
+    /** 修正请求用户提示词：题干 + 当前源码 + 截断的对话历史 + 本次修改要求 */
+    private String tikzFixUserPrompt(TikzFixRequest req, String instruction) {
+        StringBuilder sb = new StringBuilder();
+        if (req.stem() != null && !req.stem().isBlank()) {
+            sb.append("【题干】\n").append(req.stem().strip()).append('\n');
+        }
+        sb.append("【当前 TikZ 源码】\n```tikz\n").append(req.code().strip()).append("\n```\n");
+        if (req.messages() != null && req.messages().size() > 1) {
+            sb.append("【对话历史】（用户反馈与历次修改说明，由早到晚）\n");
+            int from = Math.max(0, req.messages().size() - TIKZ_FIX_HISTORY_LIMIT);
+            for (int i = from; i < req.messages().size(); i++) {
+                TikzFixRequest.Message m = req.messages().get(i);
+                if (m == null || m.content() == null || m.content().isBlank()) continue;
+                String who = "assistant".equalsIgnoreCase(m.role()) ? "助手" : "用户";
+                sb.append(who).append("：").append(m.content().strip()).append('\n');
+            }
+        }
+        sb.append("【本次修改要求】\n").append(instruction).append('\n');
+        return sb.toString();
+    }
+
+    /** 对话历史里最新一条非空 user 消息（即本次修改要求）；没有则 null */
+    private String latestUserMessage(TikzFixRequest req) {
+        if (req == null || req.messages() == null) return null;
+        String latest = null;
+        for (TikzFixRequest.Message m : req.messages()) {
+            if (m != null && "user".equalsIgnoreCase(m.role())
+                    && m.content() != null && !m.content().isBlank()) {
+                latest = m.content().strip();
+            }
+        }
+        return latest;
+    }
+
+    /**
+     * 从大模型输出中抽取 TikZ 代码：优先取 ```tikz 围栏块；没有围栏时，
+     * 若整体输出已像 TikZ 源码（含 \draw/\node 等命令）则视为纯代码输出；否则 null。
+     */
+    private String extractTikzCode(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        Matcher m = TIKZ_BLOCK.matcher(raw);
+        if (m.find()) return m.group(1).trim();
+        String text = raw.trim();
+        if (text.contains("\\begin{tikzpicture}") || text.contains("\\draw")
+                || text.contains("\\node") || text.contains("\\fill")
+                || text.contains("\\coordinate")) {
+            // 去掉残缺围栏的收尾
+            return text.replaceFirst("```\\s*$", "").trim();
+        }
+        return null;
+    }
+
+    /** 修改说明：围栏块之前的一句话；没有围栏或没有说明返回空串 */
+    private String tikzFixNote(String raw) {
+        if (raw == null) return "";
+        Matcher m = TIKZ_BLOCK.matcher(raw);
+        int end = m.find() ? m.start() : 0;
+        String note = raw.substring(0, end).replace("```", "").strip();
+        return note.length() > 200 ? note.substring(0, 200) + "…" : note;
+    }
+
+    /**
      * AI 生题（智能命题工作台）：依据上传材料与命题参数生成一组题目。
      *
      * <p>学科不单独指定，由大模型依据材料内容自动识别，任意学科通用；
@@ -177,6 +309,55 @@ public class LangChainController {
     private static final ObjectMapper QUESTION_MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
+    /** TikZ 绘图强制规范（数学/物理/化学通用）：AI 生题提示词与配图对话修正提示词共用，调整时两处同步生效 */
+    private static final String TIKZ_RULES = """
+            【通用底线】几何顶点必须用 \\coordinate (A) at (...); 定义，禁止用 \\node (A) at (...) {A}; 同时承担顶点和标签；
+              所有连线只能连接 coordinate 名称，如 \\draw (A)--(B); 不要连接文字标签节点；
+              顶点标签必须单独写成 \\node[below left=2pt, fill=white, inner sep=1pt] at (A) {A};
+              标签根据相邻线段方向选择 above/below/left/right/above left/below right 等方位，避免压线；
+              代码中的节点标签：纯文字标签（如 A、B、E）不用 $ 包裹；
+              含下标/上标的标签必须整体用 $ 包裹成数学模式，如 \\node[left] at (A1) {$A_1$}，严禁写裸下标 \\node[left] at (A1) {A_1}；
+              若一个点有两条以上线段相连，标签必须放在这些线段夹角外侧，不得放在线段经过方向上；
+              线条粗细统一：整幅图统一用一种线宽（如 \\draw[thick] 或 \\draw[line width=0.8pt]），不要有的粗有的细；
+              标签字体大小统一；字号只能写在节点选项里（如 every node/.style={font=\\small} 或 \\node[font=\\small,...]），严禁把 small、normalsize、\\small 等字号词写进标签内容里（错误示例：{smallA}、{smallD_1}、{\\small A}）；
+              every node/.style 里的字体必须用 font=\\small 这种 key=value 写法，禁止直接写 {\\small}（会触发无限递归导致编译失败）；
+              比例必须与题目给出的数量关系一致：题目说 AB=2、BC=1，图中 AB 就应当大约是 BC 的两倍长；
+              题干条件（数值、单位、等量关系）一律写在题干文字里，禁止把题目条件直接标注在配图上；
+              图中只出现字母、符号、单位、必要的直角/角标等辅助记号；
+              有向线段/向量箭头必须使用 shorten >=2pt, shorten <=2pt，避免箭头直接插入端点圆心；若端点还要用 \fill 画实心点，箭头端点不得被 \fill 实心点覆盖，应先画普通线/点再画带 shorten 的箭头或适当缩短箭头；内部点标签必须避开箭头和三角形边，必要时改用 above left/above right/below left/below right 并增大 3pt~5pt 偏移，不得用白底标签遮住箭头、点或线段；
+              必要时加大 scale 或拉大坐标间距，相邻顶点标签方位错开；
+            【高中数学】
+              立体几何必须使用斜二测画法：x 轴水平向右，y 轴与 x 轴成 45°（或 135°），z 轴竖直向上；
+              平行于 x/z 轴的线段长度不变，平行于 y 轴的线段长度取原长的 1/2；
+              直棱柱、棱锥、圆柱、圆锥等几何体：先判断视角下每条棱/辅助线段的可见性，看得见的棱用实线；凡被前方面、实体或线段遮挡的棱必须用虚线（dashed）；背面竖棱、背面底边、体内辅助线段若被遮挡也必须用虚线；不要把所有棱都画成 thick 实线；
+              长方体/棱柱绘图时，连接前后面的底面边、后侧竖棱、体内证明线段（如 A--E、E--D1、B1--E）要按遮挡关系分别实线/虚线，不得因为是证明相关线段就全部画成实线；
+              长方体/直棱柱斜二测可见性判定：外轮廓可见竖棱如 C--C1 必须用实线，不得仅因位于后侧就画虚线；虚线只用于真正被实体前方面遮住的内部线段或背面线段；不要把后侧边链一概画成 dashed；顶点和标签不得互相遮挡，若 B 等顶点被遮挡，必须调整视角、坐标或标签位置，不能用白底标签盖住线段或顶点；
+              直角符号用小正方形（\\pgfsetcornersarced 或两条短线组成），不要用弧线表示直角；
+              平面几何：角的弧线画在角内部，不压线；三角形高用虚线并加垂足直角标；
+              函数图像：坐标轴带箭头、原点 O、x/y 标注；渐近线用虚线；关键交点、顶点、极值点标出坐标；
+              抛物线开口方向、对称轴与方程一致；双曲线两支对称，渐近线位置正确；
+              三角函数 / 单位圆：单位圆半径 1，圆心在原点；角度从 x 轴正方向逆时针量起；
+              向量：箭头在终点，方向与坐标一致；空间直角坐标系用右手系，三轴方向固定；
+            【高中物理】
+              受力分析：力的箭头从作用点出发，方向正确，长度大致与大小成正比；
+              支持力垂直于接触面，摩擦力沿接触面，重力竖直向下；
+              滑轮、绳子张力方向沿绳；弹簧画成均匀螺旋；
+              运动学：v-t 图、x-t 图坐标轴带单位，斜率与加速度/速度一致，数值标注准确；
+              平抛/斜抛轨迹画成抛物线，初速度方向正确；
+              电磁学：电场线从正电荷出发到负电荷，不交叉，方向用箭头标注；
+              磁感线闭合，外部 N→S，内部 S→N；
+              电路：元件符号规范（电阻、电源、开关、电流表、电压表），导线横平竖直，节点用实心圆点；
+              安培力、洛伦兹力方向与左手定则一致；
+              光学：光线带箭头，折射/反射方向符合定律；凸透镜双凸、凹透镜双凹，焦点标 F；
+              热学 / 原子：p-V 图、p-T 图、V-T 图坐标轴标注清楚，等压/等容/等温过程标注正确；
+            【高中化学】
+              原子结构 / 电子排布：原子核在中心，电子层为同心圆，能级图横线对齐，电子箭头（↑↓）规范；
+              分子结构 / 化学键：球棍模型、比例模型区分清楚；键角大致符合实际（如水 ~104.5°、甲烷 109.5°）；
+              实验装置：试管、烧杯、酒精灯、导管、集气瓶用标准画法；装置连接顺序正确，接口处对齐；
+              加热用火焰符号标注，长管进短管出等洗气规则正确；
+              化学平衡 / 反应速率图：浓度-时间图、速率-时间图坐标轴带单位，拐点、平衡点标注正确）。
+            """;
+
     private String questionSystemPrompt(QuestionGenerateRequest req) {
         return """
                 你是一名资深的命题专家，负责依据用户提供的材料生成一组高质量的学科检测题。命题要求：
@@ -199,51 +380,7 @@ public class LangChainController {
                        或者在必要的情况下用 TikZ 重新绘制题目配图（系统会把 TikZ 代码自动编译为配图；
                        TikZ 代码用 ```tikz 围栏代码块包裹，放在题干末尾；
                        TikZ 绘图强制规范（数学 / 物理 / 化学通用）：
-                       【通用底线】几何顶点必须用 \\coordinate (A) at (...); 定义，禁止用 \\node (A) at (...) {A}; 同时承担顶点和标签；
-                         所有连线只能连接 coordinate 名称，如 \\draw (A)--(B); 不要连接文字标签节点；
-                         顶点标签必须单独写成 \\node[below left=2pt, fill=white, inner sep=1pt] at (A) {A};
-                         标签根据相邻线段方向选择 above/below/left/right/above left/below right 等方位，避免压线；
-                         代码中的节点标签：纯文字标签（如 A、B、E）不用 $ 包裹；
-                         含下标/上标的标签必须整体用 $ 包裹成数学模式，如 \\node[left] at (A1) {$A_1$}，严禁写裸下标 \\node[left] at (A1) {A_1}；
-                         若一个点有两条以上线段相连，标签必须放在这些线段夹角外侧，不得放在线段经过方向上；
-                         线条粗细统一：整幅图统一用一种线宽（如 \\draw[thick] 或 \\draw[line width=0.8pt]），不要有的粗有的细；
-                         标签字体大小统一；字号只能写在节点选项里（如 every node/.style={font=\\small} 或 \\node[font=\\small,...]），严禁把 small、normalsize、\\small 等字号词写进标签内容里（错误示例：{smallA}、{smallD_1}、{\\small A}）；
-                         every node/.style 里的字体必须用 font=\\small 这种 key=value 写法，禁止直接写 {\\small}（会触发无限递归导致编译失败）；
-                         比例必须与题目给出的数量关系一致：题目说 AB=2、BC=1，图中 AB 就应当大约是 BC 的两倍长；
-                         题干条件（数值、单位、等量关系）一律写在题干文字里，禁止把题目条件直接标注在配图上；
-                         图中只出现字母、符号、单位、必要的直角/角标等辅助记号；
-                         有向线段/向量箭头必须使用 shorten >=2pt, shorten <=2pt，避免箭头直接插入端点圆心；若端点还要用 \fill 画实心点，箭头端点不得被 \fill 实心点覆盖，应先画普通线/点再画带 shorten 的箭头或适当缩短箭头；内部点标签必须避开箭头和三角形边，必要时改用 above left/above right/below left/below right 并增大 3pt~5pt 偏移，不得用白底标签遮住箭头、点或线段；
-                         必要时加大 scale 或拉大坐标间距，相邻顶点标签方位错开；
-                       【高中数学】
-                         立体几何必须使用斜二测画法：x 轴水平向右，y 轴与 x 轴成 45°（或 135°），z 轴竖直向上；
-                         平行于 x/z 轴的线段长度不变，平行于 y 轴的线段长度取原长的 1/2；
-                         直棱柱、棱锥、圆柱、圆锥等几何体：先判断视角下每条棱/辅助线段的可见性，看得见的棱用实线；凡被前方面、实体或线段遮挡的棱必须用虚线（dashed）；背面竖棱、背面底边、体内辅助线段若被遮挡也必须用虚线；不要把所有棱都画成 thick 实线；
-                         长方体/棱柱绘图时，连接前后面的底面边、后侧竖棱、体内证明线段（如 A--E、E--D1、B1--E）要按遮挡关系分别实线/虚线，不得因为是证明相关线段就全部画成实线；
-                         长方体/直棱柱斜二测可见性判定：外轮廓可见竖棱如 C--C1 必须用实线，不得仅因位于后侧就画虚线；虚线只用于真正被实体前方面遮住的内部线段或背面线段；不要把后侧边链一概画成 dashed；顶点和标签不得互相遮挡，若 B 等顶点被遮挡，必须调整视角、坐标或标签位置，不能用白底标签盖住线段或顶点；
-                         直角符号用小正方形（\\pgfsetcornersarced 或两条短线组成），不要用弧线表示直角；
-                         平面几何：角的弧线画在角内部，不压线；三角形高用虚线并加垂足直角标；
-                         函数图像：坐标轴带箭头、原点 O、x/y 标注；渐近线用虚线；关键交点、顶点、极值点标出坐标；
-                         抛物线开口方向、对称轴与方程一致；双曲线两支对称，渐近线位置正确；
-                         三角函数 / 单位圆：单位圆半径 1，圆心在原点；角度从 x 轴正方向逆时针量起；
-                         向量：箭头在终点，方向与坐标一致；空间直角坐标系用右手系，三轴方向固定；
-                       【高中物理】
-                         受力分析：力的箭头从作用点出发，方向正确，长度大致与大小成正比；
-                         支持力垂直于接触面，摩擦力沿接触面，重力竖直向下；
-                         滑轮、绳子张力方向沿绳；弹簧画成均匀螺旋；
-                         运动学：v-t 图、x-t 图坐标轴带单位，斜率与加速度/速度一致，数值标注准确；
-                         平抛/斜抛轨迹画成抛物线，初速度方向正确；
-                         电磁学：电场线从正电荷出发到负电荷，不交叉，方向用箭头标注；
-                         磁感线闭合，外部 N→S，内部 S→N；
-                         电路：元件符号规范（电阻、电源、开关、电流表、电压表），导线横平竖直，节点用实心圆点；
-                         安培力、洛伦兹力方向与左手定则一致；
-                         光学：光线带箭头，折射/反射方向符合定律；凸透镜双凸、凹透镜双凹，焦点标 F；
-                         热学 / 原子：p-V 图、p-T 图、V-T 图坐标轴标注清楚，等压/等容/等温过程标注正确；
-                       【高中化学】
-                         原子结构 / 电子排布：原子核在中心，电子层为同心圆，能级图横线对齐，电子箭头（↑↓）规范；
-                         分子结构 / 化学键：球棍模型、比例模型区分清楚；键角大致符合实际（如水 ~104.5°、甲烷 109.5°）；
-                         实验装置：试管、烧杯、酒精灯、导管、集气瓶用标准画法；装置连接顺序正确，接口处对齐；
-                         加热用火焰符号标注，长管进短管出等洗气规则正确；
-                         化学平衡 / 反应速率图：浓度-时间图、速率-时间图坐标轴带单位，拐点、平衡点标注正确）。
+                """ + TIKZ_RULES + """
                        若用户补充要求不得直接使用原图片，则必须用 TikZ 重绘配图、不得输出原图片链接；
                        重绘时按改编后的实际尺寸取比例，改编数字尽量打破原图的等比关系（如长宽高改为不同比例），
                        使新配图与原图有肉眼可辨的差异。
@@ -479,7 +616,7 @@ public class LangChainController {
             if (p.exitValue() != 0 || !Files.isRegularFile(dst)) {
                 String out = Files.readString(logFile, StandardCharsets.UTF_8);
                 log.warn("TikZ 编译失败，保留代码块:\n{}", out);
-                return new TikzResult(null, "XeLaTeX 编译失败，请检查 TikZ 代码（括号配对/命令拼写）");
+                return new TikzResult(null, "XeLaTeX 编译失败，请检查 TikZ 代码（括号配对/命令拼写）" + tikzErrorTail(out));
             }
             log.info("TikZ 配图已生成: {}", dst);
             return new TikzResult(dst, null);
@@ -501,6 +638,31 @@ public class LangChainController {
         boolean ok() {
             return path != null;
         }
+    }
+
+    /**
+     * 编译错误摘要：优先取 "!" 开头的 TeX 报错行（附其下一行上下文），没有则取日志末尾几行。
+     * 带 "：" 前缀拼在概要后，给前端提示与修正模型看；摘要为空返回空串。
+     */
+    private static String tikzErrorTail(String log) {
+        if (log == null || log.isBlank()) return "";
+        StringBuilder sb = new StringBuilder();
+        String[] lines = log.split("\\r?\\n");
+        for (int i = 0; i < lines.length && sb.length() < 600; i++) {
+            String l = lines[i].stripTrailing();
+            if (l.startsWith("!")) {
+                sb.append('\n').append(l);
+                if (i + 1 < lines.length && !lines[i + 1].isBlank() && !lines[i + 1].startsWith("!")) {
+                    sb.append('\n').append(lines[i + 1].stripTrailing());
+                }
+            }
+        }
+        if (sb.isEmpty()) {
+            for (int i = lines.length - 1; i >= 0 && sb.length() < 300; i--) {
+                if (!lines[i].isBlank()) sb.insert(0, '\n' + lines[i].stripTrailing());
+            }
+        }
+        return sb.isEmpty() ? "" : "：" + sb;
     }
 
 

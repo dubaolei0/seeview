@@ -406,6 +406,8 @@ body {
 .fig-modal[hidden] { display: none; }
 .fig-dialog {
   width: min(760px, 92vw);
+  max-height: 92vh;
+  overflow: auto;
   background: #fff;
   border-radius: 12px;
   padding: 16px 18px;
@@ -413,10 +415,60 @@ body {
 }
 .fig-dialog header { display: flex; justify-content: space-between; align-items: center; }
 .fig-close { border: none; background: none; font-size: 20px; line-height: 1; cursor: pointer; color: #666; }
+/* 当前配图预览：用户看图提要求，AI 改完即时刷新 */
+.fig-preview {
+  margin-top: 10px;
+  min-height: 120px;
+  max-height: 300px;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: #fafbfd;
+}
+.fig-preview img { max-width: 100%; max-height: 276px; }
+.fig-none { font-size: 12px; color: #999; }
+/* 对话消息：u=用户 a=助手 e=错误 */
+.fig-chat {
+  margin-top: 8px;
+  max-height: 160px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fig-msg {
+  font-size: 12.5px;
+  line-height: 1.6;
+  padding: 6px 10px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.fig-msg.u { align-self: flex-end; background: #e7f0fb; color: #2c4a75; }
+.fig-msg.a { align-self: flex-start; background: #f2f4f7; color: #333; }
+.fig-msg.e { align-self: flex-start; background: #fdeceb; color: #a33; }
+.fig-input { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
+#figAsk {
+  flex: 1;
+  min-height: 46px;
+  resize: vertical;
+  font: 13px/1.6 inherit;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+}
+/* 手动改源码：折叠收起，默认走对话式 */
+.fig-code-wrap { margin-top: 10px; }
+.fig-code-wrap summary { font-size: 12.5px; color: #4a6fa5; cursor: pointer; user-select: none; }
 .fig-tip { font-size: 12px; color: #777; margin: 6px 0 8px; }
 #figCode {
   width: 100%;
-  height: 300px;
+  height: 240px;
   font: 12px/1.7 var(--mono);
   border: 1px solid var(--line-2);
   border-radius: 6px;
@@ -605,19 +657,28 @@ body {
 
 <div class="toast" id="toast" role="status"></div>
 
-<!-- TikZ 配图编辑器：改源码 -> 后端重编译 -> 更新配图 -->
+<!-- TikZ 配图编辑器：对话式 AI 修正（题干+源码+对话给大模型改码重编译）+ 手动改源码 -->
 <div class="fig-modal" id="figModal" hidden>
   <div class="fig-dialog">
     <header>
-      <b>编辑配图（TikZ）</b>
+      <b>调整配图（TikZ）</b>
       <button class="fig-close" id="figClose" type="button" aria-label="关闭">×</button>
     </header>
-    <p class="fig-tip">调整坐标或节点方位（above/below/left/right）可解决文字与符号重叠；改完点"重新生成图片"。</p>
-    <textarea id="figCode" spellcheck="false"></textarea>
+    <div class="fig-preview" id="figPreview"></div>
+    <div class="fig-chat" id="figChat" aria-live="polite"></div>
+    <div class="fig-input">
+      <textarea id="figAsk" rows="2" placeholder="看图描述要改的地方，AI 自动改 TikZ 并重新出图。如：A 点标签与线段重叠，请移到左上方；虚线应为实线"></textarea>
+      <button class="btn primary" id="figAskBtn" type="button">AI 修改</button>
+    </div>
+    <details class="fig-code-wrap" id="figCodeWrap">
+      <summary>手动编辑 TikZ 源码</summary>
+      <p class="fig-tip">调整坐标或节点方位（above/below/left/right）可解决文字与符号重叠；改完点"重新生成图片"。</p>
+      <textarea id="figCode" spellcheck="false"></textarea>
+    </details>
     <div class="fig-actions">
       <span class="fig-status" id="figStatus" aria-live="polite"></span>
-      <button class="btn" id="figCancel" type="button">取消</button>
       <button class="btn primary" id="figRender" type="button">重新生成图片</button>
+      <button class="btn" id="figCancel" type="button">关闭</button>
     </div>
   </div>
 </div>
@@ -821,7 +882,7 @@ function renderPaper(p) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'q-fig-btn';
-    btn.textContent = img ? '✎ 编辑配图' : '⚙ 生成配图';
+    btn.textContent = img ? '✎ 调整配图' : '⚙ 生成配图';
     // 每次点击从 pre 取当前源码（编辑重编译后 pre 内容已同步），img 也以 fig 内现图为准
     btn.addEventListener('click', () => {
       const code = pre.textContent.replace(/^\s*```[^\n]*\n/, '').replace(/```\s*$/, '').trim();
@@ -847,12 +908,97 @@ function localImgPath(src) {
   return m ? decodeURIComponent(m[1]) : (src || '');
 }
 
+/* 该配图所属题目的题干（给 AI 修正配图时参考，保证比例/命名与题意一致）：
+   按配图所在题目在卷面中的顺序映射回 state.paper，剥离源码块与图片链接 */
+function stemForFig(pre) {
+  if (!state.paper || !Array.isArray(state.paper.sections)) return '';
+  const itemEl = pre.closest('.q-item');
+  if (!itemEl) return '';
+  const idx = [...document.querySelectorAll('#paperBody .q-item')].indexOf(itemEl);
+  const items = state.paper.sections.flatMap((sec) => sec.items || []);
+  const q = items[idx] && items[idx].q;
+  if (typeof q !== 'string') return '';
+  return q
+    .replace(/```tikz[^\n]*\n[\s\S]*?```/g, '')
+    .replace(/```tikz[\s\S]*$/g, '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function openFigEditor(code, img, pre, fig) {
-  state.figEdit = { img, pre, fig, oldPath: img ? localImgPath(img.getAttribute('src')) : '' };
+  state.figEdit = {
+    img, pre, fig,
+    oldPath: img ? localImgPath(img.getAttribute('src')) : '',
+    chat: [],                       // 对话历史（含本轮要求，交给后端 fix-tikz）
+    stem: stemForFig(pre),
+  };
   $('figCode').value = code;
   $('figStatus').textContent = '';
+  $('figPreview').innerHTML = img
+    ? `<img src="${esc(img.getAttribute('src'))}" alt="配图预览">`
+    : '<span class="fig-none">暂无配图：可先手动点"重新生成图片"，或展开源码检查</span>';
+  $('figChat').innerHTML = '';
+  $('figAsk').value = '';
   $('figModal').hidden = false;
-  $('figCode').focus();
+  $('figAsk').focus();
+}
+
+/* 对话消息上屏；自动滚到最新 */
+function figMsg(role, text) {
+  const el = document.createElement('div');
+  el.className = 'fig-msg ' + (role === 'user' ? 'u' : role === 'err' ? 'e' : 'a');
+  el.textContent = text;
+  const box = $('figChat');
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+function updateFigPreview(path) {
+  $('figPreview').innerHTML =
+    `<img src="/seeview/local-image?path=${encodeURIComponent(path)}" alt="配图预览">`;
+}
+
+/* 对话式 AI 修图：题干 + 当前源码 + 对话历史 -> 后端改码并编译 -> 更新配图 */
+async function figAsk() {
+  const ctx = state.figEdit;
+  if (!ctx) return;
+  const text = $('figAsk').value.trim();
+  if (!text) { $('figStatus').textContent = '请先描述要修改的问题'; return; }
+  const code = ctx.pre.textContent.replace(/^\s*```[^\n]*\n/, '').replace(/```\s*$/, '').trim();
+  if (!code) { $('figStatus').textContent = '缺少 TikZ 源码'; return; }
+
+  const btn = $('figAskBtn');
+  btn.disabled = true;
+  $('figAsk').value = '';
+  figMsg('user', text);
+  ctx.chat.push({ role: 'user', content: text });
+  const pending = figMsg('a', 'AI 修改中（改码 + XeLaTeX 编译，约需几十秒）……');
+  try {
+    const res = await fetch('/langchain/question/fix-tikz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stem: ctx.stem, code, messages: ctx.chat }),
+    });
+    if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const note = data.note || '已按要求修改配图';
+    pending.textContent = note;
+    ctx.chat.push({ role: 'assistant', content: note });
+    applyFigImage(ctx, data.path, data.code);
+    $('figCode').value = data.code;   // 手动编辑器同步最新源码
+    updateFigPreview(data.path);
+    toast('配图已更新');
+  } catch (err) {
+    pending.remove();
+    ctx.chat.pop();                   // 本轮失败不进历史，避免污染上下文
+    figMsg('err', '修改失败：' + (err.message || '未知错误'));
+  } finally {
+    btn.disabled = false;
+    $('figAsk').focus();
+  }
 }
 
 async function figRender() {
@@ -873,7 +1019,7 @@ async function figRender() {
     const data = await res.json();
     if (data.error) { $('figStatus').textContent = '编译失败：' + data.error; return; }
     applyFigImage(ctx, data.path, code);
-    $('figModal').hidden = true;
+    updateFigPreview(data.path);
     toast('配图已更新');
   } catch (err) {
     $('figStatus').textContent = '请求失败：' + (err.message || '未知错误');
@@ -896,11 +1042,11 @@ function applyFigImage(ctx, newPath, code) {
     ctx.fig.insertBefore(img, ctx.fig.firstChild);
     ctx.pre.hidden = true;
     const btn = ctx.fig.querySelector('.q-fig-btn');
-    if (btn) btn.textContent = '✎ 编辑配图';
+    if (btn) btn.textContent = '✎ 调整配图';
   }
-  // 源码块内容同步为最新代码，供再次编辑；刷新编辑上下文
+  // 源码块内容同步为最新代码，供再次编辑；刷新编辑上下文（保留对话历史与题干，供连续修正）
   ctx.pre.textContent = '```tikz\n' + code + '\n```';
-  state.figEdit = { img, pre: ctx.pre, fig: ctx.fig, oldPath: newPath };
+  state.figEdit = { img, pre: ctx.pre, fig: ctx.fig, oldPath: newPath, chat: ctx.chat, stem: ctx.stem };
 }
 
 /* state.paper 各字段里的旧图片路径替换为新路径（复制/下载与界面保持一致） */
@@ -1404,6 +1550,10 @@ function init() {
   $('btnWord').addEventListener('click', downloadWord);
   $('btnCopy').addEventListener('click', copyText);
   $('figRender').addEventListener('click', figRender);
+  $('figAskBtn').addEventListener('click', figAsk);
+  $('figAsk').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) figAsk();
+  });
   $('figCancel').addEventListener('click', () => { $('figModal').hidden = true; });
   $('figClose').addEventListener('click', () => { $('figModal').hidden = true; });
   $('figModal').addEventListener('click', (e) => {
