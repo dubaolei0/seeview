@@ -198,14 +198,52 @@ public class LangChainController {
                        尽可能保留原始题目的特征和命题逻辑。如果题目配有图片，在已改编的题目中可以不使用图片、使用原图片，
                        或者在必要的情况下用 TikZ 重新绘制题目配图（系统会把 TikZ 代码自动编译为配图；
                        TikZ 代码用 ```tikz 围栏代码块包裹，放在题干末尾；
-                       TikZ 绘图强制规范：几何顶点必须用 \\coordinate (A) at (...); 定义，禁止用 \\node (A) at (...) {A}; 同时承担顶点和标签；
-                       所有连线只能连接 coordinate 名称，如 \\draw (A)--(B); 不要连接文字标签节点；
-                       顶点标签必须单独写成 \\node[below left=2pt, fill=white, inner sep=1pt] at (A) {A};
-                       标签根据相邻线段方向选择 above/below/left/right/above left/below right 等方位，避免压线；
-                       代码中的节点标签：纯文字标签（如 A、B、E）不用 $ 包裹；
-                       含下标/上标的标签必须整体用 $ 包裹成数学模式，如 \\node[left] at (A1) {$A_1$}，严禁写裸下标 \\node[left] at (A1) {A_1}；
-                       若一个点有两条以上线段相连，标签必须放在这些线段夹角外侧，不得放在线段经过方向上；
-                       必要时加大 scale 或拉大坐标间距，相邻顶点标签方位错开）。
+                       TikZ 绘图强制规范（数学 / 物理 / 化学通用）：
+                       【通用底线】几何顶点必须用 \\coordinate (A) at (...); 定义，禁止用 \\node (A) at (...) {A}; 同时承担顶点和标签；
+                         所有连线只能连接 coordinate 名称，如 \\draw (A)--(B); 不要连接文字标签节点；
+                         顶点标签必须单独写成 \\node[below left=2pt, fill=white, inner sep=1pt] at (A) {A};
+                         标签根据相邻线段方向选择 above/below/left/right/above left/below right 等方位，避免压线；
+                         代码中的节点标签：纯文字标签（如 A、B、E）不用 $ 包裹；
+                         含下标/上标的标签必须整体用 $ 包裹成数学模式，如 \\node[left] at (A1) {$A_1$}，严禁写裸下标 \\node[left] at (A1) {A_1}；
+                         若一个点有两条以上线段相连，标签必须放在这些线段夹角外侧，不得放在线段经过方向上；
+                         线条粗细统一：整幅图统一用一种线宽（如 \\draw[thick] 或 \\draw[line width=0.8pt]），不要有的粗有的细；
+                         标签字体大小统一；字号只能写在节点选项里（如 every node/.style={font=\\small} 或 \\node[font=\\small,...]），严禁把 small、normalsize、\\small 等字号词写进标签内容里（错误示例：{smallA}、{smallD_1}、{\\small A}）；
+                         every node/.style 里的字体必须用 font=\\small 这种 key=value 写法，禁止直接写 {\\small}（会触发无限递归导致编译失败）；
+                         比例必须与题目给出的数量关系一致：题目说 AB=2、BC=1，图中 AB 就应当大约是 BC 的两倍长；
+                         题干条件（数值、单位、等量关系）一律写在题干文字里，禁止把题目条件直接标注在配图上；
+                         图中只出现字母、符号、单位、必要的直角/角标等辅助记号；
+                         有向线段/向量箭头必须使用 shorten >=2pt, shorten <=2pt，避免箭头直接插入端点圆心；若端点还要用 \fill 画实心点，箭头端点不得被 \fill 实心点覆盖，应先画普通线/点再画带 shorten 的箭头或适当缩短箭头；内部点标签必须避开箭头和三角形边，必要时改用 above left/above right/below left/below right 并增大 3pt~5pt 偏移，不得用白底标签遮住箭头、点或线段；
+                         必要时加大 scale 或拉大坐标间距，相邻顶点标签方位错开；
+                       【高中数学】
+                         立体几何必须使用斜二测画法：x 轴水平向右，y 轴与 x 轴成 45°（或 135°），z 轴竖直向上；
+                         平行于 x/z 轴的线段长度不变，平行于 y 轴的线段长度取原长的 1/2；
+                         直棱柱、棱锥、圆柱、圆锥等几何体：先判断视角下每条棱/辅助线段的可见性，看得见的棱用实线；凡被前方面、实体或线段遮挡的棱必须用虚线（dashed）；背面竖棱、背面底边、体内辅助线段若被遮挡也必须用虚线；不要把所有棱都画成 thick 实线；
+                         长方体/棱柱绘图时，连接前后面的底面边、后侧竖棱、体内证明线段（如 A--E、E--D1、B1--E）要按遮挡关系分别实线/虚线，不得因为是证明相关线段就全部画成实线；
+                         长方体/直棱柱斜二测可见性判定：外轮廓可见竖棱如 C--C1 必须用实线，不得仅因位于后侧就画虚线；虚线只用于真正被实体前方面遮住的内部线段或背面线段；不要把后侧边链一概画成 dashed；顶点和标签不得互相遮挡，若 B 等顶点被遮挡，必须调整视角、坐标或标签位置，不能用白底标签盖住线段或顶点；
+                         直角符号用小正方形（\\pgfsetcornersarced 或两条短线组成），不要用弧线表示直角；
+                         平面几何：角的弧线画在角内部，不压线；三角形高用虚线并加垂足直角标；
+                         函数图像：坐标轴带箭头、原点 O、x/y 标注；渐近线用虚线；关键交点、顶点、极值点标出坐标；
+                         抛物线开口方向、对称轴与方程一致；双曲线两支对称，渐近线位置正确；
+                         三角函数 / 单位圆：单位圆半径 1，圆心在原点；角度从 x 轴正方向逆时针量起；
+                         向量：箭头在终点，方向与坐标一致；空间直角坐标系用右手系，三轴方向固定；
+                       【高中物理】
+                         受力分析：力的箭头从作用点出发，方向正确，长度大致与大小成正比；
+                         支持力垂直于接触面，摩擦力沿接触面，重力竖直向下；
+                         滑轮、绳子张力方向沿绳；弹簧画成均匀螺旋；
+                         运动学：v-t 图、x-t 图坐标轴带单位，斜率与加速度/速度一致，数值标注准确；
+                         平抛/斜抛轨迹画成抛物线，初速度方向正确；
+                         电磁学：电场线从正电荷出发到负电荷，不交叉，方向用箭头标注；
+                         磁感线闭合，外部 N→S，内部 S→N；
+                         电路：元件符号规范（电阻、电源、开关、电流表、电压表），导线横平竖直，节点用实心圆点；
+                         安培力、洛伦兹力方向与左手定则一致；
+                         光学：光线带箭头，折射/反射方向符合定律；凸透镜双凸、凹透镜双凹，焦点标 F；
+                         热学 / 原子：p-V 图、p-T 图、V-T 图坐标轴标注清楚，等压/等容/等温过程标注正确；
+                       【高中化学】
+                         原子结构 / 电子排布：原子核在中心，电子层为同心圆，能级图横线对齐，电子箭头（↑↓）规范；
+                         分子结构 / 化学键：球棍模型、比例模型区分清楚；键角大致符合实际（如水 ~104.5°、甲烷 109.5°）；
+                         实验装置：试管、烧杯、酒精灯、导管、集气瓶用标准画法；装置连接顺序正确，接口处对齐；
+                         加热用火焰符号标注，长管进短管出等洗气规则正确；
+                         化学平衡 / 反应速率图：浓度-时间图、速率-时间图坐标轴带单位，拐点、平衡点标注正确）。
                        若用户补充要求不得直接使用原图片，则必须用 TikZ 重绘配图、不得输出原图片链接；
                        重绘时按改编后的实际尺寸取比例，改编数字尽量打破原图的等比关系（如长宽高改为不同比例），
                        使新配图与原图有肉眼可辨的差异。
@@ -313,16 +351,52 @@ public class LangChainController {
     private static final Pattern TIKZ_BLOCK = Pattern.compile("```tikz[^\\n]*\\n([\\s\\S]*?)```");
 
     /**
+     * TikZ 节点标签开头的字号词：AI 偶尔把 \small 写漏反斜杠，生成 {smallD_1} / {smallA}，
+     * 结果会把字号词当普通文本渲染到图中；编译前去掉这些标签内的字号前缀。
+     */
+    private static final Pattern NODE_LABEL_LEADING_FONT_WORD =
+            Pattern.compile("(node(?:\\[[^\\]]*\\])?(?:\\s+at\\s+\\([^()]*\\))?\\s*\\{)(\\$?)(\\\\?)(small|normalsize|footnotesize|large|Large|LARGE|huge|Huge|tiny|scriptsize)(?:\\s+|(?=[A-Z\\\\$]))([^{}$]*)(\\$?)(\\})");
+
+    /**
      * TikZ 节点标签里的裸下标：如 node[left] {A_1} -- 文本模式下划线是 LaTeX 语法错误
      * （级联报错导致整图编译失败），整体补成 $A_1$ 修复。兼容 node[选项]、node at (坐标) 两种形式。
      */
     private static final Pattern NODE_LABEL_UNDERSCORE =
             Pattern.compile("(node(?:\\[[^\\]]*\\])?(?:\\s+at\\s+\\([^()]*\\))?\\s*\\{)([^{}$]*_[^{}$]*)(\\})");
 
-    /** 编译前的 TikZ 源码修正：裸下标标签补数学模式包裹等；已合法的代码不受影响 */
+    /**
+     * TikZ every node/.style 里直接写字体命令（如 {\small}）是致命错误：
+     * style 的值必须是 key=value 选项列表，裸字体命令会触发无限递归导致 TeX capacity exceeded。
+     * 统一改写成 font=\small 形式。支持 \small / \normalsize / \footnotesize / \large 等常见字号。
+     */
+    private static final Pattern EVERY_NODE_STYLE_FONT =
+            Pattern.compile("(every node\\s*/\\s*\\.style\\s*=\\s*\\{)([^}]*)(\\})");
+
+    /** 编译前的 TikZ 源码修正：误渲染的标签字号词移除、裸下标标签补数学模式包裹、every node 里的字体命令改 font= 等；
+     * 已合法的代码不受影响。 */
     private String sanitizeTikz(String code) {
-        if (code == null || !code.contains("_")) return code;
-        return NODE_LABEL_UNDERSCORE.matcher(code).replaceAll("$1\\$$2\\$$3");
+        if (code == null) return code;
+        code = NODE_LABEL_LEADING_FONT_WORD.matcher(code).replaceAll("$1$2$5$6$7");
+        if (code.contains("_")) {
+            code = NODE_LABEL_UNDERSCORE.matcher(code).replaceAll("$1\\$$2\\$$3");
+        }
+        if (code.contains("every node")) {
+            code = EVERY_NODE_STYLE_FONT.matcher(code).replaceAll(mr -> {
+                String prefix = mr.group(1);
+                String body = mr.group(2);
+                String suffix = mr.group(3);
+                // 规则 1：把裸字号命令改写成 font=... 形式；支持 \small \normalsize \footnotesize \large 等
+                String fixed = body.replaceAll(
+                        "(^|,)\\s*\\\\(small|normalsize|footnotesize|large|Large|LARGE|huge|Huge|tiny|scriptsize)",
+                        "$1font=\\\\$2");
+                // 规则 2：font=small 这类漏写反斜杠的，补成 font=\\small
+                fixed = fixed.replaceAll(
+                        "(^|,|\\s)font\\s*=\\s*(small|normalsize|footnotesize|large|Large|LARGE|huge|Huge|tiny|scriptsize)(?=\\s*(?:,|$))",
+                        "$1font=\\\\$2");
+                return prefix + fixed + suffix;
+            });
+        }
+        return code;
     }
 
     /**
