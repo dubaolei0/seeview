@@ -499,6 +499,118 @@ body {
   padding: 6px 10px;
   box-sizing: border-box;
 }
+/* Tab 切换：图形属性 / AI 对话 / 源码 */
+.fig-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+  border-bottom: 1px solid var(--line-2);
+}
+.fig-tab {
+  border: none;
+  background: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.fig-tab:hover { color: var(--green); }
+.fig-tab.active { color: var(--green); border-bottom-color: var(--green); font-weight: 600; }
+.fig-panel { margin-top: 10px; }
+
+/* 属性面板 */
+.fig-prop-group {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: #fafbfd;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+}
+.fig-prop-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.fig-prop-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow: auto; }
+.fig-prop-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 12.5px;
+}
+.fig-prop-row label { color: var(--ink-2); }
+.fig-prop-row input, .fig-prop-row select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  font-size: 12.5px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: #fff;
+}
+.fig-prop-row input:focus, .fig-prop-row select:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px var(--green-soft);
+}
+.fig-prop-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  background: #fff;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.fig-prop-item .fig-prop-id {
+  font-weight: 600;
+  color: var(--ink-1);
+  min-width: 28px;
+}
+.fig-prop-item .fig-prop-fields {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.fig-prop-item .fig-prop-fields input,
+.fig-prop-item .fig-prop-fields select {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 5px;
+  font-size: 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+}
+.fig-prop-del {
+  border: none;
+  background: #fdeceb;
+  color: #a33;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.fig-prop-del:hover { background: #fadada; }
+.fig-mini-btn {
+  border: 1px solid var(--line-2);
+  background: #fff;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.fig-mini-btn:hover { border-color: var(--green); color: var(--green); }
+
 /* 手动改源码：折叠收起，默认走对话式 */
 .fig-code-wrap { margin-top: 10px; }
 .fig-code-wrap summary { font-size: 12.5px; color: #4a6fa5; cursor: pointer; user-select: none; }
@@ -694,7 +806,7 @@ body {
 
 <div class="toast" id="toast" role="status"></div>
 
-<!-- TikZ 配图编辑器：对话式 AI 修正（题干+源码+对话给大模型改码重编译）+ 手动改源码 -->
+<!-- TikZ 配图编辑器：结构化属性面板 + 对话式 AI 修正 + 手动源码编辑 -->
 <div class="fig-modal" id="figModal" hidden>
   <div class="fig-dialog">
     <header>
@@ -702,20 +814,89 @@ body {
       <button class="fig-close" id="figClose" type="button" aria-label="关闭">×</button>
     </header>
     <div class="fig-preview" id="figPreview"></div>
-    <div class="fig-chat" id="figChat" aria-live="polite"></div>
-    <div class="fig-input">
-      <textarea id="figAsk" rows="4" placeholder="看图描述要改的地方，AI 自动改 TikZ 并重新出图。如：A 点标签与线段重叠，请移到左上方；虚线应为实线"></textarea>
-      <button class="btn primary" id="figAskBtn" type="button">AI 修改</button>
+    <div class="fig-tabs" role="tablist">
+      <button type="button" class="fig-tab active" data-fig-tab="props" role="tab">图形属性</button>
+      <button type="button" class="fig-tab" data-fig-tab="ai" role="tab">AI 对话</button>
+      <button type="button" class="fig-tab" data-fig-tab="code" role="tab">源码</button>
     </div>
-    <details class="fig-code-wrap" id="figCodeWrap">
-      <summary>手动编辑 TikZ 源码</summary>
-      <p class="fig-tip">调整坐标或节点方位（above/below/left/right）可解决文字与符号重叠；改完点"重新生成图片"。</p>
+
+    <!-- 图形属性面板 -->
+    <div class="fig-panel" data-fig-panel="props">
+      <div class="fig-prop-group">
+        <div class="fig-prop-title">全局设置</div>
+        <div class="fig-prop-row">
+          <label for="figPropScale">整体缩放</label>
+          <input type="number" id="figPropScale" step="0.1" min="0.2" max="5">
+        </div>
+        <div class="fig-prop-row">
+          <label for="figPropLineWidth">线条粗细</label>
+          <select id="figPropLineWidth">
+            <option value="thick">thick</option>
+            <option value="">默认</option>
+            <option value="thin">thin</option>
+            <option value="line width=0.8pt">0.8pt</option>
+            <option value="line width=1pt">1pt</option>
+            <option value="line width=1.2pt">1.2pt</option>
+          </select>
+        </div>
+        <div class="fig-prop-row">
+          <label for="figPropFont">标签字号</label>
+          <select id="figPropFont">
+            <option value="\small">\small</option>
+            <option value="\normalsize">\normalsize</option>
+            <option value="\footnotesize">\footnotesize</option>
+            <option value="\large">\large</option>
+            <option value="\scriptsize">\scriptsize</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fig-prop-group">
+        <div class="fig-prop-title">
+          点
+          <button type="button" class="fig-mini-btn" id="figAddPoint">+ 添加</button>
+        </div>
+        <div class="fig-prop-list" id="figPointList"></div>
+      </div>
+
+      <div class="fig-prop-group">
+        <div class="fig-prop-title">
+          线段
+          <button type="button" class="fig-mini-btn" id="figAddSegment">+ 添加</button>
+        </div>
+        <div class="fig-prop-list" id="figSegmentList"></div>
+      </div>
+
+      <div class="fig-prop-group">
+        <div class="fig-prop-title">
+          标签
+          <button type="button" class="fig-mini-btn" id="figAddLabel">+ 添加</button>
+        </div>
+        <div class="fig-prop-list" id="figLabelList"></div>
+      </div>
+
+      <p class="fig-tip">修改后点下方"应用并重新生成图片"，AI 对话与源码模式仍可使用。</p>
+    </div>
+
+    <!-- AI 对话面板 -->
+    <div class="fig-panel" data-fig-panel="ai" hidden>
+      <div class="fig-chat" id="figChat" aria-live="polite"></div>
+      <div class="fig-input">
+        <textarea id="figAsk" rows="4" placeholder="看图描述要改的地方，AI 自动改 TikZ 并重新出图。如：A 点标签与线段重叠，请移到左上方；虚线应为实线"></textarea>
+        <button class="btn primary" id="figAskBtn" type="button">AI 修改</button>
+      </div>
+    </div>
+
+    <!-- 源码面板 -->
+    <div class="fig-panel" data-fig-panel="code" hidden>
+      <p class="fig-tip">直接修改 TikZ 源码；改完点"重新生成图片"。</p>
       <textarea id="figCode" spellcheck="false"></textarea>
-    </details>
+    </div>
+
     <div class="fig-actions">
       <span class="fig-status" id="figStatus" aria-live="polite"></span>
-      <button class="btn primary" id="figRender" type="button">重新生成图片</button>
       <button class="btn" id="figCancel" type="button">关闭</button>
+      <button class="btn primary" id="figRender" type="button">应用并重新生成图片</button>
     </div>
   </div>
 </div>
@@ -1211,6 +1392,161 @@ function saveAnsEdit() {
   toast('答案与解析已更新');
 }
 
+/* ---------------- TikZ 结构化模型：解析 / 生成（与 Python 版规则一致） ---------------- */
+const TIKZ_POSITIONS = [
+  'above left', 'above right', 'below left', 'below right',
+  'above', 'below', 'left', 'right',
+];
+const TIKZ_GLOBAL_RE = /\\begin\{tikzpicture\}\[([^\]]*)\]/;
+const TIKZ_COORD_RE = /\\coordinate\s*\(([^)]+)\)\s*at\s*\(\s*(-?\d*\.?\d+)\s*,\s*(-?\d*\.?\d+)\s*\)\s*;/g;
+const TIKZ_DRAW_RE = /\\draw\s*(?:\[([^\]]*)\])?\s*([^;]+);/g;
+const TIKZ_NODE_RE = /\\node\[([^\]]*)\]\s*at\s*\(([^)]+)\)\s*\{([^{}]*)\}\s*;/g;
+const TIKZ_FILL_RE = /\\fill\s*\(([^)]+)\)\s*circle\s*\([^)]+\)\s*;/g;
+
+function parseTikzGlobal(opts) {
+  const g = { scale: null, lineWidth: null, everyNodeFont: null };
+  const m = opts.match(/scale\s*=\s*(-?\d*\.?\d+)/);
+  if (m) g.scale = parseFloat(m[1]);
+  const lw = opts.match(/line\s*width\s*=\s*([^,\s]+)/);
+  if (lw) g.lineWidth = 'line width=' + lw[1];
+  else if (/\bthick\b/.test(opts)) g.lineWidth = 'thick';
+  else if (/\bthin\b/.test(opts)) g.lineWidth = 'thin';
+  const ef = opts.match(/every\s+node\s*\/\s*\.style\s*=\s*\{font\s*=\s*([^}]+)\}/);
+  if (ef) g.everyNodeFont = ef[1].trim();
+  return g;
+}
+function parseDrawOptions(opts) {
+  let stroke = 'solid';
+  let width = null;
+  if (/\bdashed\b/.test(opts)) stroke = 'dashed';
+  const m = opts.match(/line\s*width\s*=\s*([^,\s]+)/);
+  if (m) width = 'line width=' + m[1];
+  else if (/\bthick\b/.test(opts)) width = 'thick';
+  else if (/\bthin\b/.test(opts)) width = 'thin';
+  return { stroke, width };
+}
+function parseDrawPath(path) {
+  const parts = path.split('--');
+  const out = [];
+  for (const p of parts) {
+    const m = p.match(/\(([^)]+)\)/);
+    if (m) out.push(m[1].trim());
+  }
+  return out;
+}
+function parseNodeOptions(opts) {
+  let position = null;
+  let offset = null;
+  const fillWhite = /\bfill\s*=\s*white\b/.test(opts);
+  for (const name of TIKZ_POSITIONS) {
+    const re = new RegExp('\\b' + name.replace(/ /g, '\\s+') + '\\s*(?:=\\s*(-?\\d*\\.?\\d+)pt)?\\b');
+    const m = opts.match(re);
+    if (m) {
+      position = name;
+      if (m[1] != null) offset = parseFloat(m[1]);
+      break;
+    }
+  }
+  return { position, offset, fillWhite };
+}
+function parseTikzModel(code) {
+  if (!code || !/\\begin\{tikzpicture\}/.test(code)) return null;
+
+  const points = [];
+  const pointIds = new Set();
+  let m;
+  TIKZ_COORD_RE.lastIndex = 0;
+  while ((m = TIKZ_COORD_RE.exec(code))) {
+    const id = m[1].trim();
+    if (pointIds.has(id)) continue;
+    pointIds.add(id);
+    points.push({ id, x: parseFloat(m[2]), y: parseFloat(m[3]) });
+  }
+  if (!points.length) return null;
+
+  const segments = [];
+  let segId = 0;
+  TIKZ_DRAW_RE.lastIndex = 0;
+  while ((m = TIKZ_DRAW_RE.exec(code))) {
+    const opts = m[1] || '';
+    const path = parseDrawPath(m[2].trim());
+    if (path.length < 2) continue;
+    const { stroke, width } = parseDrawOptions(opts);
+    segId += 1;
+    segments.push({ id: 's' + segId, path, stroke, width });
+  }
+
+  const labels = [];
+  let labelId = 0;
+  TIKZ_NODE_RE.lastIndex = 0;
+  while ((m = TIKZ_NODE_RE.exec(code))) {
+    const opts = m[1];
+    const anchor = m[2].trim();
+    const text = m[3];
+    const { position, offset, fillWhite } = parseNodeOptions(opts);
+    labelId += 1;
+    labels.push({
+      id: 'l' + labelId,
+      anchor,
+      text,
+      position: position || 'above',
+      offset: offset != null ? offset : 0,
+      fillWhite,
+    });
+  }
+
+  const fills = [];
+  TIKZ_FILL_RE.lastIndex = 0;
+  while ((m = TIKZ_FILL_RE.exec(code))) fills.push(m[1].trim());
+
+  let g = { scale: null, lineWidth: null, everyNodeFont: null };
+  const gm = code.match(TIKZ_GLOBAL_RE);
+  if (gm) g = parseTikzGlobal(gm[1]);
+
+  return { global: g, points, segments, labels, fills, raw: code };
+}
+
+function fmtTikzNum(v) {
+  if (v == null) return '0';
+  const s = Number(v).toFixed(3).replace(/\.?0+$/, '');
+  return s || '0';
+}
+function globalOptionStr(g) {
+  const parts = [];
+  if (g.scale != null && g.scale !== '') parts.push('scale=' + fmtTikzNum(g.scale));
+  if (g.lineWidth) parts.push(g.lineWidth);
+  if (g.everyNodeFont) parts.push('every node/.style={font=' + g.everyNodeFont + '}');
+  return parts.join(',');
+}
+function generateTikzCode(model) {
+  const g = model.global || {};
+  const opts = globalOptionStr(g);
+  const lines = [opts ? '\\begin{tikzpicture}[' + opts + ']' : '\\begin{tikzpicture}'];
+  for (const p of model.points || []) {
+    lines.push('\\coordinate (' + p.id + ') at (' + fmtTikzNum(p.x) + ',' + fmtTikzNum(p.y) + ');');
+  }
+  for (const seg of model.segments || []) {
+    const styleParts = [];
+    const width = seg.width || (g && g.lineWidth);
+    if (width) styleParts.push(width);
+    if (seg.stroke === 'dashed') styleParts.push('dashed');
+    const style = styleParts.length ? '[' + styleParts.join(',') + ']' : '';
+    const path = seg.path.map((id) => '(' + id + ')').join('--');
+    lines.push('\\draw' + style + ' ' + path + ';');
+  }
+  for (const pid of model.fills || []) lines.push('\\fill (' + pid + ') circle (1.2pt);');
+  for (const lab of model.labels || []) {
+    const pos = lab.position || 'above';
+    const offset = lab.offset || 0;
+    const posStr = offset ? pos + '=' + fmtTikzNum(offset) + 'pt' : pos;
+    const optArr = [posStr];
+    if (lab.fillWhite) { optArr.push('fill=white'); optArr.push('inner sep=1.5pt'); }
+    lines.push('\\node[' + optArr.join(',') + '] at (' + lab.anchor + ') {' + lab.text + '};');
+  }
+  lines.push('\\end{tikzpicture}');
+  return lines.join('\n') + '\n';
+}
+
 /* ---------------- 配图编辑（TikZ 改码重编译） ---------------- */
 /* /seeview/local-image?path=<abs> -> <abs>，其余原样返回 */
 function localImgPath(src) {
@@ -1242,16 +1578,184 @@ function openFigEditor(code, img, pre, fig) {
     oldPath: img ? localImgPath(img.getAttribute('src')) : '',
     chat: [],                       // 对话历史（含本轮要求，交给后端 fix-tikz）
     stem: stemForFig(pre),
+    model: null,                    // 结构化 TikZ 模型（解析失败时为 null）
   };
   $('figCode').value = code;
   $('figStatus').textContent = '';
   $('figPreview').innerHTML = img
     ? `<img src="${esc(img.getAttribute('src'))}" alt="配图预览">`
-    : '<span class="fig-none">暂无配图：可先手动点"重新生成图片"，或展开源码检查</span>';
+    : '<span class="fig-none">暂无配图：可先手动点"应用并重新生成图片"，或切换到源码检查</span>';
   $('figChat').innerHTML = '';
   $('figAsk').value = '';
+  // 默认切到图形属性面板；解析失败则切到源码
+  const model = parseTikzModel(code);
+  if (model) {
+    state.figEdit.model = model;
+    renderFigProps(model);
+    bindFigPropGlobal(model);
+    switchFigTab('props');
+  } else {
+    switchFigTab('code');
+    $('figStatus').textContent = '该图暂时无法用属性面板编辑，已切到源码模式';
+  }
   $('figModal').hidden = false;
   $('figAsk').focus();
+}
+
+/* Tab 切换：props / ai / code */
+function switchFigTab(name) {
+  document.querySelectorAll('.fig-tab').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.figTab === name);
+  });
+  document.querySelectorAll('.fig-panel').forEach((panel) => {
+    panel.hidden = panel.dataset.figPanel !== name;
+  });
+}
+
+/* ---------- 属性面板渲染 ---------- */
+function renderFigProps(model) {
+  const g = model.global || {};
+  $('figPropScale').value = g.scale != null ? g.scale : 1;
+  $('figPropLineWidth').value = g.lineWidth || 'thick';
+  $('figPropFont').value = g.everyNodeFont || '\\small';
+
+  const pointList = $('figPointList');
+  pointList.innerHTML = '';
+  model.points.forEach((p, idx) => {
+    const row = document.createElement('div');
+    row.className = 'fig-prop-item';
+    row.innerHTML = `
+      <span class="fig-prop-id">${esc(p.id)}</span>
+      <div class="fig-prop-fields">
+        <input type="number" data-idx="${idx}" data-field="x" step="0.1" value="${p.x}" title="x">
+        <input type="number" data-idx="${idx}" data-field="y" step="0.1" value="${p.y}" title="y">
+      </div>
+      <button type="button" class="fig-prop-del" data-idx="${idx}">删除</button>
+    `;
+    pointList.appendChild(row);
+  });
+  pointList.querySelectorAll('input').forEach((inp) => {
+    inp.addEventListener('input', (e) => {
+      const idx = +e.target.dataset.idx;
+      const f = e.target.dataset.field;
+      model.points[idx][f] = parseFloat(e.target.value) || 0;
+    });
+  });
+  pointList.querySelectorAll('.fig-prop-del').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const idx = +e.currentTarget.dataset.idx;
+      model.points.splice(idx, 1);
+      renderFigProps(model);
+    });
+  });
+
+  const segList = $('figSegmentList');
+  segList.innerHTML = '';
+  model.segments.forEach((s, idx) => {
+    const row = document.createElement('div');
+    row.className = 'fig-prop-item';
+    row.innerHTML = `
+      <span class="fig-prop-id">L${idx + 1}</span>
+      <div class="fig-prop-fields">
+        <input type="text" data-idx="${idx}" data-field="path" value="${s.path.join(' ')}" title="点序列，空格分隔，如 A B C">
+        <select data-idx="${idx}" data-field="stroke">
+          <option value="solid" ${s.stroke === 'solid' ? 'selected' : ''}>实线</option>
+          <option value="dashed" ${s.stroke === 'dashed' ? 'selected' : ''}>虚线</option>
+        </select>
+        <select data-idx="${idx}" data-field="width">
+          <option value="">跟随全局</option>
+          <option value="thick" ${s.width === 'thick' ? 'selected' : ''}>thick</option>
+          <option value="thin" ${s.width === 'thin' ? 'selected' : ''}>thin</option>
+          <option value="line width=0.8pt" ${s.width === 'line width=0.8pt' ? 'selected' : ''}>0.8pt</option>
+          <option value="line width=1pt" ${s.width === 'line width=1pt' ? 'selected' : ''}>1pt</option>
+        </select>
+      </div>
+      <button type="button" class="fig-prop-del" data-idx="${idx}">删除</button>
+    `;
+    segList.appendChild(row);
+  });
+  segList.querySelectorAll('input, select').forEach((el) => {
+    el.addEventListener('input', (e) => {
+      const idx = +e.target.dataset.idx;
+      const f = e.target.dataset.field;
+      if (f === 'path') {
+        model.segments[idx].path = e.target.value.trim().split(/\s+/).filter(Boolean);
+      } else {
+        model.segments[idx][f] = e.target.value;
+      }
+    });
+  });
+  segList.querySelectorAll('.fig-prop-del').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const idx = +e.currentTarget.dataset.idx;
+      model.segments.splice(idx, 1);
+      renderFigProps(model);
+    });
+  });
+
+  const labelList = $('figLabelList');
+  labelList.innerHTML = '';
+  model.labels.forEach((l, idx) => {
+    const row = document.createElement('div');
+    row.className = 'fig-prop-item';
+    row.innerHTML = `
+      <span class="fig-prop-id">L${idx + 1}</span>
+      <div class="fig-prop-fields">
+        <select data-idx="${idx}" data-field="anchor" title="锚点">
+          ${model.points.map((p) => `<option value="${p.id}" ${l.anchor === p.id ? 'selected' : ''}>${p.id}</option>`).join('')}
+        </select>
+        <input type="text" data-idx="${idx}" data-field="text" value="${esc(l.text)}" title="标签文本">
+        <select data-idx="${idx}" data-field="position" title="方位">
+          ${TIKZ_POSITIONS.map((p) => `<option value="${p}" ${l.position === p ? 'selected' : ''}>${p}</option>`).join('')}
+        </select>
+        <input type="number" data-idx="${idx}" data-field="offset" step="1" min="0" value="${l.offset}" title="偏移 pt">
+        <label style="font-size:11px;display:flex;align-items:center;gap:3px;">
+          <input type="checkbox" data-idx="${idx}" data-field="fillWhite" ${l.fillWhite ? 'checked' : ''}> 白底
+        </label>
+      </div>
+      <button type="button" class="fig-prop-del" data-idx="${idx}">删除</button>
+    `;
+    labelList.appendChild(row);
+  });
+  labelList.querySelectorAll('input, select').forEach((el) => {
+    el.addEventListener('input', (e) => {
+      const idx = +e.target.dataset.idx;
+      const f = e.target.dataset.field;
+      if (e.target.type === 'checkbox') {
+        model.labels[idx][f] = e.target.checked;
+      } else if (f === 'offset') {
+        model.labels[idx][f] = parseFloat(e.target.value) || 0;
+      } else {
+        model.labels[idx][f] = e.target.value;
+      }
+    });
+  });
+  labelList.querySelectorAll('.fig-prop-del').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const idx = +e.currentTarget.dataset.idx;
+      model.labels.splice(idx, 1);
+      renderFigProps(model);
+    });
+  });
+}
+
+/* 全局设置字段绑定（只绑定一次，后续模型切换时已通过状态对象共享读写） */
+let _figGlobalBound = false;
+function bindFigPropGlobal(model) {
+  if (_figGlobalBound) return;
+  _figGlobalBound = true;
+  const fields = [
+    ['figPropScale', 'scale', (v) => parseFloat(v) || 1],
+    ['figPropLineWidth', 'lineWidth', (v) => v],
+    ['figPropFont', 'everyNodeFont', (v) => v],
+  ];
+  fields.forEach(([id, key, cast]) => {
+    $(id).addEventListener('input', (e) => {
+      const m = state.figEdit && state.figEdit.model;
+      if (!m) return;
+      m.global[key] = cast(e.target.value);
+    });
+  });
 }
 
 /* 对话消息上屏；自动滚到最新（配图与题干编辑器共用） */
@@ -1313,7 +1817,15 @@ async function figAsk() {
 async function figRender() {
   const ctx = state.figEdit;
   if (!ctx) return;
-  const code = $('figCode').value.trim();
+  // 属性面板模式：从 model 生成 TikZ 再编译；否则直接用源码
+  let code;
+  const activeTab = document.querySelector('.fig-tab.active');
+  if (activeTab && activeTab.dataset.figTab === 'props' && ctx.model) {
+    code = generateTikzCode(ctx.model).trim();
+    $('figCode').value = code;
+  } else {
+    code = $('figCode').value.trim();
+  }
   if (!code) { $('figStatus').textContent = 'TikZ 源码不能为空'; return; }
   const btn = $('figRender');
   btn.disabled = true;
@@ -1355,7 +1867,16 @@ function applyFigImage(ctx, newPath, code) {
   }
   // 源码块内容同步为最新代码，供再次编辑；刷新编辑上下文（保留对话历史与题干，供连续修正）
   ctx.pre.textContent = '```tikz\n' + code + '\n```';
-  state.figEdit = { img, pre: ctx.pre, fig: ctx.fig, oldPath: newPath, chat: ctx.chat, stem: ctx.stem };
+  const newModel = parseTikzModel(code);
+  state.figEdit = {
+    img, pre: ctx.pre, fig: ctx.fig, oldPath: newPath,
+    chat: ctx.chat, stem: ctx.stem, model: newModel,
+  };
+  // 若属性面板可见，按最新代码刷新模型
+  if (newModel && document.querySelector('.fig-tab.active[data-fig-tab="props"]')) {
+    renderFigProps(newModel);
+    bindFigPropGlobal(newModel);
+  }
 }
 
 /* state.paper 各字段里的旧图片路径替换为新路径（复制/下载与界面保持一致） */
@@ -1919,6 +2440,60 @@ function init() {
   $('btnWord').addEventListener('click', downloadWord);
   $('btnCopy').addEventListener('click', copyText);
   $('figRender').addEventListener('click', figRender);
+  document.querySelectorAll('.fig-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.figTab;
+      switchFigTab(name);
+      // 切回属性面板时，如果当前源码更新过，重新解析
+      if (name === 'props' && state.figEdit) {
+        const code = $('figCode').value.trim();
+        const m = parseTikzModel(code);
+        if (m) {
+          state.figEdit.model = m;
+          renderFigProps(m);
+          bindFigPropGlobal(m);
+          const g = m.global || {};
+          $('figPropScale').value = g.scale != null ? g.scale : 1;
+          $('figPropLineWidth').value = g.lineWidth || 'thick';
+          $('figPropFont').value = g.everyNodeFont || '\\small';
+          $('figStatus').textContent = '';
+        } else {
+          $('figStatus').textContent = '当前源码暂不支持属性面板编辑，请使用源码或 AI 对话模式';
+        }
+      }
+    });
+  });
+  $('figAddPoint').addEventListener('click', () => {
+    const m = state.figEdit && state.figEdit.model;
+    if (!m) return;
+    const id = 'P' + (m.points.length + 1);
+    m.points.push({ id, x: 0, y: 0 });
+    renderFigProps(m);
+  });
+  $('figAddSegment').addEventListener('click', () => {
+    const m = state.figEdit && state.figEdit.model;
+    if (!m || m.points.length < 2) return;
+    m.segments.push({
+      id: 's' + (m.segments.length + 1),
+      path: [m.points[0].id, m.points[1].id],
+      stroke: 'solid',
+      width: '',
+    });
+    renderFigProps(m);
+  });
+  $('figAddLabel').addEventListener('click', () => {
+    const m = state.figEdit && state.figEdit.model;
+    if (!m || !m.points.length) return;
+    m.labels.push({
+      id: 'l' + (m.labels.length + 1),
+      anchor: m.points[0].id,
+      text: m.points[0].id,
+      position: 'above',
+      offset: 3,
+      fillWhite: true,
+    });
+    renderFigProps(m);
+  });
   $('figAskBtn').addEventListener('click', figAsk);
   $('figAsk').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) figAsk();
