@@ -381,7 +381,7 @@ body {
 /* TikZ 配图 + 编辑入口：图正常显示，下方挂"编辑配图"按钮（源码块隐藏） */
 .q-fig { display: block; margin: 6px 0; }
 .q-fig img { max-width: 100%; }
-.q-fig-btn {
+.q-fig-btn, .q-edit-btn {
   font: 12px/1.6 var(--mono);
   color: #4a6fa5;
   background: none;
@@ -391,7 +391,9 @@ body {
   margin-top: 4px;
   cursor: pointer;
 }
-.q-fig-btn:hover { background: #eef3fa; }
+.q-fig-btn:hover, .q-edit-btn:hover { background: #eef3fa; }
+/* 题干编辑入口：靠右浮在题干上方 */
+.q-edit-btn { display: block; margin: 0 0 2px auto; }
 
 /* TikZ 配图编辑弹窗 */
 .fig-modal {
@@ -431,6 +433,9 @@ body {
 }
 .fig-preview img { max-width: 100%; max-height: 276px; }
 .fig-none { font-size: 12px; color: #999; }
+/* 题干对话编辑：当前题干渲染预览（文字版，左对齐） */
+#stemPreview { display: block; text-align: left; font-size: 14px; line-height: 1.9; padding: 12px 16px; }
+#stemPreview .katex { font-size: 1.05em; }
 /* 对话消息：u=用户 a=助手 e=错误 */
 .fig-chat {
   margin-top: 8px;
@@ -452,9 +457,10 @@ body {
 .fig-msg.a { align-self: flex-start; background: #f2f4f7; color: #333; }
 .fig-msg.e { align-self: flex-start; background: #fdeceb; color: #a33; }
 .fig-input { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
-#figAsk {
+/* 对话输入框（配图与题干编辑器统一尺寸）：4 行高，可拖拽拉伸 */
+#figAsk, #stemAsk {
   flex: 1;
-  min-height: 46px;
+  min-height: 96px;
   resize: vertical;
   font: 13px/1.6 inherit;
   border: 1px solid var(--line-2);
@@ -466,7 +472,7 @@ body {
 .fig-code-wrap { margin-top: 10px; }
 .fig-code-wrap summary { font-size: 12.5px; color: #4a6fa5; cursor: pointer; user-select: none; }
 .fig-tip { font-size: 12px; color: #777; margin: 6px 0 8px; }
-#figCode {
+#figCode, #stemCode {
   width: 100%;
   height: 240px;
   font: 12px/1.7 var(--mono);
@@ -667,7 +673,7 @@ body {
     <div class="fig-preview" id="figPreview"></div>
     <div class="fig-chat" id="figChat" aria-live="polite"></div>
     <div class="fig-input">
-      <textarea id="figAsk" rows="2" placeholder="看图描述要改的地方，AI 自动改 TikZ 并重新出图。如：A 点标签与线段重叠，请移到左上方；虚线应为实线"></textarea>
+      <textarea id="figAsk" rows="4" placeholder="看图描述要改的地方，AI 自动改 TikZ 并重新出图。如：A 点标签与线段重叠，请移到左上方；虚线应为实线"></textarea>
       <button class="btn primary" id="figAskBtn" type="button">AI 修改</button>
     </div>
     <details class="fig-code-wrap" id="figCodeWrap">
@@ -679,6 +685,32 @@ body {
       <span class="fig-status" id="figStatus" aria-live="polite"></span>
       <button class="btn primary" id="figRender" type="button">重新生成图片</button>
       <button class="btn" id="figCancel" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 题干编辑器：对话式 AI 修改（题干+选项/答案参考+对话历史交给大模型改写）+ 手动改源码 -->
+<div class="fig-modal" id="stemModal" hidden>
+  <div class="fig-dialog">
+    <header>
+      <b>编辑题干</b>
+      <button class="fig-close" id="stemClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="fig-preview" id="stemPreview"></div>
+    <div class="fig-chat" id="stemChat" aria-live="polite"></div>
+    <div class="fig-input">
+      <textarea id="stemAsk" rows="4" placeholder="描述要改的地方，AI 自动改题干。如：把数字换成 3 和 5；情境改成骑自行车；增加一个条件"></textarea>
+      <button class="btn primary" id="stemAskBtn" type="button">AI 修改</button>
+    </div>
+    <details class="fig-code-wrap" id="stemCodeWrap">
+      <summary>手动编辑题干源码</summary>
+      <p class="fig-tip">直接修改题干文字；$...$、$$...$$ 公式、图片链接与 ```tikz 代码块保持原样语法即可，改完点"保存"。</p>
+      <textarea id="stemCode" spellcheck="false"></textarea>
+    </details>
+    <div class="fig-actions">
+      <span class="fig-status" id="stemStatus" aria-live="polite"></span>
+      <button class="btn" id="stemCancel" type="button">关闭</button>
+      <button class="btn primary" id="stemSave" type="button">保存</button>
     </div>
   </div>
 </div>
@@ -842,7 +874,8 @@ function renderPaper(p) {
     html += `<div class="q-sec">${esc(sec.type)}</div>`;
     sec.items.forEach((item) => {
       n++;
-      html += `<div class="q-item">`;
+      html += `<div class="q-item" data-idx="${n - 1}">`;
+      html += `<button type="button" class="q-edit-btn" data-idx="${n - 1}">✎ 编辑题干</button>`;
       html += `<p class="q-stem">${n}．${fmtMath(item.q)}</p>`;
       if (item.o) {
         const wide = item.o.some((x) => x.length > 14) ? ' wide' : '';
@@ -858,6 +891,10 @@ function renderPaper(p) {
   });
 
   body.innerHTML = html;
+  // 题干编辑入口：打开编辑器改 Markdown 源文本
+  body.querySelectorAll('.q-edit-btn').forEach((btn) => {
+    btn.addEventListener('click', () => openStemEditor(+btn.dataset.idx));
+  });
   // 插图（几何图/函数图等）加载失败时给出占位提示，不静默裂图
   body.querySelectorAll('img').forEach((im) => {
     im.addEventListener('error', () => {
@@ -901,6 +938,113 @@ function renderPaper(p) {
   body.querySelectorAll('.q-ans').forEach((el) => el.classList.remove('show'));
 }
 
+/* ---------------- 题干编辑（对话式 AI 修改 + 手动改源码） ---------------- */
+/* 卷面所有题目按渲染顺序摊平（配图定位题干、编辑题干共用同一索引口径） */
+function flatItems(p) {
+  return (p && Array.isArray(p.sections)) ? p.sections.flatMap((sec) => sec.items || []) : [];
+}
+
+/* 弹窗里的题干渲染预览（公式/图片/TikZ 块与卷面同一套渲染） */
+function updateStemPreview(q) {
+  const el = $('stemPreview');
+  el.innerHTML = q && q.trim() ? fmtMath(q) : '<span class="fig-none">（空题干）</span>';
+  el.querySelectorAll('img').forEach((im) => {
+    im.addEventListener('error', () => {
+      const span = document.createElement('span');
+      span.className = 'pv-img-err';
+      span.textContent = `图片加载失败：${im.getAttribute('alt') || ''}`;
+      im.replaceWith(span);
+    });
+  });
+}
+
+/* 整卷重渲染并保持"显示答案"开关状态（AI 修改与手动保存共用出口） */
+function rerenderPaperPreservingAns() {
+  const showAns = $('showAns').checked;   // 重渲染会重置答案显隐，先记住再还原
+  renderPaper(state.paper);
+  $('showAns').checked = showAns;
+  document.querySelectorAll('.q-ans').forEach((el) => el.classList.toggle('show', showAns));
+}
+
+function openStemEditor(idx) {
+  const item = flatItems(state.paper)[idx];
+  if (!item) return;
+  state.stemEdit = { idx, chat: [] };     // chat：对话历史（含本轮要求，交给后端 fix-stem）
+  $('stemCode').value = item.q || '';
+  updateStemPreview(item.q);
+  $('stemChat').innerHTML = '';
+  $('stemAsk').value = '';
+  $('stemStatus').textContent = '';
+  $('stemModal').hidden = false;
+  $('stemAsk').focus();
+}
+
+/* 对话式 AI 改题干：当前题干 + 选项/答案参考 + 对话历史 -> 后端改写 -> 卷面、预览与手动编辑器同步更新 */
+async function stemAsk() {
+  const ctx = state.stemEdit;
+  if (!ctx) return;
+  const text = $('stemAsk').value.trim();
+  if (!text) { $('stemStatus').textContent = '请先描述要修改的问题'; return; }
+  const item = flatItems(state.paper)[ctx.idx];
+  if (!item) return;
+
+  const btn = $('stemAskBtn');
+  btn.disabled = true;
+  $('stemAsk').value = '';
+  chatMsg($('stemChat'), 'user', text);
+  ctx.chat.push({ role: 'user', content: text });
+  const pending = chatMsg($('stemChat'), 'a', 'AI 修改中……');
+  try {
+    const res = await fetch('/langchain/question/fix-stem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stem: item.q || '',
+        options: item.o || null,
+        answer: item.a || null,
+        note: item.note || null,
+        messages: ctx.chat,
+      }),
+    });
+    if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const note = data.note || '已按要求修改题干';
+    pending.textContent = note;
+    ctx.chat.push({ role: 'assistant', content: note });
+    item.q = data.stem;
+    rerenderPaperPreservingAns();
+    updateStemPreview(data.stem);
+    $('stemCode').value = data.stem;      // 手动编辑器同步最新题干
+    $('stemStatus').textContent = '';
+    toast('题干已更新');
+  } catch (err) {
+    pending.remove();
+    ctx.chat.pop();                       // 本轮失败不进历史，避免污染上下文
+    chatMsg($('stemChat'), 'err', '修改失败：' + (err.message || '未知错误'));
+  } finally {
+    btn.disabled = false;
+    $('stemAsk').focus();
+  }
+}
+
+/* 手动保存：回写 state.paper 后整卷重渲染（配图入口/答案显隐一并重建），复制与下载 Word 同步生效 */
+function saveStemEdit() {
+  const ctx = state.stemEdit;
+  if (!ctx) return;
+  const text = $('stemCode').value.trim();
+  if (!text) { $('stemStatus').textContent = '题干不能为空'; return; }
+  const item = flatItems(state.paper)[ctx.idx];
+  if (!item) return;
+  item.q = text;
+  rerenderPaperPreservingAns();
+  updateStemPreview(text);
+  $('stemStatus').textContent = '';
+  toast('题干已更新');
+  const el = document.querySelector(`.q-item[data-idx="${ctx.idx}"]`);
+  if (el) el.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+}
+
 /* ---------------- 配图编辑（TikZ 改码重编译） ---------------- */
 /* /seeview/local-image?path=<abs> -> <abs>，其余原样返回 */
 function localImgPath(src) {
@@ -911,11 +1055,11 @@ function localImgPath(src) {
 /* 该配图所属题目的题干（给 AI 修正配图时参考，保证比例/命名与题意一致）：
    按配图所在题目在卷面中的顺序映射回 state.paper，剥离源码块与图片链接 */
 function stemForFig(pre) {
-  if (!state.paper || !Array.isArray(state.paper.sections)) return '';
+  if (!state.paper) return '';
   const itemEl = pre.closest('.q-item');
   if (!itemEl) return '';
   const idx = [...document.querySelectorAll('#paperBody .q-item')].indexOf(itemEl);
-  const items = state.paper.sections.flatMap((sec) => sec.items || []);
+  const items = flatItems(state.paper);
   const q = items[idx] && items[idx].q;
   if (typeof q !== 'string') return '';
   return q
@@ -944,12 +1088,11 @@ function openFigEditor(code, img, pre, fig) {
   $('figAsk').focus();
 }
 
-/* 对话消息上屏；自动滚到最新 */
-function figMsg(role, text) {
+/* 对话消息上屏；自动滚到最新（配图与题干编辑器共用） */
+function chatMsg(box, role, text) {
   const el = document.createElement('div');
   el.className = 'fig-msg ' + (role === 'user' ? 'u' : role === 'err' ? 'e' : 'a');
   el.textContent = text;
-  const box = $('figChat');
   box.appendChild(el);
   box.scrollTop = box.scrollHeight;
   return el;
@@ -972,9 +1115,9 @@ async function figAsk() {
   const btn = $('figAskBtn');
   btn.disabled = true;
   $('figAsk').value = '';
-  figMsg('user', text);
+  chatMsg($('figChat'), 'user', text);
   ctx.chat.push({ role: 'user', content: text });
-  const pending = figMsg('a', 'AI 修改中（改码 + XeLaTeX 编译，约需几十秒）……');
+  const pending = chatMsg($('figChat'), 'a', 'AI 修改中（改码 + XeLaTeX 编译，约需几十秒）……');
   try {
     const res = await fetch('/langchain/question/fix-tikz', {
       method: 'POST',
@@ -994,7 +1137,7 @@ async function figAsk() {
   } catch (err) {
     pending.remove();
     ctx.chat.pop();                   // 本轮失败不进历史，避免污染上下文
-    figMsg('err', '修改失败：' + (err.message || '未知错误'));
+    chatMsg($('figChat'), 'err', '修改失败：' + (err.message || '未知错误'));
   } finally {
     btn.disabled = false;
     $('figAsk').focus();
@@ -1558,6 +1701,19 @@ function init() {
   $('figClose').addEventListener('click', () => { $('figModal').hidden = true; });
   $('figModal').addEventListener('click', (e) => {
     if (e.target.id === 'figModal') $('figModal').hidden = true;
+  });
+  $('stemSave').addEventListener('click', saveStemEdit);
+  $('stemAskBtn').addEventListener('click', stemAsk);
+  $('stemAsk').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) stemAsk();
+  });
+  $('stemCode').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveStemEdit();
+  });
+  $('stemCancel').addEventListener('click', () => { $('stemModal').hidden = true; });
+  $('stemClose').addEventListener('click', () => { $('stemModal').hidden = true; });
+  $('stemModal').addEventListener('click', (e) => {
+    if (e.target.id === 'stemModal') $('stemModal').hidden = true;
   });
   $('showAns').addEventListener('change', (e) => {
     document.querySelectorAll('.q-ans').forEach((el) =>

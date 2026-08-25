@@ -2,11 +2,13 @@ package com.yuanxuan.seeview.controller;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yuanxuan.seeview.dto.ChatTurn;
 import com.yuanxuan.seeview.dto.LectureBatchRequest;
 import com.yuanxuan.seeview.dto.LectureRequest;
 import com.yuanxuan.seeview.dto.LectureResult;
 import com.yuanxuan.seeview.dto.QuestionGenerateRequest;
 import com.yuanxuan.seeview.dto.QuestionPaper;
+import com.yuanxuan.seeview.dto.StemFixRequest;
 import com.yuanxuan.seeview.dto.TikzFixRequest;
 import com.yuanxuan.seeview.service.LectureGenerateService;
 import dev.langchain4j.data.message.SystemMessage;
@@ -152,7 +154,7 @@ public class LangChainController {
     @PostMapping("/question/fix-tikz")
     public Map<String, String> fixTikz(@RequestBody TikzFixRequest request) {
         String code = request == null ? null : request.code();
-        String instruction = latestUserMessage(request);
+        String instruction = latestUserMessage(request == null ? null : request.messages());
         if (code == null || code.isBlank()) {
             return Map.of("error", "code 不能为空");
         }
@@ -189,6 +191,110 @@ public class LangChainController {
                 "path", r.path().toString().replace('\\', '/'));
     }
 
+    /**
+     * AI 修改题干（智能命题工作台"编辑题干"对话用）：当前题干 + 选项/答案参考 + 对话历史
+     * 交给大模型按用户最新要求改写，一次请求返回新题干与修改说明。
+     *
+     * @param request {@code {"stem": 题干, "options": [], "answer": "", "note": "",
+     *                "messages": [{role, content}]}}（messages 最新一条 user 即本次修改要求）
+     * @return 成功 {@code {"stem": 新题干, "note": 修改说明}}；
+     *         失败 {@code {"error": 错误摘要}}（HTTP 均 200，前端按字段区分）
+     */
+    @PostMapping("/question/fix-stem")
+    public Map<String, String> fixStem(@RequestBody StemFixRequest request) {
+        String stem = request == null ? null : request.stem();
+        String instruction = latestUserMessage(request == null ? null : request.messages());
+        if (stem == null || stem.isBlank()) {
+            return Map.of("error", "stem 不能为空");
+        }
+        if (instruction == null) {
+            return Map.of("error", "messages 缺少 user 修改要求");
+        }
+
+        String raw = chat(stemFixSystemPrompt(), stemFixUserPrompt(request, instruction));
+        String fixed = extractStem(raw);
+        if (fixed == null || fixed.isBlank()) {
+            return Map.of("error", "大模型未返回题干，请重试");
+        }
+        return Map.of("stem", fixed,
+                "note", stemFixNote(raw).isBlank() ? "已按要求修改题干" : stemFixNote(raw));
+    }
+
+    private String stemFixSystemPrompt() {
+        return """
+                你是一名资深命题专家。用户会给你一道题的当前题干（可能附选项、答案与解析作参考），以及对题干的修改要求
+                （如替换情境、调整数字、修正表述、增删条件、改写提问方式等）。你的任务：在原题干基础上做最小必要修改，满足用户要求。
+
+                修改原则：
+                1. 只改用户指出的问题及其连带部分，不要重写整道题、不要改动与要求无关的内容；
+                2. 题干必须与选项、答案保持逻辑一致；若修改导致答案或选项需要变化，不要自行改动选项、答案与解析，
+                   在修改说明里明确提醒用户"答案/选项需同步调整"；
+                3. 公式保持 LaTeX 记法：行内用 $...$ 包裹，独立公式用 $$...$$ 包裹，不要使用 Unicode 伪公式或纯文字描述公式；
+                4. 题干中的图片链接与 ```tikz 代码块必须逐字保留（配图由专门的工具调整），除非用户明确要求改动配图；
+                5. 输出修改后的完整题干（从第一个字到最后一个字），不要省略任何部分、不要添加题号。
+
+                输出要求：先用一句话说明你改了什么（含答案/选项是否需同步调整的提醒），然后输出修改后的完整题干，
+                用 ```stem 围栏代码块包裹，不要输出其他内容。
+                """;
+    }
+
+    /** 题干修正请求用户提示词：当前题干 + 选项/答案参考 + 截断的对话历史 + 本次修改要求 */
+    private String stemFixUserPrompt(StemFixRequest req, String instruction) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("【当前题干】\n").append(req.stem().strip()).append('\n');
+        if (req.options() != null && !req.options().isEmpty()) {
+            sb.append("【选项】（保持题干与选项一致，不要改选项本身）\n");
+            for (int i = 0; i < req.options().size(); i++) {
+                sb.append((char) ('A' + i)).append("．").append(req.options().get(i)).append('\n');
+            }
+        }
+        if (req.answer() != null && !req.answer().isBlank()) {
+            sb.append("【答案】").append(req.answer().strip()).append('\n');
+        }
+        if (req.note() != null && !req.note().isBlank()) {
+            sb.append("【解析】").append(req.note().strip()).append('\n');
+        }
+        appendHistory(sb, req.messages());
+        sb.append("【本次修改要求】\n").append(instruction).append('\n');
+        return sb.toString();
+    }
+
+    /**
+     * 从大模型输出中抽取题干：取 ```stem 围栏块内容。题干自身可能内嵌 ```tikz 配图块，
+     * 扫描时先跳过内层 tikz 块自身的闭合围栏，避免把内层闭合当成外层结束而截断题干。
+     */
+    private String extractStem(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        int open = raw.indexOf("```stem");
+        if (open < 0) return null;
+        int contentStart = raw.indexOf('\n', open);
+        if (contentStart < 0) return null;
+        contentStart++;
+        int i = contentStart;
+        while (i < raw.length()) {
+            int fence = raw.indexOf("```", i);
+            if (fence < 0) break;
+            if (raw.startsWith("```tikz", fence)) {
+                // 内层配图块：跳到它自己的闭合围栏之后
+                int close = raw.indexOf("```", fence + 3);
+                i = close < 0 ? raw.length() : close + 3;
+            } else {
+                // 外层（题干）闭合围栏
+                return raw.substring(contentStart, fence).trim();
+            }
+        }
+        // 未闭合：取到结尾（模型偶尔漏收尾围栏）
+        return raw.substring(contentStart).replaceFirst("```\\s*$", "").trim();
+    }
+
+    /** 题干修改说明：```stem 围栏块之前的一句话；没有返回空串 */
+    private String stemFixNote(String raw) {
+        if (raw == null) return "";
+        int open = raw.indexOf("```stem");
+        String note = (open >= 0 ? raw.substring(0, open) : raw).replace("```", "").strip();
+        return note.length() > 200 ? note.substring(0, 200) + "…" : note;
+    }
+
     /** 对话历史上限：更早轮次的修改已体现在当前代码里，截掉省 token */
     private static final int TIKZ_FIX_HISTORY_LIMIT = 6;
 
@@ -214,25 +320,29 @@ public class LangChainController {
             sb.append("【题干】\n").append(req.stem().strip()).append('\n');
         }
         sb.append("【当前 TikZ 源码】\n```tikz\n").append(req.code().strip()).append("\n```\n");
-        if (req.messages() != null && req.messages().size() > 1) {
-            sb.append("【对话历史】（用户反馈与历次修改说明，由早到晚）\n");
-            int from = Math.max(0, req.messages().size() - TIKZ_FIX_HISTORY_LIMIT);
-            for (int i = from; i < req.messages().size(); i++) {
-                TikzFixRequest.Message m = req.messages().get(i);
-                if (m == null || m.content() == null || m.content().isBlank()) continue;
-                String who = "assistant".equalsIgnoreCase(m.role()) ? "助手" : "用户";
-                sb.append(who).append("：").append(m.content().strip()).append('\n');
-            }
-        }
+        appendHistory(sb, req.messages());
         sb.append("【本次修改要求】\n").append(instruction).append('\n');
         return sb.toString();
     }
 
-    /** 对话历史里最新一条非空 user 消息（即本次修改要求）；没有则 null */
-    private String latestUserMessage(TikzFixRequest req) {
-        if (req == null || req.messages() == null) return null;
+    /** 追加截断的对话历史（用户反馈与历次修改说明，由早到晚）；仅一条时不输出 */
+    private void appendHistory(StringBuilder sb, List<? extends ChatTurn> messages) {
+        if (messages == null || messages.size() <= 1) return;
+        sb.append("【对话历史】（用户反馈与历次修改说明，由早到晚）\n");
+        int from = Math.max(0, messages.size() - TIKZ_FIX_HISTORY_LIMIT);
+        for (int i = from; i < messages.size(); i++) {
+            ChatTurn m = messages.get(i);
+            if (m == null || m.content() == null || m.content().isBlank()) continue;
+            String who = "assistant".equalsIgnoreCase(m.role()) ? "助手" : "用户";
+            sb.append(who).append("：").append(m.content().strip()).append('\n');
+        }
+    }
+
+    /** 对话历史里最新一条非空 user 消息（即本次修改要求）；没有则 null（题干/配图修正共用） */
+    private String latestUserMessage(List<? extends ChatTurn> messages) {
+        if (messages == null) return null;
         String latest = null;
-        for (TikzFixRequest.Message m : req.messages()) {
+        for (ChatTurn m : messages) {
             if (m != null && "user".equalsIgnoreCase(m.role())
                     && m.content() != null && !m.content().isBlank()) {
                 latest = m.content().strip();
@@ -326,18 +436,37 @@ public class LangChainController {
               图中只出现字母、符号、单位、必要的直角/角标等辅助记号；
               有向线段/向量箭头必须使用 shorten >=2pt, shorten <=2pt，避免箭头直接插入端点圆心；若端点还要用 \fill 画实心点，箭头端点不得被 \fill 实心点覆盖，应先画普通线/点再画带 shorten 的箭头或适当缩短箭头；内部点标签必须避开箭头和三角形边，必要时改用 above left/above right/below left/below right 并增大 3pt~5pt 偏移，不得用白底标签遮住箭头、点或线段；
               必要时加大 scale 或拉大坐标间距，相邻顶点标签方位错开；
+              注意字母与图形不要重叠（保留一定的距离）；
+            【标签防重叠·强制】图中任何字母、数字不得与线段、箭头、曲线、其他标签重叠压盖，具体执行：
+              方位词必须带显式偏移量：写成 below=3pt、above=3pt、left=3pt、right=3pt、below left=3pt 等，
+                禁止裸写 below/above/left/right（默认偏移近似为 0，标签必然贴线重叠）；
+              所有标签一律加白底衬底提高可读性：\\node[above=3pt, fill=white, inner sep=1.5pt]；
+                白底只作衬底，仍须按方位偏移避开关键元素，禁止靠白底盖住箭头端点、实心点；
+              线段上的标注（midway/pos）必须向线段一侧偏移：\\node[midway, above=3pt, fill=white, inner sep=1.5pt]，
+                禁止把长度、数值、字母正压在线上或箭杆上；
+              长度/数值/角度标注（如 2、5cm、60°）放在图形外侧，同一区域多个标签错开方位；
+              箭头旁的物理量标签（如 v、F、B）放在箭头延长线一侧并偏移 3pt 以上，不压箭杆与箭头；
+              带标签的相邻点间距至少 1.5cm~2cm，标签拥挤时优先加大 scale（如 scale=1.5）或拉大坐标间距，
+                严禁通过缩小字号腾空间；字号全图统一，不得为避让重叠单独改小某个标签；
             【高中数学】
               立体几何必须使用斜二测画法：x 轴水平向右，y 轴与 x 轴成 45°（或 135°），z 轴竖直向上；
               平行于 x/z 轴的线段长度不变，平行于 y 轴的线段长度取原长的 1/2；
-              直棱柱、棱锥、圆柱、圆锥等几何体：先判断视角下每条棱/辅助线段的可见性，看得见的棱用实线；凡被前方面、实体或线段遮挡的棱必须用虚线（dashed）；背面竖棱、背面底边、体内辅助线段若被遮挡也必须用虚线；不要把所有棱都画成 thick 实线；
-              长方体/棱柱绘图时，连接前后面的底面边、后侧竖棱、体内证明线段（如 A--E、E--D1、B1--E）要按遮挡关系分别实线/虚线，不得因为是证明相关线段就全部画成实线；
-              长方体/直棱柱斜二测可见性判定：外轮廓可见竖棱如 C--C1 必须用实线，不得仅因位于后侧就画虚线；虚线只用于真正被实体前方面遮住的内部线段或背面线段；不要把后侧边链一概画成 dashed；顶点和标签不得互相遮挡，若 B 等顶点被遮挡，必须调整视角、坐标或标签位置，不能用白底标签盖住线段或顶点；
+              直棱柱、棱锥、圆柱、圆锥等几何体：先判断视角下每条棱的可见性，看得见的棱用实线；被前方面、实体或线段遮挡的几何体自身棱必须用细虚线（dashed）；背面竖棱、背面底边若被遮挡也必须用虚线；不要把所有棱都画成 thick 实线；
+              长方体/直棱柱斜二测可见性判定：外轮廓可见竖棱如 C--C1 必须用实线，不得仅因位于后侧就画虚线；虚线只用于真正被实体前方面遮住的几何体自身棱或背面棱；不要把后侧边链一概画成 dashed；顶点和标签不得互相遮挡，若 B 等顶点被遮挡，必须调整视角、坐标或标签位置，不能用白底标签盖住线段或顶点；
+              立体几何题图强制绘图规范（必须逐条遵守）：
+              1. 标签标注规范：所有顶点字母标签放置在顶点的外侧，向外偏移；❌严禁标签压在线条上、❌严禁文字跨线段，文字和图形线条必须完全分离，不能重叠。
+              2. 虚实线铁律：①几何体自身棱：观察者视角可见棱 = 实线 \\draw；被几何体遮挡、藏在后方的实体棱 = 细虚线 \\draw[dashed]。
+                ②题干指定的解题辅助连线（人为新增线段）：全部实线，禁止虚线！辅助线不是被遮挡棱，不能用 dashed。
+              3. 点的约束：边上的点必须严格落在对应线段上，禁止悬浮、偏移。
+              4. 完整性：题目题干、证明需要用到的全部线段必须完整画出，不得遗漏关键辅助线。
+              5. 箭头规则：没有向量要求时，只画普通线段，禁止添加任何 -> 向量箭头。
+              6. 顶点命名严格遵循教材长方体 ABCD-A₁B₁C₁D₁ 对应规则，顶点顺序不能错乱。
               直角符号用小正方形（\\pgfsetcornersarced 或两条短线组成），不要用弧线表示直角；
               平面几何：角的弧线画在角内部，不压线；三角形高用虚线并加垂足直角标；
-              函数图像：坐标轴带箭头、原点 O、x/y 标注；渐近线用虚线；关键交点、顶点、极值点标出坐标；
+              函数图像：坐标轴带箭头、原点 O、x/y 标注；渐近线用虚线；关键交点、顶点、极值点标出坐标，不要跑出坐标轴区域范围，坐标轴要用实线带箭头并标出x轴和y轴；
               抛物线开口方向、对称轴与方程一致；双曲线两支对称，渐近线位置正确；
               三角函数 / 单位圆：单位圆半径 1，圆心在原点；角度从 x 轴正方向逆时针量起；
-              向量：箭头在终点，方向与坐标一致；空间直角坐标系用右手系，三轴方向固定；
+              向量：图里的向量要有Stealth 箭头，题干里向量符号用overrightarrow，箭头在终点，方向与坐标一致；空间直角坐标系用右手系，三轴方向固定，图中不需要显示基底；
             【高中物理】
               受力分析：力的箭头从作用点出发，方向正确，长度大致与大小成正比；
               支持力垂直于接触面，摩擦力沿接触面，重力竖直向下；
