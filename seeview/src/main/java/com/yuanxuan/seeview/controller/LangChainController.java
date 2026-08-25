@@ -689,11 +689,42 @@ public class LangChainController {
         if (start < 0 || end <= start) return null;
         try {
             QuestionPaper paper = QUESTION_MAPPER.readValue(raw.substring(start, end + 1), QuestionPaper.class);
+            paper = normalizeLiteralLineBreakEscapes(paper);
             if (paper.sections() == null || paper.sections().isEmpty()) return null;
             return paper;
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * 还原模型在嵌套 JSON 字符串中多转义的换行标记（\\n / \\r\\n）。
+     * 不做简单全局替换，避免把 TikZ/LaTeX 命令如 \node、\neq 误改成换行 + 残缺命令。
+     */
+    private QuestionPaper normalizeLiteralLineBreakEscapes(QuestionPaper paper) {
+        if (paper == null || paper.sections() == null) return paper;
+        List<QuestionPaper.Section> sections = paper.sections().stream().map(sec -> {
+            if (sec == null || sec.items() == null) return sec;
+            List<QuestionPaper.Item> items = sec.items().stream().map(item -> {
+                if (item == null) return null;
+                return new QuestionPaper.Item(
+                        normalizeLiteralLineBreakEscapes(item.q()),
+                        item.o() == null ? null : item.o().stream().map(this::normalizeLiteralLineBreakEscapes).toList(),
+                        normalizeLiteralLineBreakEscapes(item.a()),
+                        normalizeLiteralLineBreakEscapes(item.note()),
+                        item.d());
+            }).toList();
+            return new QuestionPaper.Section(sec.type(), items);
+        }).toList();
+        return new QuestionPaper(paper.title(), paper.topic(), paper.difficulty(),
+                sections, paper.totalQ(), paper.source(), paper.prompt());
+    }
+
+    private String normalizeLiteralLineBreakEscapes(String text) {
+        if (text == null || (!text.contains("\\n") && !text.contains("\\r"))) return text;
+        return text.replaceAll("\\\\+r\\\\+n(?![A-Za-z])", "\n")
+                .replaceAll("\\\\+r(?![A-Za-z])", "\n")
+                .replaceAll("\\\\+n(?![A-Za-z])", "\n");
     }
 
     /** 补齐后端计算字段：难度、总题量、标题、主题、来源 */
@@ -750,10 +781,36 @@ public class LangChainController {
     private static final Pattern LINE_START_BARE_NODE_COMMAND =
             Pattern.compile("(?m)^(\\s*)(?:node|ode)(?=\\s*\\[)");
 
+    /**
+     * 判断 TikZ 代码是否被做了双重 JSON 转义：AI 输出 JSON 时把 q 字段内的 TikZ 多转义了一层，
+     * 导致反斜杠变成 \\（双反斜杠）、换行变成字面 \n 两个字符。
+     * 特征：出现 \\begin{tikzpicture} 且包含字面 \n。
+     */
+    private static boolean isDoubleEscapedTikz(String code) {
+        if (code == null) return false;
+        return code.contains("\\\\begin{tikzpicture}") && code.contains("\\n");
+    }
+
+    /**
+     * 对双重转义的 TikZ 做一次反转义：把字面 \n 还原成真换行，把 \\ 还原成 \。
+     * 仅在确认双重转义时调用。
+     */
+    private static String unescapeDoubleEscapedTikz(String code) {
+        // 先把字面 \n 替换成真换行（必须先换，否则后面换 \\ 会把 \n 的反斜杠也换掉）
+        code = code.replace("\\n", "\n");
+        // 再把双反斜杠还原成单反斜杠（TikZ 命令前的 \\ 是多余的一层转义）
+        code = code.replace("\\\\", "\\");
+        return code;
+    }
+
     /** 编译前的 TikZ 源码修正：误渲染的标签字号词移除、裸下标标签补数学模式包裹、every node 里的字体命令改 font= 等；
      * 已合法的代码不受影响。 */
     private String sanitizeTikz(String code) {
         if (code == null) return code;
+        // 先做双重转义检测与修正（AI 把 TikZ 嵌在 JSON 字符串里时偶尔多转义一层）
+        if (isDoubleEscapedTikz(code)) {
+            code = unescapeDoubleEscapedTikz(code);
+        }
         code = LINE_START_BARE_NODE_COMMAND.matcher(code).replaceAll("$1\\\\node");
         code = NODE_LABEL_LEADING_FONT_WORD.matcher(code).replaceAll("$1$2$5$6$7");
         if (code.contains("_")) {
