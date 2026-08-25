@@ -23,7 +23,9 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -162,7 +164,9 @@ public class LangChainController {
             return Map.of("error", "messages 缺少 user 修改要求");
         }
 
-        String system = tikzFixSystemPrompt();
+        // 依据题干判定学科，选用对应学科的 TikZ 绘图规范（与生题时同一套判定口径）
+        String subject = detectSubject(request.stem(), null);
+        String system = tikzFixSystemPrompt(subject);
         String raw = chat(system, tikzFixUserPrompt(request, instruction));
         String fixed = extractTikzCode(raw);
         String note = tikzFixNote(raw);
@@ -298,7 +302,8 @@ public class LangChainController {
     /** 对话历史上限：更早轮次的修改已体现在当前代码里，截掉省 token */
     private static final int TIKZ_FIX_HISTORY_LIMIT = 6;
 
-    private String tikzFixSystemPrompt() {
+    /** 配图修正系统提示词：规范按题干学科选用（与生图时同一套） */
+    private String tikzFixSystemPrompt(String subject) {
         return """
                 你是一名 TikZ 配图修正专家。用户会给你一道题的题干、当前配图的 TikZ 源码，以及对配图的修改要求
                 （如标签压线、方向错误、比例失调、虚实线遮挡关系不对等）。你的任务：在原有代码基础上做最小必要修改，满足用户要求。
@@ -306,8 +311,8 @@ public class LangChainController {
                 修改原则：
                 1. 保持与题干一致：字母命名、数量关系、比例（题干说 AB=2、BC=1，图中 AB 就应约为 BC 的两倍长）；
                 2. 只改用户指出的问题及其连带位置，不要重构整张图、不要改动与要求无关的部分；
-                3. 严格遵守以下绘图规范（与生图时相同）：
-                """ + TIKZ_RULES + """
+                3. 严格遵守以下绘图规范（已按学科【%s】选用，与生图时相同）：
+                """.formatted(subject) + tikzRulesForSubject(subject) + """
                 输出要求：先用一句话说明你改了什么，然后输出修改后的完整 TikZ 代码（用 ```tikz 围栏代码块包裹，不要省略任何行）。
                 不要输出其他内容。
                 """;
@@ -379,6 +384,43 @@ public class LangChainController {
     }
 
     /**
+     * 上传答案/解析插图（智能命题工作台）：保存到题目插图目录并返回绝对路径，
+     * 前端以 ![...](path) 嵌入答案/解析文本，经 /seeview/local-image 渲染。
+     *
+     * @param file 图片文件（扩展名须在白名单内，最大 20MB）
+     * @return 成功 {@code {"path": 图片绝对路径}}；失败 {@code {"error": 错误摘要}}（HTTP 均 200，前端按字段区分）
+     */
+    @PostMapping("/question/upload-image")
+    public Map<String, String> uploadImage(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Map.of("error", "file 不能为空");
+        }
+        if (file.getSize() > MAX_IMAGE_BYTES) {
+            return Map.of("error", "图片超过 20MB 上限");
+        }
+        String name = file.getOriginalFilename();
+        String ext = extOfFileName(name);
+        if (ext == null) {
+            return Map.of("error", "不支持的图片类型（支持 png/jpg/jpeg/gif/bmp/webp/svg）");
+        }
+        try {
+            Path dst = writeImage(file.getBytes(), ext, name);
+            return Map.of("path", dst.toString().replace('\\', '/'));
+        } catch (Exception e) {
+            log.warn("答案插图保存失败: {}", e.getMessage());
+            return Map.of("error", "图片保存失败: " + e.getMessage());
+        }
+    }
+
+    /** 从上传文件名取白名单内的图片扩展名；识别不了返回 null */
+    private String extOfFileName(String name) {
+        if (name == null) return null;
+        int dot = name.lastIndexOf('.');
+        String ext = dot > 0 ? name.substring(dot + 1).toLowerCase() : "";
+        return IMAGE_EXTS.contains(ext) ? ext : null;
+    }
+
+    /**
      * AI 生题（智能命题工作台）：依据上传材料与命题参数生成一组题目。
      *
      * <p>学科不单独指定，由大模型依据材料内容自动识别，任意学科通用；
@@ -393,8 +435,11 @@ public class LangChainController {
             throw new IllegalArgumentException("types 不能为空");
         }
 
-        String system = questionSystemPrompt(request);
-        String raw = chat(system, questionUserPrompt(request));
+        // 先判定材料学科，再按学科选用对应的 TikZ 绘图规范
+        String subject = detectSubject(request.content(), request.fileName());
+
+        String system = questionSystemPrompt(request, subject);
+        String raw = chat(system, questionUserPrompt(request, subject));
         QuestionPaper paper = parsePaper(raw);
         if (paper == null) {
             // 输出不是合法 JSON：回传修正一轮
@@ -419,8 +464,8 @@ public class LangChainController {
     private static final ObjectMapper QUESTION_MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    /** TikZ 绘图强制规范（数学/物理/化学通用）：AI 生题提示词与配图对话修正提示词共用，调整时两处同步生效 */
-    private static final String TIKZ_RULES = """
+    /** TikZ 绘图规范：通用部分（所有学科共用）：AI 生题提示词与配图对话修正提示词共用，调整时两处同步生效 */
+    private static final String TIKZ_COMMON_RULES = """
             【通用底线】几何顶点必须用 \\coordinate (A) at (...); 定义，禁止用 \\node (A) at (...) {A}; 同时承担顶点和标签；
               所有连线只能连接 coordinate 名称，如 \\draw (A)--(B); 不要连接文字标签节点；
               顶点标签必须单独写成 \\node[below left=2pt, fill=white, inner sep=1pt] at (A) {A};
@@ -448,15 +493,20 @@ public class LangChainController {
               箭头旁的物理量标签（如 v、F、B）放在箭头延长线一侧并偏移 3pt 以上，不压箭杆与箭头；
               带标签的相邻点间距至少 1.5cm~2cm，标签拥挤时优先加大 scale（如 scale=1.5）或拉大坐标间距，
                 严禁通过缩小字号腾空间；字号全图统一，不得为避让重叠单独改小某个标签；
+            """;
+
+    /** TikZ 绘图规范：数学（生题与配图修正按学科选用） */
+    private static final String TIKZ_RULES_MATH = """
             【高中数学】
-              立体几何必须使用斜二测画法：x 轴水平向右，y 轴与 x 轴成 45°（或 135°），z 轴竖直向上；
-              平行于 x/z 轴的线段长度不变，平行于 y 轴的线段长度取原长的 1/2；
-              直棱柱、棱锥、圆柱、圆锥等几何体：先判断视角下每条棱的可见性，看得见的棱用实线；被前方面、实体或线段遮挡的几何体自身棱必须用细虚线（dashed）；背面竖棱、背面底边若被遮挡也必须用虚线；不要把所有棱都画成 thick 实线；
+              y轴水平向右，z轴竖直向上，x轴与y轴正方向夹角135度（或45度），y轴z轴线段长度不变，平行于x轴的线段长度取原长的二分之一；
+              直棱柱、棱锥、圆柱、圆锥等几何体：先判断视角下每条棱的可见性，看得见的棱用实线，看不见的棱用虚线；凡被前方面、实体或线段遮挡的棱必须用虚线，被前方面、实体或线段遮挡的几何体自身棱必须用细虚线（dashed）；背面竖棱、背面底边、体内辅助线段若被遮挡也必须用虚线；不要把所有棱都画成 thick 实线；
               长方体/直棱柱斜二测可见性判定：外轮廓可见竖棱如 C--C1 必须用实线，不得仅因位于后侧就画虚线；虚线只用于真正被实体前方面遮住的几何体自身棱或背面棱；不要把后侧边链一概画成 dashed；顶点和标签不得互相遮挡，若 B 等顶点被遮挡，必须调整视角、坐标或标签位置，不能用白底标签盖住线段或顶点；
+              棱锥可见性判定：底面后边、从顶点连到背侧底点且被前方面遮挡的棱必须用 dashed；前轮廓底边、可见侧棱必须用实线；不要按“底面边都实线”或“所有侧棱都实线”偷懒。
               立体几何题图强制绘图规范（必须逐条遵守）：
               1. 标签标注规范：所有顶点字母标签放置在顶点的外侧，向外偏移；❌严禁标签压在线条上、❌严禁文字跨线段，文字和图形线条必须完全分离，不能重叠。
+                棱锥标签避让模板：顶点字母必须放在棱锥外轮廓外侧，偏移量不小于 4pt；边长数字必须写成 node[midway, sloped, above=4pt, fill=white, inner sep=1.5pt]，放在线段外侧，不得直接压在线上。
               2. 虚实线铁律：①几何体自身棱：观察者视角可见棱 = 实线 \\draw；被几何体遮挡、藏在后方的实体棱 = 细虚线 \\draw[dashed]。
-                ②题干指定的解题辅助连线（人为新增线段）：全部实线，禁止虚线！辅助线不是被遮挡棱，不能用 dashed。
+                ②题干指定的解题辅助连线（人为新增线段）：辅助连线也要按空间遮挡判定；位于可见表面或图形外侧的辅助线用实线，被几何体前方面遮挡的辅助线用 dashed，禁止无视遮挡关系一概画成实线。
               3. 点的约束：边上的点必须严格落在对应线段上，禁止悬浮、偏移。
               4. 完整性：题目题干、证明需要用到的全部线段必须完整画出，不得遗漏关键辅助线。
               5. 箭头规则：没有向量要求时，只画普通线段，禁止添加任何 -> 向量箭头。
@@ -467,6 +517,10 @@ public class LangChainController {
               抛物线开口方向、对称轴与方程一致；双曲线两支对称，渐近线位置正确；
               三角函数 / 单位圆：单位圆半径 1，圆心在原点；角度从 x 轴正方向逆时针量起；
               向量：图里的向量要有Stealth 箭头，题干里向量符号用overrightarrow，箭头在终点，方向与坐标一致；空间直角坐标系用右手系，三轴方向固定，图中不需要显示基底；
+            """;
+
+    /** TikZ 绘图规范：物理（生题与配图修正按学科选用） */
+    private static final String TIKZ_RULES_PHYSICS = """
             【高中物理】
               受力分析：力的箭头从作用点出发，方向正确，长度大致与大小成正比；
               支持力垂直于接触面，摩擦力沿接触面，重力竖直向下；
@@ -479,6 +533,10 @@ public class LangChainController {
               安培力、洛伦兹力方向与左手定则一致；
               光学：光线带箭头，折射/反射方向符合定律；凸透镜双凸、凹透镜双凹，焦点标 F；
               热学 / 原子：p-V 图、p-T 图、V-T 图坐标轴标注清楚，等压/等容/等温过程标注正确；
+            """;
+
+    /** TikZ 绘图规范：化学（生题与配图修正按学科选用） */
+    private static final String TIKZ_RULES_CHEMISTRY = """
             【高中化学】
               原子结构 / 电子排布：原子核在中心，电子层为同心圆，能级图横线对齐，电子箭头（↑↓）规范；
               分子结构 / 化学键：球棍模型、比例模型区分清楚；键角大致符合实际（如水 ~104.5°、甲烷 109.5°）；
@@ -487,11 +545,55 @@ public class LangChainController {
               化学平衡 / 反应速率图：浓度-时间图、速率-时间图坐标轴带单位，拐点、平衡点标注正确）。
             """;
 
-    private String questionSystemPrompt(QuestionGenerateRequest req) {
+    /** 按学科选配 TikZ 绘图规范：通用规范 + 对应学科规范；未识别的学科带全部分科规范兜底 */
+    private String tikzRulesForSubject(String subject) {
+        if (subject == null) {
+            return TIKZ_COMMON_RULES + TIKZ_RULES_MATH + TIKZ_RULES_PHYSICS + TIKZ_RULES_CHEMISTRY;
+        }
+        return switch (subject) {
+            case "数学" -> TIKZ_COMMON_RULES + TIKZ_RULES_MATH;
+            case "物理" -> TIKZ_COMMON_RULES + TIKZ_RULES_PHYSICS;
+            case "化学" -> TIKZ_COMMON_RULES + TIKZ_RULES_CHEMISTRY;
+            default -> TIKZ_COMMON_RULES + TIKZ_RULES_MATH + TIKZ_RULES_PHYSICS + TIKZ_RULES_CHEMISTRY;
+        };
+    }
+
+    /** 学科分类提示词输入上限：材料截前 2000 字足够判断学科 */
+    private static final int SUBJECT_CLASSIFY_LIMIT = 2000;
+
+    /**
+     * 依据材料文本（辅以文件名）判断学科：数学 / 物理 / 化学 / 其他，
+     * 用于生题与配图修正时选用对应学科的 TikZ 绘图规范；失败或无法判断返回"其他"。
+     */
+    private String detectSubject(String content, String fileName) {
+        String text = content == null ? "" : content.strip();
+        if (text.isEmpty() && fileName != null && !fileName.isBlank()) {
+            text = "（文件名：" + fileName.strip() + "）";
+        }
+        if (text.isEmpty()) return "其他";
+        if (text.length() > SUBJECT_CLASSIFY_LIMIT) text = text.substring(0, SUBJECT_CLASSIFY_LIMIT);
+        try {
+            String raw = chat("""
+                    你是学科分类助手。判断用户给出的材料属于哪个学科，只回答一个词：数学、物理、化学或其他。
+                    不要输出任何解释、标点或其他内容。
+                    """, text);
+            if (raw != null) {
+                if (raw.contains("数学")) return "数学";
+                if (raw.contains("物理")) return "物理";
+                if (raw.contains("化学")) return "化学";
+            }
+        } catch (Exception e) {
+            log.warn("学科分类失败，绘图规范按全学科兜底: {}", e.getMessage());
+        }
+        return "其他";
+    }
+
+    private String questionSystemPrompt(QuestionGenerateRequest req, String subject) {
         return """
                 你是一名资深的命题专家，负责依据用户提供的材料生成一组高质量的学科检测题。命题要求：
 
-                1. 先依据材料内容自动识别所属学科与核心考点，再围绕它们命题；学科不单独指定，以材料为准；
+                1. 先依据材料内容自动识别所属学科与核心考点，再围绕它们命题；学科不单独指定，以材料为准
+                   （系统已初步判定学科为【%s】，明显有误时以材料实际内容为准）；
                 2. 题目必须紧扣材料内容与知识点，不得照抄材料原文，考查理解与运用；
                 3. 严格按用户指定的题型组合出题，把总题量合理分配到各题型；
                 4. 难度整体贴合用户指定的难度档位（容易/中等/较难），可少量浮动；
@@ -507,9 +609,9 @@ public class LangChainController {
                        请围绕原题中的概念、公式、模型、具体应用等要素特征进行改编，可以替换原题中的数字，可以调整物理场景设定，
                        尽可能保留原始题目的特征和命题逻辑。如果题目配有图片，在已改编的题目中可以不使用图片、使用原图片，
                        或者在必要的情况下用 TikZ 重新绘制题目配图（系统会把 TikZ 代码自动编译为配图；
-                       TikZ 代码用 ```tikz 围栏代码块包裹，放在题干末尾；
-                       TikZ 绘图强制规范（数学 / 物理 / 化学通用）：
-                """ + TIKZ_RULES + """
+                       TikZ 代码用 ```tikz 围栏代码块包裹，放在题干末尾；因为最终输出是 JSON 字符串，TikZ 命令反斜杠必须写成 JSON 合法转义后的双反斜杠，例如输出 \\node、\\draw、\\coordinate，严禁输出会被 JSON 解析成换行的 \node；
+                       TikZ 绘图强制规范（已按学科【%s】选用对应规范，必须严格遵守）：
+                """.formatted(subject, subject) + tikzRulesForSubject(subject) + """
                        若用户补充要求不得直接使用原图片，则必须用 TikZ 重绘配图、不得输出原图片链接；
                        重绘时按改编后的实际尺寸取比例，改编数字尽量打破原图的等比关系（如长宽高改为不同比例），
                        使新配图与原图有肉眼可辨的差异。
@@ -544,11 +646,12 @@ public class LangChainController {
                 """;
     }
 
-    private String questionUserPrompt(QuestionGenerateRequest req) {
+    private String questionUserPrompt(QuestionGenerateRequest req, String subject) {
         String difficulty = req.difficulty() == null || req.difficulty().isBlank() ? "中等" : req.difficulty();
         int count = req.count() == null ? 5 : Math.min(30, Math.max(1, req.count()));
 
         StringBuilder sb = new StringBuilder();
+        sb.append("【学科判定】").append(subject).append('\n');
         sb.append("【题型组合】").append(String.join("、", req.types())).append('\n');
         sb.append("【总题量】").append(count).append(" 题\n");
         sb.append("【难度】").append(difficulty).append('\n');
@@ -638,10 +741,18 @@ public class LangChainController {
     private static final Pattern EVERY_NODE_STYLE_FONT =
             Pattern.compile("(every node\\s*/\\s*\\.style\\s*=\\s*\\{)([^}]*)(\\})");
 
+    /**
+     * TikZ 行首缺失反斜杠的 node 命令：JSON 字符串里若误写 \node，\n 会先被解析成换行，
+     * 进入编译阶段就变成行首 ode[...]；也兼容模型直接漏写反斜杠生成的 node[...]。
+     */
+    private static final Pattern LINE_START_BARE_NODE_COMMAND =
+            Pattern.compile("(?m)^(\\s*)(?:node|ode)(?=\\s*\\[)");
+
     /** 编译前的 TikZ 源码修正：误渲染的标签字号词移除、裸下标标签补数学模式包裹、every node 里的字体命令改 font= 等；
      * 已合法的代码不受影响。 */
     private String sanitizeTikz(String code) {
         if (code == null) return code;
+        code = LINE_START_BARE_NODE_COMMAND.matcher(code).replaceAll("$1\\\\node");
         code = NODE_LABEL_LEADING_FONT_WORD.matcher(code).replaceAll("$1$2$5$6$7");
         if (code.contains("_")) {
             code = NODE_LABEL_UNDERSCORE.matcher(code).replaceAll("$1\\$$2\\$$3");

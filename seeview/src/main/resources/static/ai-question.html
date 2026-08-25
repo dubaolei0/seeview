@@ -378,6 +378,22 @@ body {
   margin: 6px 0;
 }
 
+/* 题干中的 Markdown 表格（统计类题目数据表）：印刷风细线表格 */
+.q-table {
+  border-collapse: collapse;
+  margin: 8px auto;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.q-table th, .q-table td {
+  border: 1px solid var(--line);
+  padding: 4px 12px;
+  text-align: center;
+  vertical-align: middle;
+}
+.q-table thead th { background: var(--line-2); font-weight: 600; }
+.q-table td { font-family: var(--mono); }
+
 /* TikZ 配图 + 编辑入口：图正常显示，下方挂"编辑配图"按钮（源码块隐藏） */
 .q-fig { display: block; margin: 6px 0; }
 .q-fig img { max-width: 100%; }
@@ -392,8 +408,8 @@ body {
   cursor: pointer;
 }
 .q-fig-btn:hover, .q-edit-btn:hover { background: #eef3fa; }
-/* 题干编辑入口：靠右浮在题干上方 */
-.q-edit-btn { display: block; margin: 0 0 2px auto; }
+/* 题干/答案编辑入口：靠右浮在题干上方 */
+.q-edit-bar { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 2px; }
 
 /* TikZ 配图编辑弹窗 */
 .fig-modal {
@@ -436,6 +452,21 @@ body {
 /* 题干对话编辑：当前题干渲染预览（文字版，左对齐） */
 #stemPreview { display: block; text-align: left; font-size: 14px; line-height: 1.9; padding: 12px 16px; }
 #stemPreview .katex { font-size: 1.05em; }
+
+/* 答案/解析编辑弹窗：答案、解析两个输入框 + 上传插图 */
+.ans-field { margin-top: 10px; }
+.ans-field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 4px; }
+.ans-box {
+  width: 100%;
+  height: 120px;
+  resize: vertical;
+  font: 13px/1.7 var(--sans);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+}
+.ans-box:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
 /* 对话消息：u=用户 a=助手 e=错误 */
 .fig-chat {
   margin-top: 8px;
@@ -715,6 +746,33 @@ body {
   </div>
 </div>
 
+<!-- 答案/解析编辑器：改答案与解析文字 + 上传本地插图（插入光标处，保存后整卷重渲染） -->
+<div class="fig-modal" id="ansModal" hidden>
+  <div class="fig-dialog">
+    <header>
+      <b>编辑答案与解析</b>
+      <button class="fig-close" id="ansClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <p class="fig-tip">可直接修改答案与解析文字；点"上传插图"选择本地图片，插入到最近点击的输入框光标处
+      （解题过程图、几何示意图都可以），保存后按卷面重新渲染。公式仍用 $...$ / $$...$$ 记法。</p>
+    <div class="ans-field">
+      <label for="ansCode">答案</label>
+      <textarea id="ansCode" class="ans-box" spellcheck="false"></textarea>
+    </div>
+    <div class="ans-field">
+      <label for="noteCode">解析</label>
+      <textarea id="noteCode" class="ans-box" spellcheck="false"></textarea>
+    </div>
+    <div class="fig-actions">
+      <span class="fig-status" id="ansStatus" aria-live="polite"></span>
+      <button class="btn" id="ansUploadBtn" type="button">上传插图</button>
+      <button class="btn" id="ansCancel" type="button">关闭</button>
+      <button class="btn primary" id="ansSave" type="button">保存</button>
+    </div>
+    <input type="file" id="ansFileInput" hidden accept=".png,.jpg,.jpeg,.gif,.bmp,.webp,.svg">
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
@@ -809,6 +867,35 @@ function normalizePaper(p) {
 /* 数学/图片混排渲染：先把公式段与图片标签抽成占位符（保留原始内容，不受 HTML 转义影响），
    再对剩余文本做 HTML 转义，最后回填 KaTeX 与 <img>。
    支持 $$...$$、\[...\]（独立公式）与 $...$、\(...\)（行内公式），以及 Markdown 图片：![alt](src) */
+
+/** Markdown 表格块 -> <table>；单元格内容递归走 fmtMath（公式/图片照常渲染）。
+    第二行为 |---| 分隔行时识别列对齐（:--- 左 / :--: 中 / ---: 右），没有分隔行也能渲染 */
+function renderMdTable(block) {
+  const lines = block.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const splitRow = (line) => line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  const rows = lines.map(splitRow);
+  const cols = rows[0].length;
+  const isSep = rows.length > 1 && rows[1].every((c) => /^:?-+:?$/.test(c.replace(/\s/g, '')) && c.includes('-'));
+  const alignOf = (c) => /^:-+:$/.test(c) ? 'center' : c.endsWith(':') ? 'right' : c.startsWith(':') ? 'left' : '';
+  const aligns = isSep ? rows[1].map((c) => alignOf(c.replace(/\s/g, ''))) : [];
+  const dir = (a) => (a ? ` style="text-align:${a}"` : '');
+  const bodyStart = isSep ? 2 : 1;
+
+  let html = '<table class="q-table"><thead><tr>';
+  rows[0].forEach((c, i) => { html += `<th${dir(aligns[i])}>${fmtMath(c)}</th>`; });
+  html += '</tr></thead><tbody>';
+  for (let r = bodyStart; r < rows.length; r++) {
+    html += '<tr>';
+    for (let i = 0; i < cols; i++) {
+      // 列数以表头为准，缺的补空、多的忽略
+      html += `<td${dir(aligns[i])}>${fmtMath(rows[r][i] || '')}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
 function fmtMath(raw) {
   if (raw == null) return '';
   const text = String(raw);
@@ -849,8 +936,16 @@ function fmtMath(raw) {
   };
   /* 围栏代码块（如 TikZ）整体占位、原样展示：块内 $...$ 等不参与公式渲染 */
   const holdCode = (code) => push('<pre class="q-code">' + esc(code) + '</pre>');
+  /* Markdown 表格块（连续 |...| 行）整体占位渲染为 <table>；非表格的孤立竖线行原样保留 */
+  const holdTable = (block) => push(renderMdTable(block));
   let t = text
     .replace(/```[^\n]*\n[\s\S]*?(?:```|$)/g, (m) => holdCode(m))
+    .replace(/(?:^[ \t]*\|[^\n]*)(?:\r?\n[ \t]*\|[^\n]*)+\r?\n?/gm, (m) => {
+      const lines = m.split(/\r?\n/).filter((l) => l.trim());
+      // 至少两行、每行至少两个 | 才视为表格，否则原样交给后续处理
+      const isTable = lines.length >= 2 && lines.every((l) => (l.match(/\|/g) || []).length >= 2);
+      return isTable ? holdTable(lines.join('\n')) : m;
+    })
     .replace(/!\[([^\]]*)\]\((?:<([^>]+)>|([^ )\t]+))(?:\s+"[^"]*")?\)/g, (m, alt, src1, src2) => holdImage(alt, src1 || src2))
     .replace(/\$\$([\s\S]+?)\$\$/g, (m, c) => holdMath(c, true))
     .replace(/\\\[([\s\S]+?)\\\]/g, (m, c) => holdMath(c, true))
@@ -875,7 +970,10 @@ function renderPaper(p) {
     sec.items.forEach((item) => {
       n++;
       html += `<div class="q-item" data-idx="${n - 1}">`;
+      html += `<div class="q-edit-bar">`;
       html += `<button type="button" class="q-edit-btn" data-idx="${n - 1}">✎ 编辑题干</button>`;
+      html += `<button type="button" class="q-edit-btn" data-idx="${n - 1}" data-ans="1">✎ 编辑答案</button>`;
+      html += `</div>`;
       html += `<p class="q-stem">${n}．${fmtMath(item.q)}</p>`;
       if (item.o) {
         const wide = item.o.some((x) => x.length > 14) ? ' wide' : '';
@@ -891,9 +989,13 @@ function renderPaper(p) {
   });
 
   body.innerHTML = html;
-  // 题干编辑入口：打开编辑器改 Markdown 源文本
+  // 题干/答案编辑入口：打开对应编辑器改源文本
   body.querySelectorAll('.q-edit-btn').forEach((btn) => {
-    btn.addEventListener('click', () => openStemEditor(+btn.dataset.idx));
+    btn.addEventListener('click', () => {
+      const idx = +btn.dataset.idx;
+      if (btn.dataset.ans) openAnsEditor(idx);
+      else openStemEditor(idx);
+    });
   });
   // 插图（几何图/函数图等）加载失败时给出占位提示，不静默裂图
   body.querySelectorAll('img').forEach((im) => {
@@ -1043,6 +1145,70 @@ function saveStemEdit() {
   toast('题干已更新');
   const el = document.querySelector(`.q-item[data-idx="${ctx.idx}"]`);
   if (el) el.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
+}
+
+/* ---------------- 答案/解析编辑（手动改文本 + 上传插图） ---------------- */
+function openAnsEditor(idx) {
+  const item = flatItems(state.paper)[idx];
+  if (!item) return;
+  state.ansEdit = idx;
+  state.ansTarget = 'noteCode';        // 插图默认插入解析，点过答案框则跟随答案
+  $('ansCode').value = item.a || '';
+  $('noteCode').value = item.note || '';
+  $('ansStatus').textContent = '';
+  $('ansFileInput').value = '';
+  $('ansModal').hidden = false;
+  $('noteCode').focus();
+}
+
+/* 在输入框光标处插入文本（无光标信息时追加到末尾） */
+function insertAtCursor(ta, text) {
+  const s = ta.selectionStart == null ? ta.value.length : ta.selectionStart;
+  const e = ta.selectionEnd == null ? s : ta.selectionEnd;
+  ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+  const pos = s + text.length;
+  ta.focus();
+  ta.setSelectionRange(pos, pos);
+}
+
+/* 上传插图：保存到后端题目插图目录，把 ![插图](绝对路径) 插入最近点击的输入框光标处 */
+async function ansUpload() {
+  const file = $('ansFileInput').files && $('ansFileInput').files[0];
+  if (!file) { $('ansStatus').textContent = '请先选择图片文件'; return; }
+  const btn = $('ansUploadBtn');
+  btn.disabled = true;
+  $('ansStatus').textContent = '上传中……';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/langchain/question/upload-image', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    insertAtCursor($(state.ansTarget || 'noteCode'), `\n![插图](${data.path})\n`);
+    $('ansStatus').textContent = '插图已插入，保存后生效';
+    toast('插图已插入');
+  } catch (err) {
+    $('ansStatus').textContent = '上传失败：' + (err.message || '未知错误');
+  } finally {
+    btn.disabled = false;
+    $('ansFileInput').value = '';
+  }
+}
+
+/* 保存：回写 state.paper 后整卷重渲染（保持"显示答案"开关状态），复制与下载 Word 同步生效 */
+function saveAnsEdit() {
+  const idx = state.ansEdit;
+  if (idx == null) return;
+  const item = flatItems(state.paper)[idx];
+  if (!item) return;
+  const a = $('ansCode').value.trim();
+  if (!a) { $('ansStatus').textContent = '答案不能为空'; return; }
+  item.a = a;
+  item.note = $('noteCode').value.trim();
+  rerenderPaperPreservingAns();
+  $('ansModal').hidden = true;
+  toast('答案与解析已更新');
 }
 
 /* ---------------- 配图编辑（TikZ 改码重编译） ---------------- */
@@ -1262,6 +1428,66 @@ function stripTikz(s) {
     .trim();
 }
 
+/* Word 导出用：题干里的 Markdown 表格转成 Word 兼容 <table>（内联样式，单元格纯文本，
+   公式保持 $...$ 源文本），其余文本按段落输出；prefix（题号）拼进首个段落 */
+function wordTextHtml(s, prefix) {
+  const t = stripTikz(s == null ? '' : s);
+  const re = /(?:^[ \t]*\|[^\n]*)(?:\r?\n[ \t]*\|[^\n]*)+\r?\n?/gm;
+  let html = '';
+  let last = 0;
+  let first = true;
+  const pre = prefix || '';
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    const lines = m[0].split(/\r?\n/).filter((l) => l.trim());
+    const isTable = lines.length >= 2 && lines.every((l) => (l.match(/\|/g) || []).length >= 2);
+    if (!isTable) continue;
+    if (m.index > last) {
+      html += `<p>${first ? pre : ''}${esc(t.slice(last, m.index).trim()).replace(/\r?\n/g, '<br>')}</p>`;
+      first = false;
+    } else if (first && pre) {
+      html += `<p>${pre}</p>`;
+      first = false;
+    }
+    html += wordTable(lines);
+    last = m.index + m[0].length;
+  }
+  const tail = t.slice(last).trim();
+  if (tail) {
+    html += `<p>${first ? pre : ''}${esc(tail).replace(/\r?\n/g, '<br>')}</p>`;
+  } else if (first && pre) {
+    html += `<p>${pre}</p>`;
+  }
+  return html;
+}
+
+/** Markdown 表格行 -> Word 兼容 <table>（内联边框样式；识别 :---/:--:/---: 列对齐，无分隔行也可渲染） */
+function wordTable(lines) {
+  const splitRow = (line) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  const rows = lines.map(splitRow);
+  const cols = rows[0].length;
+  const isSep = rows.length > 1 && rows[1].every((c) => /^:?-+:?$/.test(c.replace(/\s/g, '')) && c.includes('-'));
+  const alignOf = (c) => /^:-+:$/.test(c) ? 'center' : c.endsWith(':') ? 'right' : c.startsWith(':') ? 'left' : '';
+  const aligns = isSep ? rows[1].map((c) => alignOf(c.replace(/\s/g, ''))) : [];
+  const cellStyle = (a, head) => 'border:1px solid #999;padding:3pt 10pt;font-size:10.5pt;text-align:'
+          + (a || 'center') + (head ? ';background:#F0F1EB' : '');
+
+  let html = '<table style="border-collapse:collapse;margin:6pt auto">';
+  html += '<tr>';
+  rows[0].forEach((c, i) => { html += `<th style="${cellStyle(aligns[i], true)}">${esc(c)}</th>`; });
+  html += '</tr>';
+  for (let r = isSep ? 2 : 1; r < rows.length; r++) {
+    html += '<tr>';
+    for (let i = 0; i < cols; i++) {
+      // 列数以表头为准，缺的补空、多的忽略
+      html += `<td style="${cellStyle(aligns[i], false)}">${esc(rows[r][i] || '')}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  return html;
+}
+
 function paperToText(p) {
   const lines = [];
   lines.push(p.title || 'AI 生成题目');
@@ -1295,7 +1521,7 @@ function downloadWord() {
     h += `<h2>${esc(sec.type)}</h2>`;
     sec.items.forEach((item) => {
       n++;
-      h += `<p>${n}．${esc(stripTikz(item.q))}</p>`;
+      h += wordTextHtml(item.q, `${n}．`);
       if (item.o) {
         h += `<p style="padding-left:2em">${item.o.map((opt, oi) => `${LETTERS[oi]}．${esc(opt)}`).join('　　')}</p>`;
       }
@@ -1714,6 +1940,18 @@ function init() {
   $('stemClose').addEventListener('click', () => { $('stemModal').hidden = true; });
   $('stemModal').addEventListener('click', (e) => {
     if (e.target.id === 'stemModal') $('stemModal').hidden = true;
+  });
+  // 答案/解析编辑
+  $('ansSave').addEventListener('click', saveAnsEdit);
+  $('ansCancel').addEventListener('click', () => { $('ansModal').hidden = true; });
+  $('ansClose').addEventListener('click', () => { $('ansModal').hidden = true; });
+  $('ansModal').addEventListener('click', (e) => {
+    if (e.target.id === 'ansModal') $('ansModal').hidden = true;
+  });
+  $('ansUploadBtn').addEventListener('click', () => $('ansFileInput').click());
+  $('ansFileInput').addEventListener('change', ansUpload);
+  ['ansCode', 'noteCode'].forEach((id) => {
+    $(id).addEventListener('focus', () => { state.ansTarget = id; });
   });
   $('showAns').addEventListener('change', (e) => {
     document.querySelectorAll('.q-ans').forEach((el) =>

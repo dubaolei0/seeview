@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: seeview
+  # AI 生题答案/解析插图上传上限（与后端单图 20MB 校验对齐）
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
 
 manim:
   # 本地子进程渲染（see 工程自包含 lecture_pipeline 引擎）
