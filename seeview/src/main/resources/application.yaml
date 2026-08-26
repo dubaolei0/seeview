@@ -44,7 +44,7 @@ langchain4j:
 #      base-url: https://ark.cn-beijing.volces.com/api/coding/v3
 
       api-key: sk-bec6f20fa8eae687d5019e5694849cb13816caeeb5d5dcba9d2917d6992de360
-      model-name: gpt-5.5
+      model-name: gpt-5.6
       base-url: https://code.mmkg.cloud/v1
 
       log-requests: true
@@ -57,9 +57,9 @@ langchain4j:
       # 长任务（尤其 yaml 步提示词 16k+ token）推理膨胀会吃光 max_tokens，
       # finish_reason=length 且 content 为空。关闭思考直接产出正文
       # （提示词本就面向 sonnet/opus 这类非重推理模型设计）。
-      custom-parameters:
-        thinking:
-          type: disabled
+#      custom-parameters:
+#        thinking:
+#          type: disabled
       # 关思考后 max_tokens 全部留给正文；压轴备课/yaml 较长，需足够额度
       max-tokens: 50000
 
