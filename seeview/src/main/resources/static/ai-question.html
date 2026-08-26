@@ -1948,6 +1948,33 @@ function stripTikz(s) {
     .trim();
 }
 
+/* Word 导出用：图片地址 -> <img>；本地绝对路径补 file:/// 前缀，Word 打开文档后能直接显示插图 */
+function wordImgTag(src, alt) {
+  let s = String(src || '').trim();
+  if (/^[a-zA-Z]:[\\/]/.test(s)) s = 'file:///' + s.replace(/\\/g, '/');
+  return `<img src="${esc(s)}" alt="${esc(alt || '')}" style="max-width:400px">`;
+}
+
+/* Word 导出用：文本段里的 Markdown 图片链接转为 <img>，其余文字照常转义（调用前先 stripTikz） */
+function escWithImgs(seg) {
+  const t = String(seg == null ? '' : seg);
+  const re = /!\[([^\]]*)\]\((?:<([^>]+)>|([^)\s]+))(?:\s+"[^"]*")?\)/g;
+  let html = '';
+  let last = 0;
+  let m;
+  while ((m = re.exec(t)) !== null) {
+    if (m.index > last) html += esc(t.slice(last, m.index));
+    html += wordImgTag(m[2] || m[3], m[1]);
+    last = m.index + m[0].length;
+  }
+  return html + esc(t.slice(last));
+}
+
+/* Word 导出用：剥离 ```tikz 源码块（配图已编译为图片链接，源码不出现在 Word 里）后按 escWithImgs 输出 */
+function wordImgText(s) {
+  return escWithImgs(stripTikz(s));
+}
+
 /* Word 导出用：题干里的 Markdown 表格转成 Word 兼容 <table>（内联样式，单元格纯文本，
    公式保持 $...$ 源文本），其余文本按段落输出；prefix（题号）拼进首个段落 */
 function wordTextHtml(s, prefix) {
@@ -1963,7 +1990,7 @@ function wordTextHtml(s, prefix) {
     const isTable = lines.length >= 2 && lines.every((l) => (l.match(/\|/g) || []).length >= 2);
     if (!isTable) continue;
     if (m.index > last) {
-      html += `<p>${first ? pre : ''}${esc(t.slice(last, m.index).trim()).replace(/\r?\n/g, '<br>')}</p>`;
+      html += `<p>${first ? pre : ''}${escWithImgs(t.slice(last, m.index).trim()).replace(/\r?\n/g, '<br>')}</p>`;
       first = false;
     } else if (first && pre) {
       html += `<p>${pre}</p>`;
@@ -1974,7 +2001,7 @@ function wordTextHtml(s, prefix) {
   }
   const tail = t.slice(last).trim();
   if (tail) {
-    html += `<p>${first ? pre : ''}${esc(tail).replace(/\r?\n/g, '<br>')}</p>`;
+    html += `<p>${first ? pre : ''}${escWithImgs(tail).replace(/\r?\n/g, '<br>')}</p>`;
   } else if (first && pre) {
     html += `<p>${pre}</p>`;
   }
@@ -2020,9 +2047,10 @@ function paperToText(p) {
     sec.items.forEach((item) => {
       n++;
       lines.push(`${n}．${stripTikz(item.q)}`);
-      if (item.o) item.o.forEach((opt, oi) => lines.push(`   ${LETTERS[oi]}．${opt}`));
-      if (item.note) lines.push(`   【解析】${item.note}`);
-      lines.push(`   【答案】${item.a}`);
+      if (item.o) item.o.forEach((opt, oi) => lines.push(`   ${LETTERS[oi]}．${stripTikz(opt)}`));
+      const note = stripTikz(item.note);
+      if (note) lines.push(`   【解析】${note}`);
+      lines.push(`   【答案】${stripTikz(item.a)}`);
       lines.push('');
     });
   });
@@ -2043,9 +2071,9 @@ function downloadWord() {
       n++;
       h += wordTextHtml(item.q, `${n}．`);
       if (item.o) {
-        h += `<p style="padding-left:2em">${item.o.map((opt, oi) => `${LETTERS[oi]}．${esc(opt)}`).join('　　')}</p>`;
+        h += `<p style="padding-left:2em">${item.o.map((opt, oi) => `${LETTERS[oi]}．${wordImgText(opt)}`).join('　　')}</p>`;
       }
-      h += `<p class="ans">${item.note ? `【解析】${esc(item.note)}　` : ''}【答案】${esc(item.a)}</p>`;
+      h += `<p class="ans">${item.note ? `【解析】${wordImgText(item.note)}　` : ''}【答案】${wordImgText(item.a)}</p>`;
     });
   });
   h += `</body></html>`;
