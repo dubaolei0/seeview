@@ -1162,8 +1162,7 @@ function renderPaper(p) {
           item.o.map((opt, oi) =>
             `<span>${LETTERS[oi]}．${fmtMath(opt)}</span>`).join('') + `</div>`;
       }
-      let ans = `【答案】${item.a}`;
-      if (item.note) ans += `　【解析】${item.note}`;
+      let ans = item.note ? `【解析】${item.note}　【答案】${item.a}` : `【答案】${item.a}`;
       html += `<p class="q-ans">${fmtMath(ans)}</p>`;
       html += `</div>`;
     });
@@ -2022,8 +2021,8 @@ function paperToText(p) {
       n++;
       lines.push(`${n}．${stripTikz(item.q)}`);
       if (item.o) item.o.forEach((opt, oi) => lines.push(`   ${LETTERS[oi]}．${opt}`));
-      lines.push(`   【答案】${item.a}`);
       if (item.note) lines.push(`   【解析】${item.note}`);
+      lines.push(`   【答案】${item.a}`);
       lines.push('');
     });
   });
@@ -2046,7 +2045,7 @@ function downloadWord() {
       if (item.o) {
         h += `<p style="padding-left:2em">${item.o.map((opt, oi) => `${LETTERS[oi]}．${esc(opt)}`).join('　　')}</p>`;
       }
-      h += `<p class="ans">【答案】${esc(item.a)}${item.note ? `　【解析】${esc(item.note)}` : ''}</p>`;
+      h += `<p class="ans">${item.note ? `【解析】${esc(item.note)}　` : ''}【答案】${esc(item.a)}</p>`;
     });
   });
   h += `</body></html>`;
