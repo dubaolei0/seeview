@@ -11,8 +11,11 @@ import com.yuanxuan.seeview.dto.QuestionPaper;
 import com.yuanxuan.seeview.dto.StemFixRequest;
 import com.yuanxuan.seeview.dto.TikzFixRequest;
 import com.yuanxuan.seeview.service.LectureGenerateService;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -51,8 +54,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -85,6 +91,22 @@ public class LangChainController {
     @Value("${question.tikz-script:${user.dir}/tools/题目png生成工具/latex_snippet_tool.py}")
     private String tikzScript;
 
+    /** 视觉模型（材料图片懒加载转述）：模型名；留空禁用转述 */
+    @Value("${question.vision.model-name:}")
+    private String visionModelName;
+    /** 视觉模型（材料图片懒加载转述）：API Key */
+    @Value("${question.vision.api-key:}")
+    private String visionApiKey;
+    /** 视觉模型（材料图片懒加载转述）：OpenAI 兼容接口地址 */
+    @Value("${question.vision.base-url:}")
+    private String visionBaseUrl;
+    /** 视觉模型单张图片转述读超时（秒） */
+    @Value("${question.vision.timeout-seconds:120}")
+    private int visionTimeoutSeconds;
+
+    /** 懒构建的视觉模型实例（启动时不建，未配置转述则永不创建） */
+    private volatile OpenAiChatModel visionModel;
+
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10)).build();
     /** 单张远程图片大小上限 20MB */
@@ -106,6 +128,12 @@ public class LangChainController {
     private static final String M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math";
     /** docx 内嵌图片可预览格式（emf/wmf 等矢量格式浏览器不显示，落为占位说明） */
     private static final Set<String> DOCX_IMAGE_EXTS = Set.of("png", "jpg", "jpeg", "gif", "bmp");
+    /** 视觉模型可转述的图片类型 -> MIME（svg 视觉模型不收，emf/wmf 落图时已被占位说明替代） */
+    private static final Map<String, String> VISION_IMAGE_MIMES = Map.of(
+            "png", "image/png", "jpg", "image/jpeg", "jpeg", "image/jpeg",
+            "gif", "image/gif", "bmp", "image/bmp", "webp", "image/webp");
+    /** 单次生题最多转述的图片数（防止图过多的材料把首次生题拖到分钟级） */
+    private static final int MAX_DESCRIBE_IMAGES = 10;
     /** OMML 大型运算符（m:nary 的 m:chr）-> LaTeX 命令 */
     private static final Map<String, String> NARY_OPS = Map.of(
             "∑", "\\sum", "∏", "\\prod", "∫", "\\int", "∬", "\\iint", "∭", "\\iiint",
@@ -459,8 +487,8 @@ public class LangChainController {
     /**
      * 提取 Word 材料（智能命题工作台）：解析 docx 正文为 Markdown 文本--
      * 段落/表格文字按文档顺序输出，OMML 公式转 $LaTeX$，内嵌图片落盘为
-     * ![材料图片](绝对路径)。前端预览直接渲染，content 随生成请求进入大模型
-     * （模型为纯文本输入，图片内容仍需用户在编辑模式补文字描述）。
+     * ![材料图片](绝对路径)。前端预览直接渲染；生题时后端用视觉模型把
+     * 本地图片懒转述为【原图内容】文字随 content 进入大模型（见 describeImage）。
      *
      * @param file docx 文件（旧版 .doc 不支持，需在 Word 中另存为 .docx）
      * @return 成功 {@code {"content": Markdown 文本}}；失败 {@code {"error": 摘要}}（HTTP 均 200，前端按字段区分）
@@ -1106,13 +1134,21 @@ public class LangChainController {
 
         String content = req.content();
         if (content != null && !content.isBlank()) {
+            // 材料里的本地图片懒加载转述（视觉模型 + 内容哈希缓存），【原图内容】随图片链接注入
+            String material = describeMaterialImages(content.strip());
             sb.append("【命题材料】（请先识别材料所属学科，再依据材料命题）\n")
-                    .append(content.strip()).append('\n');
-            if (content.contains("![材料图片]")) {
-                // docx 提取的插图链接：模型纯文本输入读不到图片内容，须明确告知避免臆造
-                sb.append("（注：材料中「![材料图片](…)」为原文插图位置，图片内容你无法读取；")
-                        .append("命题需要图形时请依据上下文文字设定条件，并按规范用 TikZ 绘制配图，")
-                        .append("不要臆测原图内容）\n");
+                    .append(material).append('\n');
+            if (material.contains("![材料图片]")) {
+                if (material.contains("【原图内容】")) {
+                    sb.append("（注：材料中「![材料图片](…)」下方的【原图内容】为视觉模型对原图的转述，")
+                            .append("可据此把握图形条件与图中数据；未附转述的图片内容你无法读取，不要臆测；")
+                            .append("命题配图仍须按规范用 TikZ 自行绘制，不要引用材料原图链接）\n");
+                } else {
+                    // 视觉模型未配置 / 全部转述失败：保留原免责声明
+                    sb.append("（注：材料中「![材料图片](…)」为原文插图位置，图片内容你无法读取；")
+                            .append("命题需要图形时请依据上下文文字设定条件，并按规范用 TikZ 绘制配图，")
+                            .append("不要臆测原图内容）\n");
+                }
             }
         } else {
             String name = req.fileName() == null || req.fileName().isBlank() ? "" : "（文件名：" + req.fileName() + "）";
@@ -1131,6 +1167,131 @@ public class LangChainController {
                 .build();
         ChatResponse response = chatModel.chat(request);
         return response.aiMessage().text();
+    }
+
+    // ===================== AI 生题：材料图片视觉转述（懒加载） =====================
+
+    /** 视觉模型转述提示词：面向高中数理化命题，产出供纯文本模型使用的结构化描述 */
+    private static final String IMAGE_DESC_SYSTEM = """
+            你是材料图片转述助手，服务高中数理化命题。请把图片内容完整转述为文字，供另一个只能读文本的大模型命题使用。
+            转述要求：
+            1. 先点明图片类型（如：函数图像、平面/立体几何图、受力分析图、电路图、实验装置图、数据图表、公式截图、纯文字段落等）；
+            2. 逐项转述图中所有文字、字母标注、数值、单位与坐标轴刻度，务必完整，不要遗漏；
+            3. 描述图形结构与关系：几何图的顶点、线段及虚实线含义，函数图像的形状与关键点，电路图的元件与连接方式，实验装置的组成与连接顺序等；
+            4. 只陈述图中确定可见的内容，不要推测图中没有的信息；
+            5. 输出纯文本，200 字以内，不要任何前后缀、解释或 Markdown 标记。
+            """;
+
+    /**
+     * 视觉模型把一张本地图片转述为文字（生题时懒加载调用）。
+     * 按图片内容 SHA-256 缓存到 question_output/image_desc_cache，同一图片重复生题不重述；
+     * 视觉模型未配置 / 类型不支持 / 调用失败时返回 null，不阻塞出题主流程。
+     */
+    private String describeImage(Path image) {
+        if (visionModelName == null || visionModelName.isBlank()) return null;
+        try {
+            if (!Files.isRegularFile(image)) {
+                log.warn("材料图片不存在，跳过转述: {}", image);
+                return null;
+            }
+            String name = image.getFileName() == null ? "" : image.getFileName().toString();
+            int dot = name.lastIndexOf('.');
+            String ext = dot > 0 ? name.substring(dot + 1).toLowerCase() : "";
+            String mime = VISION_IMAGE_MIMES.get(ext);
+            if (mime == null) {
+                log.warn("材料图片类型视觉模型不支持，跳过转述: {}", image);
+                return null;
+            }
+            byte[] bytes = Files.readAllBytes(image);
+            if (bytes.length == 0 || bytes.length > MAX_IMAGE_BYTES) {
+                log.warn("材料图片为空或超过 {}B 上限，跳过转述: {}", MAX_IMAGE_BYTES, image);
+                return null;
+            }
+            // 内容哈希缓存命中：同一图片（含重命名/重新落盘的副本）不重述
+            String hash = sha256Hex(bytes);
+            Path cache = imageDescCacheDir().resolve(hash + ".txt");
+            if (Files.isRegularFile(cache)) {
+                String cached = Files.readString(cache, StandardCharsets.UTF_8).strip();
+                if (!cached.isEmpty()) return cached;
+            }
+            ChatResponse resp = visionModel().chat(ChatRequest.builder()
+                    .messages(SystemMessage.from(IMAGE_DESC_SYSTEM),
+                            UserMessage.from(
+                                    TextContent.from("请转述这张材料图片的内容。"),
+                                    ImageContent.from(Base64.getEncoder().encodeToString(bytes), mime)))
+                    .build());
+            String desc = resp.aiMessage().text() == null ? "" : resp.aiMessage().text().strip();
+            if (desc.isEmpty()) return null;
+            try {
+                Files.createDirectories(cache.getParent());
+                Files.writeString(cache, desc, StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                log.warn("图片转述缓存写失败（不影响本次结果）: {}", e.getMessage());
+            }
+            log.info("材料图片已转述: {} ({}B)", image, bytes.length);
+            return desc;
+        } catch (Exception e) {
+            log.warn("材料图片转述失败，按无法读取处理: {} -> {}", image, e.getMessage());
+            return null;
+        }
+    }
+
+    /** 把材料文本里的本地图片链接逐张懒转述，【原图内容】追加在链接之后；远程链接与失败项原样保留 */
+    private String describeMaterialImages(String text) {
+        if (text == null || !text.contains("](")) return text;
+        Matcher m = MD_IMAGE.matcher(text);
+        StringBuilder sb = new StringBuilder();
+        int described = 0;
+        while (m.find()) {
+            String replacement = m.group(0);
+            String src = m.group(2).trim();
+            if (described < MAX_DESCRIBE_IMAGES && LOCAL_PATH.matcher(src).matches()) {
+                String desc = describeImage(Path.of(src));
+                if (desc != null && !desc.isBlank()) {
+                    described++;
+                    replacement = m.group(0) + "\n【原图内容】" + desc.strip();
+                }
+            }
+            m.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
+    /** 视觉模型实例：首次转述时构建；timeout/max-retries 与主生题模型解耦（转述要快，不要 900s 级等待）。
+     * HTTP 层显式用 JDK 客户端：starter 默认的 spring-restclient 按 Content-Type 选转换器，
+     * ark 端点返回 application/octet-stream 时会抛 RestClientException。 */
+    private OpenAiChatModel visionModel() {
+        OpenAiChatModel m = visionModel;
+        if (m == null) {
+            synchronized (this) {
+                if (visionModel == null) {
+                    visionModel = OpenAiChatModel.builder()
+                            .apiKey(visionApiKey)
+                            .modelName(visionModelName)
+                            .baseUrl(visionBaseUrl)
+                            .timeout(Duration.ofSeconds(Math.max(10, visionTimeoutSeconds)))
+                            .maxRetries(1)
+                            .httpClientBuilder(JdkHttpClient.builder())
+                            .build();
+                }
+                m = visionModel;
+            }
+        }
+        return m;
+    }
+
+    /** 转述缓存目录：题目插图目录的同级 image_desc_cache（与插图一起落在 question_output 下） */
+    private Path imageDescCacheDir() {
+        return Path.of(questionImageDir).resolveSibling("image_desc_cache");
+    }
+
+    private static String sha256Hex(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (Exception e) {
+            throw new IllegalStateException("SHA-256 不可用", e);
+        }
     }
 
     /** 解析大模型输出：剥掉代码块围栏，截取首尾大括号之间的 JSON 再反序列化 */

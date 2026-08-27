@@ -35,14 +35,18 @@ question:
   # TikZ 配图编译：题干中的 ```tikz 代码块由该 python + 脚本编译为 PNG（xelatex）
   tikz-python: ${user.dir}/lecture_pipeline/.venv/Scripts/python.exe
   tikz-script: ${user.dir}/tools/题目png生成工具/latex_snippet_tool.py
+  # 视觉模型（生题时把材料图片懒加载转述为文字，按图片内容哈希缓存到
+  # question_output/image_desc_cache；model-name 留空则禁用转述，回退"无法读取"提示）
+  vision:
+    model-name: deepseek-v4-flash-vision-exp
+    api-key: sk-0807477a969a4213a24aaacd89e02724
+    base-url: https://api.deepseek.com
+    # 单张图片转述读超时（秒）；慢模型 + 重试 1 次时最坏等待约 2 倍
+    timeout-seconds: 120
 
 langchain4j:
   open-ai:
     chat-model:
-#      api-key: ark-70179204-5484-4c58-bd3a-2077510f4acd-099e6
-#      model-name: deepseek-v4-flash
-#      base-url: https://ark.cn-beijing.volces.com/api/coding/v3
-
       api-key: sk-bec6f20fa8eae687d5019e5694849cb13816caeeb5d5dcba9d2917d6992de360
       model-name: gpt-5.6
       base-url: https://code.mmkg.cloud/v1

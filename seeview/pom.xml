@@ -63,6 +63,14 @@
             <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
             <version>1.8.0-beta15</version>
         </dependency>
+        <!-- 视觉模型（ark 通道）专用 JDK HTTP 客户端：starter 默认的 spring-restclient
+             按 Content-Type 选消息转换器，ark 返回 application/octet-stream 时
+             RestClient 抛 "Error while extracting response"，JDK 客户端无此严格校验 -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-http-client-jdk</artifactId>
+            <version>1.8.0</version>
+        </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -76,10 +84,24 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- AI 生题：Word（docx）材料解析，正文/表格文字 + OMML 公式 + 内嵌图片提取 -->
+        <!-- AI 生题：Word（docx）材料解析，正文/表格文字 + OMML 公式 + 内嵌图片提取
+             poi-ooxml 默认带的 poi-ooxml-lite 只含常见 docx 元素的 schema，
+             部分新版 Word/WPS 另存的文档会用到 lite 缺失的类型（如 ctstylead4btype）
+             导致 xmlbeans 运行时缺 .xsb 报错，故排除 lite 换全量 schema 包 poi-ooxml-full -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
+            <version>5.4.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.poi</groupId>
+                    <artifactId>poi-ooxml-lite</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml-full</artifactId>
             <version>5.4.1</version>
         </dependency>
         <dependency>
