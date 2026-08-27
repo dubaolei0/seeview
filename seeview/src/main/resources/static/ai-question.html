@@ -2174,6 +2174,19 @@ const isPdf = (file) => /\.pdf$/i.test(file.name) || file.type === 'application/
 const isImage = (file) => /^image\//.test(file.type || '') || /\.(png|jpe?g)$/i.test(file.name);
 const isTextLike = (file) =>
   /\.(txt|md|markdown)$/i.test(file.name) || /^text\//.test(file.type || '');
+const isDocx = (file) => /\.docx$/i.test(file.name)
+  || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+/** docx 文本提取走后端 POI：OMML 公式转 $LaTeX$、内嵌图片落盘为本地链接（预览直接渲染） */
+async function extractDocxText(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/langchain/question/extract-docx', { method: 'POST', body: fd });
+  if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.content || '';
+}
 
 /** UTF-8 优先，出现替换符（乱码）则按 GBK 重解（Windows 中文 TXT 常见） */
 function decodeTxt(buf) {
@@ -2388,8 +2401,19 @@ async function loadPreview(file) {
       box.value = decodeTxt(await readAsArrayBuffer());
       updatePreviewMeta();
       toast('已加载材料文本，可切换编辑补正');
+    } else if (isDocx(file)) {
+      // Word 材料：后端 POI 提取文字/公式/图片，预览直接渲染
+      meta.textContent = '解析中…';
+      $('previewCollapse').hidden = false;
+      box.value = await extractDocxText(file);
+      updatePreviewMeta();
+      toast('已提取 Word 文本与图片，可切换编辑补正');
+    } else if (/\.doc$/i.test(file.name)) {
+      meta.textContent = '暂不支持旧版 .doc';
+      toast('暂不支持旧版 .doc，请在 Word 中另存为 .docx 后重新上传');
+      return;
     } else {
-      // docx/pptx/zip 等二进制格式：前端提取不了文本，仅提示
+      // pptx/zip 等二进制格式：前后端均提取不了文本，仅提示
       meta.textContent = '该格式暂不支持文本提取';
       toast('该格式暂不支持文本预览，将以文件名与命题要求为依据');
       return;

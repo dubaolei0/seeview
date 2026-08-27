@@ -17,6 +17,18 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.xwpf.usermodel.IBodyElement;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFPicture;
+import org.apache.poi.xwpf.usermodel.XWPFPictureData;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.apache.xmlbeans.XmlCursor;
+import org.apache.xmlbeans.XmlObject;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -28,7 +40,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import javax.xml.namespace.QName;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -38,6 +52,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +60,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -84,6 +100,24 @@ public class LangChainController {
     private static final Pattern CODECOGS_URL = Pattern.compile("(?i)codecogs\\.com");
     private static final Set<String> IMAGE_EXTS = Set.of(
             "png", "jpg", "jpeg", "gif", "bmp", "webp", "svg");
+
+    /** WordprocessingML 正文 / OMML 公式命名空间（docx 材料解析用） */
+    private static final String W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    private static final String M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math";
+    /** docx 内嵌图片可预览格式（emf/wmf 等矢量格式浏览器不显示，落为占位说明） */
+    private static final Set<String> DOCX_IMAGE_EXTS = Set.of("png", "jpg", "jpeg", "gif", "bmp");
+    /** OMML 大型运算符（m:nary 的 m:chr）-> LaTeX 命令 */
+    private static final Map<String, String> NARY_OPS = Map.of(
+            "∑", "\\sum", "∏", "\\prod", "∫", "\\int", "∬", "\\iint", "∭", "\\iiint",
+            "∮", "\\oint", "⋃", "\\bigcup", "⋂", "\\bigcap");
+    /** OMML 重音字符（m:acc 的 m:chr，组合字符）-> LaTeX 命令 */
+    private static final Map<String, String> ACCENTS = Map.of(
+            "\u0303", "\\tilde", "\u0302", "\\hat", "\u0304", "\\bar",
+            "\u0307", "\\dot", "\u0308", "\\ddot", "\u20D7", "\\vec");
+    /** OMML 已知函数名（m:func 的 m:fName），输出时加 \ 前缀按正体函数渲染 */
+    private static final Set<String> KNOWN_FUNCS = Set.of(
+            "sin", "cos", "tan", "cot", "sec", "csc", "arcsin", "arccos", "arctan",
+            "ln", "log", "lim", "max", "min", "exp", "sinh", "cosh", "tanh", "det", "gcd");
 
     @RequestMapping("/hello")
     public String hello() {
@@ -420,6 +454,404 @@ public class LangChainController {
         return IMAGE_EXTS.contains(ext) ? ext : null;
     }
 
+    // ===================== AI 生题：Word（docx）材料解析 =====================
+
+    /**
+     * 提取 Word 材料（智能命题工作台）：解析 docx 正文为 Markdown 文本--
+     * 段落/表格文字按文档顺序输出，OMML 公式转 $LaTeX$，内嵌图片落盘为
+     * ![材料图片](绝对路径)。前端预览直接渲染，content 随生成请求进入大模型
+     * （模型为纯文本输入，图片内容仍需用户在编辑模式补文字描述）。
+     *
+     * @param file docx 文件（旧版 .doc 不支持，需在 Word 中另存为 .docx）
+     * @return 成功 {@code {"content": Markdown 文本}}；失败 {@code {"error": 摘要}}（HTTP 均 200，前端按字段区分）
+     */
+    @PostMapping("/question/extract-docx")
+    public Map<String, String> extractDocx(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Map.of("error", "file 不能为空");
+        }
+        String name = file.getOriginalFilename();
+        if (name != null && name.toLowerCase().endsWith(".doc")) {
+            return Map.of("error", "暂不支持旧版 .doc，请在 Word 中另存为 .docx 后重新上传");
+        }
+        if (name == null || !name.toLowerCase().endsWith(".docx")) {
+            return Map.of("error", "仅支持 .docx 文档");
+        }
+        if (file.getSize() > MAX_IMAGE_BYTES) {
+            return Map.of("error", "Word 文档超过 20MB 上限");
+        }
+        try (InputStream in = file.getInputStream()) {
+            String content = extractDocxText(in);
+            if (content.isBlank()) {
+                return Map.of("error", "未从 Word 文档提取到文本（可能为空文档）");
+            }
+            return Map.of("content", content);
+        } catch (Exception e) {
+            log.warn("Word 材料解析失败: {}", e.getMessage());
+            return Map.of("error", "Word 材料解析失败: " + e.getMessage());
+        }
+    }
+
+    /** docx 正文转 Markdown：段落与表格按文档顺序，段落内文字/公式/图片交错保序 */
+    private String extractDocxText(InputStream in) throws IOException {
+        try (XWPFDocument doc = new XWPFDocument(in)) {
+            StringBuilder sb = new StringBuilder();
+            for (IBodyElement el : doc.getBodyElements()) {
+                if (el instanceof XWPFParagraph p) {
+                    String line = docxParagraphText(p);
+                    if (!line.isBlank()) {
+                        sb.append(line.strip()).append("\n\n");
+                    }
+                } else if (el instanceof XWPFTable t) {
+                    appendDocxTable(sb, t);
+                }
+            }
+            return sb.toString().strip();
+        }
+    }
+
+    /** 段落内联内容：w:r 文字、m:oMath 公式（转 $LaTeX$）、图片（落盘为 markdown 链接） */
+    private String docxParagraphText(XWPFParagraph p) {
+        StringBuilder sb = new StringBuilder();
+        XmlCursor cur = p.getCTP().newCursor();
+        try {
+            if (cur.toFirstChild()) {
+                do {
+                    appendDocxInline(sb, cur.getObject(), p);
+                } while (cur.toNextSibling());
+            }
+        } finally {
+            cur.dispose();
+        }
+        return sb.toString();
+    }
+
+    /** 段落一级子元素分派：w:r 文字、m:oMath 公式、hyperlink 等容器递归；书签/校对标记跳过 */
+    private void appendDocxInline(StringBuilder sb, XmlObject el, XWPFParagraph p) {
+        QName q = qnameOf(el);
+        String local = q.getLocalPart();
+        if (W_NS.equals(q.getNamespaceURI())) {
+            switch (local) {
+                case "r" -> appendDocxRun(sb, el, p);
+                case "hyperlink", "smartTag", "ins" ->
+                        childrenOf(el).forEach(c -> appendDocxInline(sb, c, p));
+                default -> { } // 书签、校对等标记不含正文
+            }
+        } else if (M_NS.equals(q.getNamespaceURI())
+                && ("oMath".equals(local) || "oMathPara".equals(local))) {
+            String latex = ommlToLatex(el);
+            if (!latex.isBlank()) {
+                sb.append('$').append(latex).append('$');
+            }
+        }
+    }
+
+    /** 文字 run：文本与内嵌图片（同一 run 内先文字后图片） */
+    private void appendDocxRun(StringBuilder sb, XmlObject runEl, XWPFParagraph p) {
+        XWPFRun run = new XWPFRun((CTR) runEl, p);
+        String text = run.text();
+        if (text != null && !text.isEmpty()) {
+            sb.append(text);
+        }
+        for (XWPFPicture pic : run.getEmbeddedPictures()) {
+            appendDocxPicture(sb, pic.getPictureData());
+        }
+    }
+
+    /** docx 内嵌图片：落入题目插图目录并插入 ![材料图片](绝对路径)，前端经 local-image 渲染 */
+    private void appendDocxPicture(StringBuilder sb, XWPFPictureData data) {
+        if (data == null || data.getData() == null || data.getData().length == 0) {
+            return;
+        }
+        String ext = data.suggestFileExtension() == null ? "" : data.suggestFileExtension().toLowerCase();
+        if (!DOCX_IMAGE_EXTS.contains(ext)) {
+            // emf/wmf/tiff 等浏览器不显示的格式：占位说明，不落盘
+            sb.append("\n【材料此处有一张 ").append(ext.isEmpty() ? "图片" : ext.toUpperCase())
+                    .append(" 图片，暂不支持显示】\n");
+            return;
+        }
+        try {
+            String normalized = "jpeg".equals(ext) ? "jpg" : ext;
+            Path dst = writeImage(data.getData(), normalized, data.getFileName());
+            sb.append("\n![材料图片](").append(dst.toString().replace('\\', '/')).append(")\n");
+        } catch (Exception e) {
+            log.warn("Word 材料图片保存失败: {}", e.getMessage());
+            sb.append("\n【材料此处有一张图片，保存失败】\n");
+        }
+    }
+
+    /** Word 表格转 Markdown 表格（首行作表头；单元格内文字/公式同样转换） */
+    private void appendDocxTable(StringBuilder sb, XWPFTable table) {
+        List<XWPFTableRow> rows = table.getRows();
+        if (rows.isEmpty()) {
+            return;
+        }
+        sb.append('\n');
+        for (int r = 0; r < rows.size(); r++) {
+            List<XWPFTableCell> cells = rows.get(r).getTableCells();
+            if (cells.isEmpty()) {
+                continue;
+            }
+            sb.append('|');
+            for (XWPFTableCell cell : cells) {
+                String text = cell.getParagraphs().stream()
+                        .map(this::docxParagraphText)
+                        .filter(s -> !s.isBlank())
+                        .map(String::strip)
+                        .collect(Collectors.joining(" "))
+                        .replace("|", "\\|")
+                        .replace("\n", " ");
+                sb.append(' ').append(text).append(" |");
+            }
+            sb.append('\n');
+            if (r == 0) {
+                sb.append('|');
+                for (int c = 0; c < cells.size(); c++) {
+                    sb.append(" --- |");
+                }
+                sb.append('\n');
+            }
+        }
+        sb.append('\n');
+    }
+
+    // ---- OMML（Word 公式）-> LaTeX ----
+
+    /**
+     * OMML 公式转 LaTeX：覆盖分式、上下标、根式、定界符、求和/积分、函数、重音等
+     * 常见结构；未识别的节点按子元素顺序展开，保证内容不丢失。
+     */
+    private String ommlToLatex(XmlObject omml) {
+        StringBuilder sb = new StringBuilder();
+        appendOmml(sb, omml);
+        return sb.toString();
+    }
+
+    private void appendOmml(StringBuilder sb, XmlObject el) {
+        QName q = qnameOf(el);
+        String local = q.getLocalPart();
+        // m:t 文本节点（限定 math 命名空间，避免与 w:t 混淆）
+        if (M_NS.equals(q.getNamespaceURI()) && "t".equals(local)) {
+            String text = textValueOf(el);
+            if (!text.isEmpty()) {
+                sb.append(escapeLatex(text));
+            }
+            return;
+        }
+        List<XmlObject> children = childrenOf(el);
+        switch (local) {
+            case "f" -> { // 分式
+                sb.append("\\frac{");
+                appendOmmlChild(sb, children, "num");
+                sb.append("}{");
+                appendOmmlChild(sb, children, "den");
+                sb.append('}');
+            }
+            case "sSup" -> {
+                appendOmmlChild(sb, children, "e");
+                sb.append("^{");
+                appendOmmlChild(sb, children, "sup");
+                sb.append('}');
+            }
+            case "sSub" -> {
+                appendOmmlChild(sb, children, "e");
+                sb.append("_{");
+                appendOmmlChild(sb, children, "sub");
+                sb.append('}');
+            }
+            case "sSubSup" -> {
+                appendOmmlChild(sb, children, "e");
+                sb.append("_{");
+                appendOmmlChild(sb, children, "sub");
+                sb.append("}^{");
+                appendOmmlChild(sb, children, "sup");
+                sb.append('}');
+            }
+            case "rad" -> { // 根式
+                String deg = ommlChildLatex(children, "deg");
+                sb.append("\\sqrt");
+                if (!deg.isBlank()) {
+                    sb.append('[').append(deg).append(']');
+                }
+                sb.append('{');
+                appendOmmlChild(sb, children, "e");
+                sb.append('}');
+            }
+            case "d" -> { // 定界符（默认圆括号，|x| 等按 begChr/endChr）
+                sb.append(delimAttr(children, "begChr", "("));
+                children.stream()
+                        .filter(c -> "e".equals(qnameOf(c).getLocalPart()))
+                        .forEach(c -> appendOmml(sb, c));
+                sb.append(delimAttr(children, "endChr", ")"));
+            }
+            case "nary" -> { // 求和/积分等大型运算符
+                sb.append(naryOp(children));
+                String sub = ommlChildLatex(children, "sub");
+                String sup = ommlChildLatex(children, "sup");
+                if (!sub.isBlank()) {
+                    sb.append("_{").append(sub).append('}');
+                }
+                if (!sup.isBlank()) {
+                    sb.append("^{").append(sup).append('}');
+                }
+                appendOmmlChild(sb, children, "e");
+            }
+            case "func" -> {
+                String name = ommlChildLatex(children, "fName").strip();
+                sb.append(KNOWN_FUNCS.contains(name) ? "\\" + name + ' ' : name);
+                appendOmmlChild(sb, children, "e");
+            }
+            case "acc" -> { // 重音记号（向量箭头、帽子等）
+                String cmd = accentCmd(children);
+                if (cmd == null) {
+                    children.forEach(c -> appendOmml(sb, c));
+                } else {
+                    sb.append(cmd).append('{');
+                    appendOmmlChild(sb, children, "e");
+                    sb.append('}');
+                }
+            }
+            case "bar" -> {
+                sb.append("\\overline{");
+                appendOmmlChild(sb, children, "e");
+                sb.append('}');
+            }
+            default -> children.forEach(c -> appendOmml(sb, c)); // oMath/oMathPara/e/num/den/… 按序展开
+        }
+    }
+
+    /** 在兄弟元素里找指定局部名的第一个子元素并展开 */
+    private void appendOmmlChild(StringBuilder sb, List<XmlObject> children, String local) {
+        for (XmlObject c : children) {
+            if (local.equals(qnameOf(c).getLocalPart())) {
+                appendOmml(sb, c);
+                return;
+            }
+        }
+    }
+
+    private String ommlChildLatex(List<XmlObject> children, String local) {
+        StringBuilder sb = new StringBuilder();
+        appendOmmlChild(sb, children, local);
+        return sb.toString();
+    }
+
+    /** m:d 的定界符：m:dPr 下 m:begChr/m:endChr 的 m:val（缺省用默认值，空串表示无定界符） */
+    private String delimAttr(List<XmlObject> children, String local, String dft) {
+        for (XmlObject c : children) {
+            if (!"dPr".equals(qnameOf(c).getLocalPart())) {
+                continue;
+            }
+            for (XmlObject x : childrenOf(c)) {
+                if (local.equals(qnameOf(x).getLocalPart())) {
+                    String v = attrValue(x, "val");
+                    return v == null ? dft : v;
+                }
+            }
+        }
+        return dft;
+    }
+
+    /** m:nary 的运算符：m:naryPr/m:chr 的 m:val 映射为 LaTeX 命令，缺省按积分处理 */
+    private String naryOp(List<XmlObject> children) {
+        for (XmlObject c : children) {
+            if (!"naryPr".equals(qnameOf(c).getLocalPart())) {
+                continue;
+            }
+            for (XmlObject x : childrenOf(c)) {
+                if ("chr".equals(qnameOf(x).getLocalPart())) {
+                    String v = attrValue(x, "val");
+                    return v == null || v.isEmpty() ? "\\int" : NARY_OPS.getOrDefault(v, v);
+                }
+            }
+        }
+        return "\\int";
+    }
+
+    /** m:acc 的重音字符映射为 LaTeX 命令；未标注按默认帽子，未知重音返回 null（按普通内容展开） */
+    private String accentCmd(List<XmlObject> children) {
+        for (XmlObject c : children) {
+            if (!"accPr".equals(qnameOf(c).getLocalPart())) {
+                continue;
+            }
+            for (XmlObject x : childrenOf(c)) {
+                if ("chr".equals(qnameOf(x).getLocalPart())) {
+                    String v = attrValue(x, "val");
+                    return v == null ? "\\hat" : ACCENTS.getOrDefault(v, null);
+                }
+            }
+        }
+        return "\\hat";
+    }
+
+    /** OMML 文本节点里的 LaTeX 特殊字符转义（按字面渲染） */
+    private String escapeLatex(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            switch (s.charAt(i)) {
+                case '&' -> sb.append("\\&");
+                case '%' -> sb.append("\\%");
+                case '#' -> sb.append("\\#");
+                case '_' -> sb.append("\\_");
+                default -> sb.append(s.charAt(i));
+            }
+        }
+        return sb.toString();
+    }
+
+    // ---- XmlObject 通用小工具（docx / OMML 解析共用） ----
+
+    private QName qnameOf(XmlObject o) {
+        XmlCursor cur = o.newCursor();
+        try {
+            return cur.getName();
+        } finally {
+            cur.dispose();
+        }
+    }
+
+    private List<XmlObject> childrenOf(XmlObject el) {
+        List<XmlObject> out = new ArrayList<>();
+        XmlCursor cur = el.newCursor();
+        try {
+            if (cur.toFirstChild()) {
+                do {
+                    out.add(cur.getObject());
+                } while (cur.toNextSibling());
+            }
+        } finally {
+            cur.dispose();
+        }
+        return out;
+    }
+
+    private String textValueOf(XmlObject el) {
+        XmlCursor cur = el.newCursor();
+        try {
+            return cur.getTextValue();
+        } finally {
+            cur.dispose();
+        }
+    }
+
+    /** 元素属性值（按局部名匹配；m:val/r:embed 等在各自元素内无同名冲突） */
+    private String attrValue(XmlObject el, String local) {
+        XmlCursor cur = el.newCursor();
+        try {
+            if (!cur.toFirstAttribute()) {
+                return null;
+            }
+            do {
+                if (local.equals(cur.getName().getLocalPart())) {
+                    return cur.getTextValue();
+                }
+            } while (cur.toNextAttribute());
+            return null;
+        } finally {
+            cur.dispose();
+        }
+    }
+
     /**
      * AI 生题（智能命题工作台）：依据上传材料与命题参数生成一组题目。
      *
@@ -676,6 +1108,12 @@ public class LangChainController {
         if (content != null && !content.isBlank()) {
             sb.append("【命题材料】（请先识别材料所属学科，再依据材料命题）\n")
                     .append(content.strip()).append('\n');
+            if (content.contains("![材料图片]")) {
+                // docx 提取的插图链接：模型纯文本输入读不到图片内容，须明确告知避免臆造
+                sb.append("（注：材料中「![材料图片](…)」为原文插图位置，图片内容你无法读取；")
+                        .append("命题需要图形时请依据上下文文字设定条件，并按规范用 TikZ 绘制配图，")
+                        .append("不要臆测原图内容）\n");
+            }
         } else {
             String name = req.fileName() == null || req.fileName().isBlank() ? "" : "（文件名：" + req.fileName() + "）";
             sb.append("【命题材料】用户未提供可读的材料文本").append(name)
