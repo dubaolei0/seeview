@@ -1400,7 +1400,7 @@ const TIKZ_GLOBAL_RE = /\\begin\{tikzpicture\}\[([^\]]*)\]/;
 const TIKZ_COORD_RE = /\\coordinate\s*\(([^)]+)\)\s*at\s*\(\s*(-?\d*\.?\d+)\s*,\s*(-?\d*\.?\d+)\s*\)\s*;/g;
 const TIKZ_DRAW_RE = /\\draw\s*(?:\[([^\]]*)\])?\s*([^;]+);/g;
 const TIKZ_NODE_RE = /\\node\[([^\]]*)\]\s*at\s*\(([^)]+)\)\s*\{([^{}]*)\}\s*;/g;
-const TIKZ_FILL_RE = /\\fill\s*\(([^)]+)\)\s*circle\s*\([^)]+\)\s*;/g;
+const TIKZ_FILL_RE = /\\fill\s*((?:\([^)]+\)\s*circle\s*\([^)]+\)\s*)+);/g;
 
 function parseTikzGlobal(opts) {
   const g = { scale: null, lineWidth: null, everyNodeFont: null };
@@ -1429,14 +1429,22 @@ function parseDrawOptions(opts) {
   if (a) arrow = a;
   return { stroke, width, arrow };
 }
+/* draw 路径 -> 若干子路径（各为坐标名序列）：\draw (P)--(A) (P)--(B); 里
+   空格分隔、无 -- 连接的坐标属于不同子路径，若拍平成一条重建会误连成折线，
+   改变图形拓扑（物理图里平行棱变折线）。返回 [[点...], [点...], ...] */
 function parseDrawPath(path) {
-  const parts = path.split('--');
-  const out = [];
-  for (const p of parts) {
-    const m = p.match(/\(([^)]+)\)/);
-    if (m) out.push(m[1].trim());
+  const subs = [[]];
+  const re = /\(([^)]+)\)|(--)/g;
+  let joined = false;   // 上一个 token 是 --，下一坐标续在当前子路径尾
+  let m;
+  while ((m = re.exec(path))) {
+    if (m[2] === '--') { joined = true; continue; }
+    const id = m[1].trim();
+    if (!joined && subs[subs.length - 1].length) subs.push([]);
+    subs[subs.length - 1].push(id);
+    joined = false;
   }
-  return out;
+  return subs;
 }
 function parseNodeOptions(opts) {
   let position = null;
@@ -1475,20 +1483,24 @@ function parseTikzModel(code) {
   TIKZ_DRAW_RE.lastIndex = 0;
   while ((m = TIKZ_DRAW_RE.exec(code))) {
     const opts = m[1] || '';
-    const path = parseDrawPath(m[2].trim());
-    if (path.length < 2) continue;
+    // 一条 draw 可含多条子路径（(P)--(A) (P)--(B)），逐条建为独立线段，
+    // 属性面板里才能单独编辑虚实线；存在单坐标等无法重建的子路径时整条放弃
+    const subs = parseDrawPath(m[2].trim());
+    if (!subs.length || subs.some((sp) => sp.length < 2)) continue;
     const { stroke, width, arrow } = parseDrawOptions(opts);
-    segId += 1;
     // covered：路径全部是 coordinate 名或绝对数值对、选项全部在重建词表内、
     // 无 ++/to/plot/sin 等方言构造——该 draw 可被 generateTikzCode 无损重建
-    const cleanPath = path.every((t) => pointIds.has(t)
-        || /^-?\d*\.?\d+\s*,\s*-?\d*\.?\d+$/.test(t))
+    const cleanPath = subs.every((sp) => sp.every((t) => pointIds.has(t)
+        || /^-?\d*\.?\d+\s*,\s*-?\d*\.?\d+$/.test(t)))
       && !/\+\+|\bto\b|\bplot\b|\bsin\b|\bcos\b|\bcycle\b|\brectangle\b|\bnode\b|\bbend\b/i.test(m[2]);
     const cleanOpts = opts.split(',').map((t) => t.trim()).filter(Boolean)
       .every((t) => /^(dashed|thick|thin|->|<-|<->|-Stealth|-Latex|-To|line\s*width\s*=\s*[\d.]+\s*pt)$/i.test(t));
-    segments.push({ id: 's' + segId, path, stroke, width, arrow,
-      covered: cleanPath && cleanOpts,
-      rawStart: m.index, rawEnd: m.index + m[0].length });
+    for (const sp of subs) {
+      segId += 1;
+      segments.push({ id: 's' + segId, path: sp, stroke, width, arrow,
+        covered: cleanPath && cleanOpts,
+        rawStart: m.index, rawEnd: m.index + m[0].length });
+    }
   }
 
   const labels = [];
@@ -1516,14 +1528,21 @@ function parseTikzModel(code) {
   const fills = [];
   TIKZ_FILL_RE.lastIndex = 0;
   while ((m = TIKZ_FILL_RE.exec(code))) {
-    // covered：半径是 pt 数值（重建按原半径输出）；无半径/非 pt 单位视为未覆盖
-    const rm = m[0].match(/circle\s*\(\s*([\d.]+)\s*pt\s*\)/i);
-    fills.push({
-      id: m[1].trim(),
-      radius: rm ? parseFloat(rm[1]) : null,
-      covered: rm != null,
-      rawStart: m.index, rawEnd: m.index + m[0].length,
-    });
+    // 一条 \fill 可画多个圆点：\fill (A) circle (1.2pt) (B) circle (1.2pt);
+    // 逐个拆出独立圆点。covered 以整条语句计：全部半径为 pt 数值才可无损重建
+    // （部分未覆盖时整条保留原字节，避免重建静默吞掉未建模圆点）
+    const dots = [];
+    let d;
+    const dotRe = /\(([^)]+)\)\s*circle\s*\(([^)]+)\)/g;
+    while ((d = dotRe.exec(m[1]))) {
+      const rm = d[2].match(/^([\d.]+)\s*pt$/i);
+      dots.push({ id: d[1].trim(), radius: rm ? parseFloat(rm[1]) : null, covered: rm != null });
+    }
+    const allCovered = dots.length > 0 && dots.every((t) => t.covered);
+    for (const t of dots) {
+      fills.push(Object.assign({}, t, { covered: allCovered,
+        rawStart: m.index, rawEnd: m.index + m[0].length }));
+    }
   }
 
   let g = { scale: null, lineWidth: null, everyNodeFont: null };
