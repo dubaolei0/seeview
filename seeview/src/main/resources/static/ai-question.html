@@ -1417,12 +1417,17 @@ function parseTikzGlobal(opts) {
 function parseDrawOptions(opts) {
   let stroke = 'solid';
   let width = null;
+  let arrow = null;
   if (/\bdashed\b/.test(opts)) stroke = 'dashed';
   const m = opts.match(/line\s*width\s*=\s*([^,\s]+)/);
   if (m) width = 'line width=' + m[1];
   else if (/\bthick\b/.test(opts)) width = 'thick';
   else if (/\bthin\b/.test(opts)) width = 'thin';
-  return { stroke, width };
+  // 箭头 tip 作为整 token 识别（-> / <- / <-> / -Stealth 等），重建时保留
+  const a = opts.split(',').map((t) => t.trim())
+    .find((t) => /^(->|<-|<->|-Stealth|-Latex|-To)$/i.test(t));
+  if (a) arrow = a;
+  return { stroke, width, arrow };
 }
 function parseDrawPath(path) {
   const parts = path.split('--');
@@ -1436,7 +1441,7 @@ function parseDrawPath(path) {
 function parseNodeOptions(opts) {
   let position = null;
   let offset = null;
-  const fillWhite = /\bfill\s*=\s*white\b/.test(opts);
+  const fillNone = /\bfill\s*=\s*(?:none|white)\b/.test(opts);
   for (const name of TIKZ_POSITIONS) {
     const re = new RegExp('\\b' + name.replace(/ /g, '\\s+') + '\\s*(?:=\\s*(-?\\d*\\.?\\d+)pt)?\\b');
     const m = opts.match(re);
@@ -1446,7 +1451,7 @@ function parseNodeOptions(opts) {
       break;
     }
   }
-  return { position, offset, fillWhite };
+  return { position, offset, fillNone };
 }
 function parseTikzModel(code) {
   if (!code || !/\\begin\{tikzpicture\}/.test(code)) return null;
@@ -1459,7 +1464,9 @@ function parseTikzModel(code) {
     const id = m[1].trim();
     if (pointIds.has(id)) continue;
     pointIds.add(id);
-    points.push({ id, x: parseFloat(m[2]), y: parseFloat(m[3]) });
+    // rawStart/rawEnd：该 coordinate 在原文中的匹配区间，供原地补丁按 index 改写
+    points.push({ id, x: parseFloat(m[2]), y: parseFloat(m[3]),
+      rawStart: m.index, rawEnd: m.index + m[0].length, rawMatch: m[0] });
   }
   if (!points.length) return null;
 
@@ -1470,9 +1477,18 @@ function parseTikzModel(code) {
     const opts = m[1] || '';
     const path = parseDrawPath(m[2].trim());
     if (path.length < 2) continue;
-    const { stroke, width } = parseDrawOptions(opts);
+    const { stroke, width, arrow } = parseDrawOptions(opts);
     segId += 1;
-    segments.push({ id: 's' + segId, path, stroke, width });
+    // covered：路径全部是 coordinate 名或绝对数值对、选项全部在重建词表内、
+    // 无 ++/to/plot/sin 等方言构造——该 draw 可被 generateTikzCode 无损重建
+    const cleanPath = path.every((t) => pointIds.has(t)
+        || /^-?\d*\.?\d+\s*,\s*-?\d*\.?\d+$/.test(t))
+      && !/\+\+|\bto\b|\bplot\b|\bsin\b|\bcos\b|\bcycle\b|\brectangle\b|\bnode\b|\bbend\b/i.test(m[2]);
+    const cleanOpts = opts.split(',').map((t) => t.trim()).filter(Boolean)
+      .every((t) => /^(dashed|thick|thin|->|<-|<->|-Stealth|-Latex|-To|line\s*width\s*=\s*[\d.]+\s*pt)$/i.test(t));
+    segments.push({ id: 's' + segId, path, stroke, width, arrow,
+      covered: cleanPath && cleanOpts,
+      rawStart: m.index, rawEnd: m.index + m[0].length });
   }
 
   const labels = [];
@@ -1482,7 +1498,7 @@ function parseTikzModel(code) {
     const opts = m[1];
     const anchor = m[2].trim();
     const text = m[3];
-    const { position, offset, fillWhite } = parseNodeOptions(opts);
+    const { position, offset, fillNone } = parseNodeOptions(opts);
     labelId += 1;
     labels.push({
       id: 'l' + labelId,
@@ -1490,19 +1506,54 @@ function parseTikzModel(code) {
       text,
       position: position || 'above',
       offset: offset != null ? offset : 0,
-      fillWhite,
+      fillNone,
+      // rawStart/rawEnd：该 node 在原文中的匹配区间（含选项与文本），供原地补丁改写
+      rawStart: m.index, rawEnd: m.index + m[0].length, rawMatch: m[0],
+      rawOpts: opts,                    // 原选项串：补丁时只换方位/填充相关 token，其余保留
     });
   }
 
   const fills = [];
   TIKZ_FILL_RE.lastIndex = 0;
-  while ((m = TIKZ_FILL_RE.exec(code))) fills.push(m[1].trim());
+  while ((m = TIKZ_FILL_RE.exec(code))) {
+    // covered：半径是 pt 数值（重建按原半径输出）；无半径/非 pt 单位视为未覆盖
+    const rm = m[0].match(/circle\s*\(\s*([\d.]+)\s*pt\s*\)/i);
+    fills.push({
+      id: m[1].trim(),
+      radius: rm ? parseFloat(rm[1]) : null,
+      covered: rm != null,
+      rawStart: m.index, rawEnd: m.index + m[0].length,
+    });
+  }
 
   let g = { scale: null, lineWidth: null, everyNodeFont: null };
   const gm = code.match(TIKZ_GLOBAL_RE);
   if (gm) g = parseTikzGlobal(gm[1]);
 
-  return { global: g, points, segments, labels, fills, raw: code };
+  // patchable：全部源码都在建模词表内（coordinate / node / covered 的 draw 与 fill），
+  // 属性面板可从 model 整段重建且不丢内容；否则（含 plot/sin/++/to 等方言构造，
+  // 物理图丢整条线段的根因）只能对已识别项做原地补丁，其余字节不动。
+  const patchable = modelCoversCode(code, points, labels, segments, fills);
+
+  return { global: g, points, segments, labels, fills, raw: code, patchable };
+}
+
+/* 属性面板能否无损整段重建：把全部"已覆盖"语句（coordinate / node /
+ * covered 的 draw 与 fill）从原文剥掉（剥除段换成等量换行，位置不失效），
+ * 剩余部分若还残留任何 TikZ 绘图命令（plot/sin/++/to/decoration 等方言
+ * 构造都会留下残迹），则重建必丢内容，只能走原地补丁。 */
+function modelCoversCode(code, points, labels, segments, fills) {
+  let rest = code;
+  const strip = (s, e) => { rest = rest.slice(0, s) + '\n'.repeat((rest.slice(s, e).match(/\n/g) || []).length) + rest.slice(e); };
+  const ranges = [
+    ...points.map((p) => [p.rawStart, p.rawEnd]),
+    ...labels.map((l) => [l.rawStart, l.rawEnd]),
+    ...segments.filter((s) => s.covered).map((s) => [s.rawStart, s.rawEnd]),
+    ...fills.filter((f) => f.covered).map((f) => [f.rawStart, f.rawEnd]),
+  ].filter((r) => r[0] != null).sort((a, b) => b[0] - a[0]);
+  // 从后往前剥，保证前面的 rawStart 不失效
+  ranges.forEach(([s, e]) => strip(s, e));
+  return !/\\(draw|node|fill|coordinate|addplot|path|shade|pattern|clip|pic|edge)\b/.test(rest);
 }
 
 function fmtTikzNum(v) {
@@ -1529,21 +1580,84 @@ function generateTikzCode(model) {
     const width = seg.width || (g && g.lineWidth);
     if (width) styleParts.push(width);
     if (seg.stroke === 'dashed') styleParts.push('dashed');
+    if (seg.arrow) styleParts.push(seg.arrow);
     const style = styleParts.length ? '[' + styleParts.join(',') + ']' : '';
     const path = seg.path.map((id) => '(' + id + ')').join('--');
     lines.push('\\draw' + style + ' ' + path + ';');
   }
-  for (const pid of model.fills || []) lines.push('\\fill (' + pid + ') circle (1.2pt);');
+  for (const f of model.fills || []) {
+    const pid = typeof f === 'string' ? f : f.id;
+    const r = typeof f === 'string' || f.radius == null ? 1.2 : f.radius;
+    lines.push('\\fill (' + pid + ') circle (' + fmtTikzNum(r) + 'pt);');
+  }
   for (const lab of model.labels || []) {
     const pos = lab.position || 'above';
     const offset = lab.offset || 0;
     const posStr = offset ? pos + '=' + fmtTikzNum(offset) + 'pt' : pos;
     const optArr = [posStr];
-    if (lab.fillWhite) { optArr.push('fill=white'); optArr.push('inner sep=1.5pt'); }
+    if (lab.fillNone) { optArr.push('fill=none'); optArr.push('inner sep=1.5pt'); }
     lines.push('\\node[' + optArr.join(',') + '] at (' + lab.anchor + ') {' + lab.text + '};');
   }
   lines.push('\\end{tikzpicture}');
   return lines.join('\n') + '\n';
+}
+
+/* 原地补丁的 diff 基准快照：深拷贝（model 由面板原地修改，直接存引用会随编辑同步变化，diff 永远判无改动） */
+function cloneTikzModel(model) {
+  return model ? JSON.parse(JSON.stringify(model)) : model;
+}
+
+/* ---------- 原地补丁（patchable=false 时的应用路径） ----------
+   对含未建模构造（plot/sin/++/to 等方言）的代码不做整段重建，只把用户改动的
+   已识别项（coordinate 坐标、node 标签）按 raw 区间替换回原文，其余字节不动，
+   避免"移动一个标签、整条线段消失"。改动从后往前应用，前面的 rawStart 不失效。 */
+function generateTikzPatch(model, origModel) {
+  if (model === origModel) return model.raw;
+  const edits = [];
+  // coordinate：x/y 数值变了才回写
+  (model.points || []).forEach((p, i) => {
+    const o = origModel.points[i];
+    if (!o || o.rawMatch == null) return;
+    if (p.x === o.x && p.y === o.y) return;
+    const re = /(-?\d*\.?\d+)\s*,\s*(-?\d*\.?\d+)/;
+    const nums = o.rawMatch.match(re);
+    const replaced = o.rawMatch.replace(re, fmtTikzNum(p.x) + ',' + fmtTikzNum(p.y));
+    if (replaced !== o.rawMatch || (nums && (parseFloat(nums[1]) !== p.x || parseFloat(nums[2]) !== p.y))) {
+      edits.push([o.rawStart, o.rawEnd, replaced]);
+    }
+  });
+  // node 标签：锚点/文本/方位/偏移/填充任一变化即原地重写该句
+  (model.labels || []).forEach((l, i) => {
+    const o = origModel.labels[i];
+    if (!o || o.rawMatch == null) return;
+    if (l.anchor === o.anchor && l.text === o.text && l.position === o.position
+        && l.offset === o.offset && l.fillNone === o.fillNone) return;
+    // 选项串里只动方位/填充相关 token，font=、颜色等其余选项原样保留
+    // （fill=white 也一并剥掉重写为 fill=none：老图里的白底标签一并归一为透明填充）
+    const POS_TOKEN_RE = /\b(?:above\s+left|above\s+right|below\s+left|below\s+right|above|below|left|right)(?:\s*=\s*-?\d*\.?\d+\s*pt)?\s*,?/g;
+    const FILL_TOKEN_RE = /(?:\bfill\s*=\s*(?:white|none)|\binner\s+sep\s*=\s*-?\d*\.?\d+pt)\s*,?/g;
+    let opts = String(o.rawOpts || '');
+    opts = opts.replace(POS_TOKEN_RE, '').replace(FILL_TOKEN_RE, '');
+    const pos = l.position || 'above';
+    const offset = l.offset || 0;
+    const posStr = offset ? pos + '=' + fmtTikzNum(offset) + 'pt' : pos;
+    const newTokens = [posStr];
+    if (l.fillNone) { newTokens.push('fill=none', 'inner sep=1.5pt'); }
+    const kept = opts.split(',').map((t) => t.trim()).filter(Boolean);
+    const newOpts = [...newTokens, ...kept].join(',');
+    const re = /\\node\s*\[[^\]]*\]\s*at\s*\([^)]*\)\s*\{[\s\S]*\}\s*;/;
+    const rebuilt = '\\node[' + newOpts + '] at (' + l.anchor + ') {' + l.text + '};';
+    // 函数形式替换：标签文本常含 $ 数学模式，字符串替换会把 $1/$& 当分组引用
+    const replaced = o.rawMatch.replace(re, () => rebuilt);
+    edits.push([o.rawStart, o.rawEnd, replaced === o.rawMatch ? rebuilt : replaced]);
+  });
+  if (!edits.length) return model.raw;
+  edits.sort((a, b) => b[0] - a[0]);
+  let code = model.raw;
+  for (const [start, end, replacement] of edits) {
+    code = code.slice(0, start) + replacement + code.slice(end);
+  }
+  return code;
 }
 
 /* ---------------- 配图编辑（TikZ 改码重编译） ---------------- */
@@ -1578,6 +1692,7 @@ function openFigEditor(code, img, pre, fig) {
     chat: [],                       // 对话历史（含本轮要求，交给后端 fix-tikz）
     stem: stemForFig(pre),
     model: null,                    // 结构化 TikZ 模型（解析失败时为 null）
+    origModel: null,                // 打开时的模型快照（原地补丁的 diff 基准）
   };
   $('figCode').value = code;
   $('figStatus').textContent = '';
@@ -1590,9 +1705,14 @@ function openFigEditor(code, img, pre, fig) {
   const model = parseTikzModel(code);
   if (model) {
     state.figEdit.model = model;
+    // 深拷贝快照作原地补丁 diff 基准（含 raw 区间）；patchable=true 走整段重建用不到
+    state.figEdit.origModel = cloneTikzModel(model);
     renderFigProps(model);
     bindFigPropGlobal(model);
     switchFigTab('props');
+    if (!model.patchable) {
+      $('figStatus').textContent = '该图含属性面板未覆盖的绘图语句，改动将只应用到你编辑的项（其余源码原样保留）';
+    }
   } else {
     switchFigTab('code');
     $('figStatus').textContent = '该图暂时无法用属性面板编辑，已切到源码模式';
@@ -1614,6 +1734,11 @@ function switchFigTab(name) {
 /* ---------- 属性面板渲染 ---------- */
 function renderFigProps(model) {
   const g = model.global || {};
+  // 补丁模式（patchable=false）下全局设置无法原地生效（影响所有语句），禁用避免静默不生效
+  ['figPropScale', 'figPropLineWidth', 'figPropFont'].forEach((id) => {
+    $(id).disabled = !model.patchable;
+    $(id).title = model.patchable ? '' : '该图含未建模绘图语句，全局设置暂不可用，请用 AI 对话或源码修改';
+  });
   $('figPropScale').value = g.scale != null ? g.scale : 1;
   $('figPropLineWidth').value = g.lineWidth || 'thick';
   $('figPropFont').value = g.everyNodeFont || '\\small';
@@ -1629,7 +1754,7 @@ function renderFigProps(model) {
         <input type="number" data-idx="${idx}" data-field="x" step="0.1" value="${p.x}" title="x">
         <input type="number" data-idx="${idx}" data-field="y" step="0.1" value="${p.y}" title="y">
       </div>
-      <button type="button" class="fig-prop-del" data-idx="${idx}">删除</button>
+      <button type="button" class="fig-prop-del" data-idx="${idx}" ${model.patchable ? '' : 'disabled title="该图含未建模绘图语句，删除暂不可用"'}>删除</button>
     `;
     pointList.appendChild(row);
   });
@@ -1661,6 +1786,13 @@ function renderFigProps(model) {
           <option value="solid" ${s.stroke === 'solid' ? 'selected' : ''}>实线</option>
           <option value="dashed" ${s.stroke === 'dashed' ? 'selected' : ''}>虚线</option>
         </select>
+        <select data-idx="${idx}" data-field="arrow" title="箭头">
+          <option value="" ${!s.arrow ? 'selected' : ''}>无箭头</option>
+          <option value="->" ${s.arrow === '->' ? 'selected' : ''}>→</option>
+          <option value="<-" ${s.arrow === '<-' ? 'selected' : ''}>←</option>
+          <option value="<->" ${s.arrow === '<->' ? 'selected' : ''}>↔</option>
+          <option value="-Stealth" ${s.arrow === '-Stealth' ? 'selected' : ''}>→ Stealth</option>
+        </select>
         <select data-idx="${idx}" data-field="width">
           <option value="">跟随全局</option>
           <option value="thick" ${s.width === 'thick' ? 'selected' : ''}>thick</option>
@@ -1669,9 +1801,16 @@ function renderFigProps(model) {
           <option value="line width=1pt" ${s.width === 'line width=1pt' ? 'selected' : ''}>1pt</option>
         </select>
       </div>
-      <button type="button" class="fig-prop-del" data-idx="${idx}">删除</button>
+      <button type="button" class="fig-prop-del" data-idx="${idx}" ${model.patchable ? '' : 'disabled title="该图含未建模绘图语句，线段编辑暂不可用"'}>删除</button>
     `;
     segList.appendChild(row);
+    // 补丁模式下线段列表整体只读（原地补丁不回写 segments，改了也不生效）
+    if (!model.patchable) {
+      row.querySelectorAll('input, select').forEach((el) => {
+        el.disabled = true;
+        el.title = '该图含未建模绘图语句，线段编辑暂不可用，请用 AI 对话或源码修改';
+      });
+    }
   });
   segList.querySelectorAll('input, select').forEach((el) => {
     el.addEventListener('input', (e) => {
@@ -1709,10 +1848,10 @@ function renderFigProps(model) {
         </select>
         <input type="number" data-idx="${idx}" data-field="offset" step="1" min="0" value="${l.offset}" title="偏移 pt">
         <label style="font-size:11px;display:flex;align-items:center;gap:3px;">
-          <input type="checkbox" data-idx="${idx}" data-field="fillWhite" ${l.fillWhite ? 'checked' : ''}> 白底
+          <input type="checkbox" data-idx="${idx}" data-field="fillNone" ${l.fillNone ? 'checked' : ''}> 透明填充
         </label>
       </div>
-      <button type="button" class="fig-prop-del" data-idx="${idx}">删除</button>
+      <button type="button" class="fig-prop-del" data-idx="${idx}" ${model.patchable ? '' : 'disabled title="该图含未建模绘图语句，删除暂不可用"'}>删除</button>
     `;
     labelList.appendChild(row);
   });
@@ -1816,11 +1955,15 @@ async function figAsk() {
 async function figRender() {
   const ctx = state.figEdit;
   if (!ctx) return;
-  // 属性面板模式：从 model 生成 TikZ 再编译；否则直接用源码
+  // 属性面板模式：patchable 时从 model 整段重建；含未建模构造（plot/sin/++/to 等，
+  // 常见于物理图）时改为原地补丁——只回写用户改过的 coordinate/node，其余字节不动，
+  // 避免移动一个标签、解析器不认识的线段整条消失。否则直接用源码
   let code;
   const activeTab = document.querySelector('.fig-tab.active');
   if (activeTab && activeTab.dataset.figTab === 'props' && ctx.model) {
-    code = generateTikzCode(ctx.model).trim();
+    code = ctx.model.patchable
+      ? generateTikzCode(ctx.model).trim()
+      : generateTikzPatch(ctx.model, ctx.origModel || ctx.model).trim();
     $('figCode').value = code;
   } else {
     code = $('figCode').value.trim();
@@ -1870,6 +2013,8 @@ function applyFigImage(ctx, newPath, code) {
   state.figEdit = {
     img, pre: ctx.pre, fig: ctx.fig, oldPath: newPath,
     chat: ctx.chat, stem: ctx.stem, model: newModel,
+    // 原地补丁的 diff 基准随最新代码刷新（raw 区间对准当前源码，深拷贝防随编辑同变）
+    origModel: cloneTikzModel(newModel),
   };
   // 若属性面板可见，按最新代码刷新模型
   if (newModel && document.querySelector('.fig-tab.active[data-fig-tab="props"]')) {
@@ -2541,7 +2686,7 @@ function init() {
       text: m.points[0].id,
       position: 'above',
       offset: 3,
-      fillWhite: true,
+      fillNone: true,
     });
     renderFigProps(m);
   });

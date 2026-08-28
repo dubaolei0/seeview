@@ -47,9 +47,15 @@ question:
 langchain4j:
   open-ai:
     chat-model:
+#      gpt
       api-key: sk-bec6f20fa8eae687d5019e5694849cb13816caeeb5d5dcba9d2917d6992de360
       model-name: gpt-5.6
       base-url: https://code.mmkg.cloud/v1
+
+#      qianwen
+#      api-key: sk-61b0bbd47ab8412b92cf84c877a53855
+#      model-name: qwen3.7-plus
+#      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
 
       log-requests: true
       log-responses: true
