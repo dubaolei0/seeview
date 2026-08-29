@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>图库 · 参数化图形模板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   图库 -- 参数化图形模板管理
+   沿用 AI 命题台的简洁工具风：黑板绿交互 + 虚线分隔
+   ============================================================ */
+:root {
+  --bg: #F4F5F1;
+  --card: #FFFFFF;
+  --ink: #1B1D1A;
+  --ink-2: #585C54;
+  --ink-3: #8F948A;
+  --line: #E4E6DF;
+  --line-2: #F0F1EB;
+  --dash: #C6CBBF;
+  --green: #2E5D4A;
+  --green-deep: #234A3A;
+  --green-soft: #EBF1EC;
+  --red: #BE3A2B;
+  --red-soft: #FBEEEB;
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', serif;
+  --sans: -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --radius: 10px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 var(--sans); }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+.page { max-width: 1080px; margin: 0 auto; padding: 48px 24px 96px; }
+
+/* ---------------- 页头 ---------------- */
+.masthead { padding-bottom: 22px; border-bottom: 2px solid var(--ink); position: relative; margin-bottom: 28px; }
+.masthead::after { content: ''; position: absolute; left: 0; right: 0; bottom: -5px; border-bottom: 1px solid var(--ink); }
+.eyebrow { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .35em; color: var(--green); }
+.masthead h1 { margin: 0; font: 900 34px/1.2 var(--serif); letter-spacing: .06em; }
+.masthead .sub { margin: 10px 0 0; font-size: 14px; color: var(--ink-2); }
+.masthead .links { margin-top: 12px; font-size: 13px; }
+.masthead .links a { color: var(--green); text-decoration: none; border-bottom: 1px dashed var(--dash); }
+.masthead .links a:hover { border-bottom-color: var(--green); }
+
+/* ---------------- 顶栏 ---------------- */
+.toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.toolbar .count { color: var(--ink-3); font-size: 13px; font-family: var(--mono); }
+.btn-gen {
+  margin-left: auto;
+  border: 0; border-radius: 999px; cursor: pointer;
+  padding: 9px 26px;
+  background: var(--green); color: #fff;
+  font: 600 14px var(--sans); letter-spacing: .04em;
+  transition: background .15s;
+}
+.btn-gen:hover:not(:disabled) { background: var(--green-deep); }
+.btn {
+  border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
+  background: var(--card); color: var(--ink-2);
+  padding: 7px 16px; font: 500 13px var(--sans);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.btn:hover { border-color: var(--green); color: var(--green); }
+.btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+.btn.primary:hover { background: var(--green-deep); color: #fff; }
+.btn.ghost { border-color: transparent; color: var(--ink-3); }
+.btn.ghost:hover { color: var(--red); border-color: transparent; }
+.btn:disabled { opacity: .6; cursor: wait; }
+
+/* ---------------- 模板卡片网格 ---------------- */
+.group-title { margin: 26px 0 12px; font-size: 13px; font-weight: 700; color: var(--ink-2); letter-spacing: .12em; display: flex; align-items: center; gap: 10px; }
+.group-title::after { content: ''; flex: 1; border-top: 1px dashed var(--dash); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.fig-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 18px; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.fig-card:hover { border-color: var(--green); box-shadow: 0 2px 10px rgba(46, 93, 74, .08); }
+.fig-card h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.fig-card .fid { font: 400 11.5px var(--mono); color: var(--ink-3); }
+.fig-card .fdesc { margin: 0; font-size: 12.5px; color: var(--ink-2); line-height: 1.6;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.fig-card .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+.fig-card .tag { font-size: 11px; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 1px 9px; }
+.fig-card .thumb { width: 100%; height: 110px; object-fit: contain; border: 1px solid var(--line-2); border-radius: 6px; background: var(--line-2); }
+.empty-hint { color: var(--ink-3); text-align: center; padding: 60px 0; font-size: 14px; }
+.empty-hint a { color: var(--green); }
+
+/* ---------------- 编辑器抽屉 ---------------- */
+.drawer-mask { display: none; position: fixed; inset: 0; background: rgba(27, 29, 26, .35); z-index: 40; }
+.drawer-mask.show { display: block; }
+.drawer {
+  display: none; position: fixed; top: 0; right: -720px; bottom: 0; width: min(720px, 96vw);
+  background: var(--card); border-left: 1px solid var(--line); z-index: 41;
+  box-shadow: -8px 0 30px rgba(27, 29, 26, .12);
+  transition: right .25s ease; overflow-y: auto;
+}
+.drawer.show { display: block; right: 0; }
+.drawer-inner { padding: 24px 28px 40px; }
+.drawer-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+.drawer-head h2 { margin: 0; font: 900 22px/1.3 var(--serif); letter-spacing: .04em; }
+.drawer-head .state { font-size: 11px; color: var(--red); border: 1px solid var(--red); border-radius: 999px; padding: 1px 8px; }
+.drawer-close { margin-left: auto; border: 0; background: transparent; font-size: 20px; color: var(--ink-3); cursor: pointer; padding: 2px 8px; }
+.drawer-close:hover { color: var(--ink); }
+.drawer-section { margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--dash); }
+.drawer-section > .sec-title { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: var(--ink-2); letter-spacing: .08em; }
+
+.form-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px 14px; align-items: center; margin-bottom: 10px; }
+.form-row > label { font-size: 13px; font-weight: 600; color: var(--ink-2); text-align: right; }
+.form-row > label .req { color: var(--red); }
+.input, .textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 6px;
+  padding: 8px 12px; font: 13px/1.6 var(--sans); color: var(--ink); background: var(--card);
+}
+.input:focus, .textarea:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+.input.mono { font-family: var(--mono); font-size: 12.5px; }
+.textarea { resize: vertical; min-height: 90px; }
+.textarea.code { font: 12px/1.7 var(--mono); min-height: 220px; white-space: pre; }
+.field-hint { grid-column: 2; font-size: 11.5px; color: var(--ink-3); margin-top: -6px; }
+
+/* 参数表 */
+.params-table { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.params-row { display: grid; grid-template-columns: 1.1fr .8fr 1.4fr 1.4fr 1.6fr auto; gap: 8px; align-items: center; padding: 8px 12px; }
+.params-row + .params-row { border-top: 1px solid var(--line-2); }
+.params-row.head { background: var(--line-2); font-size: 11.5px; font-weight: 700; color: var(--ink-2); padding: 6px 12px; }
+.params-row .input { padding: 5px 8px; font-size: 12.5px; }
+.params-row .del { border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font-size: 15px; }
+.params-row .del:hover { color: var(--red); }
+.params-add { margin-top: 10px; }
+.mini-btn { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 3px 12px; font-size: 12px; color: var(--ink-2); cursor: pointer; }
+.mini-btn:hover { border-color: var(--green); color: var(--green); }
+
+/* 约束 */
+.constraints-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.constraints-row .input { flex: 1; font-family: var(--mono); font-size: 12px; }
+
+/* 预览区 */
+.preview-wrap { border: 1px solid var(--line); border-radius: 8px; background: var(--line-2); padding: 12px; }
+.preview-img { display: block; max-width: 100%; max-height: 300px; margin: 0 auto; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.preview-err { color: var(--red); font-size: 12.5px; white-space: pre-wrap; word-break: break-word; margin: 0; }
+.preview-params { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.pp-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.pp-item label { color: var(--ink-2); }
+.pp-item .input { width: 86px; padding: 4px 8px; font-size: 12.5px; }
+.pp-item input[type=checkbox] { accent-color: var(--green); }
+.pp-item select { padding: 4px 8px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+.preview-status { font-size: 12px; color: var(--ink-3); margin-left: auto; }
+.boundary-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.boundary-cell { border: 1px solid var(--line); border-radius: 6px; background: var(--card); padding: 6px; text-align: center; }
+.boundary-cell img { height: 90px; max-width: 180px; object-fit: contain; display: block; }
+.boundary-cell .cap { font: 11px var(--mono); color: var(--ink-2); margin-top: 4px; word-break: break-all; }
+.boundary-cell.err { color: var(--red); font-size: 11px; padding: 12px 10px; max-width: 180px; }
+
+/* 保存结果提示 */
+.save-tip { display: none; margin-top: 14px; padding: 10px 14px; border-radius: 8px; font-size: 13px; }
+.save-tip.ok { display: block; background: var(--green-soft); color: var(--green); }
+.save-tip.err { display: block; background: var(--red-soft); color: var(--red); white-space: pre-wrap; }
+
+.drawer-actions { display: flex; gap: 10px; margin-top: 22px; }
+.drawer-actions .danger { margin-right: auto; }
+
+@media (max-width: 720px) {
+  .params-row { grid-template-columns: 1fr 1fr; }
+  .params-row.head { display: none; }
+  .form-row { grid-template-columns: 1fr; }
+  .form-row > label { text-align: left; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <p class="eyebrow">FIGURE LIBRARY</p>
+    <h1>图库 · 参数化图形模板</h1>
+    <p class="sub">维护参数化的 TikZ 图形模板：调整参数即时重绘；生题时按题干条件选模板、填参数出图。</p>
+    <p class="links"><a href="ai-question.html">← 智能命题工作台</a></p>
+  </header>
+
+  <div class="toolbar">
+    <span class="count" id="count"></span>
+    <button class="btn-gen" id="btnNew">＋ 新建模板</button>
+  </div>
+
+  <div id="groups"></div>
+  <p class="empty-hint" id="emptyHint" style="display:none">
+    图库还是空的，点右上角「新建模板」添加第一个图形；模板示例见 <b>figure_library/figures/</b>。
+  </p>
+</div>
+
+<!-- 编辑器抽屉 -->
+<div class="drawer-mask" id="drawerMask"></div>
+<aside class="drawer" id="drawer" aria-label="模板编辑器">
+  <div class="drawer-inner">
+    <div class="drawer-head">
+      <h2 id="drawerTitle">新建模板</h2>
+      <span class="state" id="dirtyState" style="display:none">未保存</span>
+      <button class="drawer-close" id="drawerClose" title="关闭">×</button>
+    </div>
+
+    <div class="drawer-section" style="border-top:0; padding-top:0; margin-top:12px">
+      <div class="form-row">
+        <label>模板 id <span class="req">*</span></label>
+        <input class="input mono" id="fId" placeholder="right-triangle（小写字母/数字/连字符）">
+      </div>
+      <div class="form-row">
+        <label>名称 <span class="req">*</span></label>
+        <input class="input" id="fName" placeholder="直角三角形">
+      </div>
+      <div class="form-row">
+        <label>分类</label>
+        <input class="input" id="fCategory" placeholder="平面几何 / 立体几何 / 函数图像 / 物理示意图…">
+      </div>
+      <div class="form-row">
+        <label>标签</label>
+        <input class="input" id="fTags" placeholder="逗号分隔：三角形, 勾股定理, Rt△">
+      </div>
+      <div class="form-row">
+        <label>适用描述 <span class="req">*</span></label>
+        <textarea class="textarea" id="fDesc" rows="3" placeholder="什么题适合用这个模板（不少于 20 字，模型选图的依据）"></textarea>
+      </div>
+      <div class="form-row">
+        <label>不适用情形</label>
+        <textarea class="textarea" id="fWhenNot" rows="2" placeholder="什么题不要用这个模板（可选，防止生硬套用）"></textarea>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <p class="sec-title">参数表（\def 命令名 ↔ 题干条件）</p>
+      <div class="params-table" id="paramsTable">
+        <div class="params-row head">
+          <span>参数名</span><span>类型</span><span>范围/选项</span><span>默认值</span><span>说明</span><span></span>
+        </div>
+      </div>
+      <div class="params-add"><button class="mini-btn" id="btnAddParam">＋ 添加参数</button></div>
+    </div>
+
+    <div class="drawer-section">
+      <p class="sec-title">参数约束（如 ab + bc &lt;= 20，违反时拒绝渲染）</p>
+      <div id="constraintsBox"></div>
+      <button class="mini-btn" id="btnAddConstraint">＋ 添加约束</button>
+    </div>
+
+    <div class="drawer-section">
+      <p class="sec-title">TikZ 模板代码（参数用 \def\参数名 取值，坐标用 \pgfmathsetmacro 计算）</p>
+      <textarea class="textarea code" id="fTemplate" spellcheck="false" placeholder="\begin{tikzpicture}...\end{tikzpicture}（模板体不要写 \def，参数声明区由系统按参数值自动生成）"></textarea>
+    </div>
+
+    <div class="drawer-section">
+      <p class="sec-title">实时预览（改参数即时重绘，保存前先在这里确认）</p>
+      <div class="preview-wrap">
+        <div class="preview-params" id="previewParams"></div>
+        <div id="previewBody">
+          <img class="preview-img" id="previewImg" alt="模板预览">
+          <p class="preview-err" id="previewErr" style="display:none"></p>
+        </div>
+        <div class="preview-status" id="previewStatus"></div>
+      </div>
+      <div style="margin-top:10px; display:flex; gap:10px; align-items:center">
+        <button class="btn" id="btnPreview">↻ 重新渲染</button>
+        <button class="btn" id="btnBoundary">边界测试（min/max）</button>
+      </div>
+      <div class="boundary-grid" id="boundaryGrid" style="display:none"></div>
+    </div>
+
+    <p class="save-tip" id="saveTip"></p>
+
+    <div class="drawer-actions">
+      <button class="btn ghost danger" id="btnDelete">删除模板</button>
+      <button class="btn" id="btnCancel">关闭</button>
+      <button class="btn primary" id="btnSave">保存模板</button>
+    </div>
+  </div>
+</aside>
+
+<script>
+/* ===================== 状态 ===================== */
+let library = [];          // /figure/list 目录
+let editing = null;        // 编辑中的模板对象（未保存的草稿）
+let isNew = false;         // 是否新建
+let renderSeq = 0;         // 预览请求序号（防竞态：旧响应丢弃）
+let previewTimer = null;   // 参数试调防抖
+const $ = (id) => document.getElementById(id);
+
+const imgSrc = (path) => `/seeview/local-image?path=${encodeURIComponent(path)}`;
+
+/* ===================== 列表 ===================== */
+async function loadLibrary() {
+  const res = await fetch('/figure/list');
+  if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+  library = await res.json();
+  renderGroups();
+}
+
+function renderGroups() {
+  const box = $('groups');
+  box.innerHTML = '';
+  $('count').textContent = `共 ${library.length} 个模板`;
+  $('emptyHint').style.display = library.length ? 'none' : 'block';
+
+  const groups = new Map();
+  for (const t of library) {
+    const cat = t.category || '未分类';
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat).push(t);
+  }
+  for (const [cat, items] of groups) {
+    const h = document.createElement('p');
+    h.className = 'group-title';
+    h.textContent = cat;
+    box.appendChild(h);
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    for (const t of items) {
+      grid.appendChild(templateCard(t));
+    }
+    box.appendChild(grid);
+  }
+}
+
+function templateCard(t) {
+  const card = document.createElement('article');
+  card.className = 'fig-card';
+  card.tabIndex = 0;
+  card.innerHTML = `
+    <h3>${escapeHtml(t.name || t.id)}</h3>
+    <div class="fid">${escapeHtml(t.id)}</div>
+    <p class="fdesc">${escapeHtml(t.desc || '')}</p>
+    <div class="tags">${(t.tags || []).slice(0, 6).map((x) => `<span class="tag">${escapeHtml(x)}</span>`).join('')}</div>`;
+  card.addEventListener('click', () => openEditor(t.id));
+  card.addEventListener('keydown', (e) => { if (e.key === 'Enter') openEditor(t.id); });
+  return card;
+}
+
+/* ===================== 编辑器 ===================== */
+async function openEditor(id) {
+  const res = await fetch(`/figure/get/${encodeURIComponent(id)}`);
+  if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+  const data = await res.json();
+  if (data.error) { alert(data.error); return; }
+  editing = data.template;
+  isNew = false;
+  fillForm();
+  openDrawer();
+  schedulePreview();
+}
+
+function openNew() {
+  editing = {
+    id: '', name: '', category: '', tags: [], desc: '', whenNotToUse: '',
+    params: [emptyParam()],
+    constraints: [],
+    template: ''
+  };
+  isNew = true;
+  fillForm();
+  openDrawer();
+}
+
+function fillForm() {
+  $('drawerTitle').textContent = isNew ? '新建模板' : `编辑：${editing.name || editing.id}`;
+  $('fId').value = editing.id || '';
+  $('fId').disabled = !isNew; // id 即文件名，编辑时不允许改
+  $('fName').value = editing.name || '';
+  $('fCategory').value = editing.category || '';
+  $('fTags').value = (editing.tags || []).join(', ');
+  $('fDesc').value = editing.desc || '';
+  $('fWhenNot').value = editing.whenNotToUse || '';
+  $('fTemplate').value = editing.template || '';
+  renderParamsTable();
+  renderConstraints();
+  markClean();
+}
+
+/** 表单 -> 草稿对象（预览与保存共用一份口径） */
+function collectForm() {
+  return {
+    id: $('fId').value.trim(),
+    name: $('fName').value.trim(),
+    category: $('fCategory').value.trim() || '未分类',
+    tags: $('fTags').value.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
+    desc: $('fDesc').value.trim(),
+    whenNotToUse: $('fWhenNot').value.trim(),
+    params: collectParams(),
+    constraints: collectConstraints(),
+    template: $('fTemplate').value
+  };
+}
+
+function emptyParam() {
+  return { name: '', type: 'number', min: null, max: null, options: null, default: '', desc: '' };
+}
+
+function renderParamsTable() {
+  const table = $('paramsTable');
+  table.querySelectorAll('.params-row:not(.head)').forEach((r) => r.remove());
+  (editing.params || []).forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'params-row';
+    const rangeInput = p.type === 'string'
+      ? `<input class="input" data-k="range" placeholder="选项,逗号分隔" value="${escapeAttr((p.options || []).join(','))}">`
+      : `<input class="input" data-k="range" placeholder="min~max 如 1~12" value="${p.min != null ? p.min : ''}~${p.max != null ? p.max : ''}">`;
+    row.innerHTML = `
+      <input class="input mono" data-k="name" placeholder="ab" value="${escapeAttr(p.name)}">
+      <select class="input" data-k="type">
+        <option value="number" ${p.type === 'number' ? 'selected' : ''}>number</option>
+        <option value="bool" ${p.type === 'bool' ? 'selected' : ''}>bool</option>
+        <option value="string" ${p.type === 'string' ? 'selected' : ''}>string</option>
+      </select>
+      ${rangeInput}
+      <input class="input" data-k="default" placeholder="默认值" value="${escapeAttr(p.default)}">
+      <input class="input" data-k="desc" placeholder="直角边 AB 长度" value="${escapeAttr(p.desc)}">
+      <button class="del" title="删除参数">×</button>`;
+    row.addEventListener('input', () => { syncParamRow(row, i); markDirty(); schedulePreview(); });
+    row.addEventListener('change', () => { syncParamRow(row, i); markDirty(); schedulePreview(); });
+    row.querySelector('.del').addEventListener('click', () => {
+      editing.params.splice(i, 1);
+      renderParamsTable(); renderPreviewParams(); markDirty(); schedulePreview();
+    });
+    table.appendChild(row);
+  });
+}
+
+/** 把一行输入写回 editing.params[i] */
+function syncParamRow(row, i) {
+  const get = (k) => row.querySelector(`[data-k="${k}"]`);
+  const p = editing.params[i];
+  p.name = get('name').value.trim();
+  p.type = get('type').value;
+  const range = get('range').value.trim();
+  if (p.type === 'string') {
+    p.options = range ? range.split(/[,，]/).map((s) => s.trim()).filter(Boolean) : null;
+    p.min = null; p.max = null;
+  } else {
+    const m = range.match(/^(-?[\d.]*)\s*~\s*(-?[\d.]*)$/);
+    p.min = m && m[1] !== '' ? Number(m[1]) : null;
+    p.max = m && m[2] !== '' ? Number(m[2]) : null;
+    p.options = null;
+  }
+  p.default = get('default').value.trim();
+  p.desc = get('desc').value.trim();
+}
+
+function collectParams() {
+  // 编辑中实时同步过，直接取 editing.params；类型规范化（JSON 里 bool 默认值写 true/false）
+  return (editing.params || []).map((p) => ({
+    name: p.name, type: p.type, min: p.min ?? null, max: p.max ?? null,
+    options: p.options || null, default: p.default, desc: p.desc
+  }));
+}
+
+function renderConstraints() {
+  const box = $('constraintsBox');
+  box.innerHTML = '';
+  (editing.constraints || []).forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'constraints-row';
+    row.innerHTML = `
+      <input class="input" placeholder="如 ab + bc <= 20" value="${escapeAttr(c)}">
+      <button class="del" style="border:0;background:transparent;color:var(--ink-3);cursor:pointer">×</button>`;
+    row.querySelector('.input').addEventListener('input', (e) => { editing.constraints[i] = e.target.value; markDirty(); });
+    row.querySelector('.del').addEventListener('click', () => {
+      editing.constraints.splice(i, 1);
+      renderConstraints(); markDirty();
+    });
+    box.appendChild(row);
+  });
+}
+
+function collectConstraints() {
+  return (editing.constraints || []).map((s) => s.trim()).filter(Boolean);
+}
+
+/* ===================== 预览 ===================== */
+
+/** 预览参数面板（按当前草稿参数表生成控件） */
+function renderPreviewParams() {
+  const box = $('previewParams');
+  box.innerHTML = '';
+  for (const p of editing.params || []) {
+    if (!p.name) continue;
+    const item = document.createElement('span');
+    item.className = 'pp-item';
+    if (p.type === 'bool') {
+      item.innerHTML = `<label>${escapeHtml(p.desc || p.name)}</label>
+        <input type="checkbox" data-p="${escapeAttr(p.name)}" ${String(p.default) === 'true' || p.default === '1' ? 'checked' : ''}>`;
+    } else if (p.type === 'string') {
+      const opts = (p.options || []).map((o) =>
+        `<option value="${escapeAttr(o)}" ${o === p.default ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
+      item.innerHTML = `<label>${escapeHtml(p.desc || p.name)}</label><select data-p="${escapeAttr(p.name)}">${opts}</select>`;
+    } else {
+      item.innerHTML = `<label>${escapeHtml(p.desc || p.name)}</label>
+        <input class="input" type="number" step="any" data-p="${escapeAttr(p.name)}" value="${escapeAttr(p.default ?? '')}"
+          ${p.min != null ? `min="${p.min}"` : ''} ${p.max != null ? `max="${p.max}"` : ''}>`;
+    }
+    box.appendChild(item);
+  }
+  const status = document.createElement('span');
+  status.className = 'preview-status';
+  status.id = 'previewStatusInline';
+  box.appendChild(status);
+}
+
+function currentPreviewParams() {
+  const out = {};
+  $('previewParams').querySelectorAll('[data-p]').forEach((el) => {
+    if (el.type === 'checkbox') out[el.dataset.p] = el.checked;
+    else out[el.dataset.p] = el.value;
+  });
+  return out;
+}
+
+/** 防抖预览（参数试调 400ms；代码/结构改动立即） */
+function schedulePreview(immediate) {
+  clearTimeout(previewTimer);
+  if (immediate) { doPreview(); return; }
+  previewTimer = setTimeout(doPreview, 400);
+}
+
+async function doPreview(paramsOverride) {
+  // 先把表单同步进草稿（参数行输入即时同步，这里再兜底一次）
+  syncEditingFromForm();
+  renderPreviewParams();
+  const body = {
+    template: collectForm(),
+    params: paramsOverride || currentPreviewParams()
+  };
+  const seq = ++renderSeq;
+  setStatus('渲染中…');
+  try {
+    const res = await fetch('/figure/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (seq !== renderSeq) return; // 已有更新的请求，丢弃
+    if (!res.ok) throw new Error(`接口返回 ${res.status}`);
+    const data = await res.json();
+    if (data.error) {
+      showPreviewErr(data.error);
+    } else {
+      showPreviewOk(data.path);
+    }
+  } catch (e) {
+    if (seq !== renderSeq) return;
+    showPreviewErr(String(e.message || e));
+  }
+}
+
+function showPreviewOk(path) {
+  $('previewErr').style.display = 'none';
+  $('previewImg').style.display = 'block';
+  $('previewImg').src = imgSrc(path) + '&t=' + Date.now();
+  setStatus('✓ 已渲染');
+}
+
+function showPreviewErr(err) {
+  $('previewImg').style.display = 'none';
+  const el = $('previewErr');
+  el.style.display = 'block';
+  el.textContent = err;
+  setStatus('✗ 渲染失败');
+}
+
+function setStatus(text) {
+  const el = $('previewStatusInline') || $('previewStatus');
+  if (el) el.textContent = text;
+}
+
+/* 边界测试：每个 number 参数分别取 min 与 max（其余保持当前值） */
+async function boundaryTest() {
+  syncEditingFromForm();
+  const grid = $('boundaryGrid');
+  grid.style.display = 'flex';
+  grid.innerHTML = '<span style="color:var(--ink-3);font-size:12px">测试中…</span>';
+  const base = currentPreviewParams();
+  const tpl = collectForm();
+  const cases = [];
+  for (const p of tpl.params) {
+    if (p.type !== 'number' || p.type == null) continue;
+    if (p.min != null) cases.push({ p, v: p.min });
+    if (p.max != null && p.max !== p.min) cases.push({ p, v: p.max });
+  }
+  if (!cases.length) {
+    grid.innerHTML = '<span style="color:var(--ink-3);font-size:12px">没有带范围的数值参数，跳过</span>';
+    return;
+  }
+  grid.innerHTML = '';
+  for (const c of cases) {
+    const params = { ...base, [c.p.name]: c.v };
+    const cell = document.createElement('div');
+    cell.className = 'boundary-cell';
+    cell.innerHTML = `<div class="cap">${escapeHtml(c.p.name)} = ${c.v}</div>`;
+    grid.appendChild(cell);
+    try {
+      const res = await fetch('/figure/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: tpl, params })
+      });
+      const data = await res.json();
+      if (data.error) {
+        cell.classList.add('err');
+        cell.innerHTML = `<div class="cap">${escapeHtml(c.p.name)} = ${c.v}</div><div>✗ ${escapeHtml(data.error.slice(0, 80))}</div>`;
+      } else {
+        const img = document.createElement('img');
+        img.src = imgSrc(data.path) + '&t=' + Date.now();
+        img.alt = `${c.p.name}=${c.v}`;
+        cell.insertBefore(img, cell.firstChild);
+      }
+    } catch (e) {
+      cell.classList.add('err');
+      cell.textContent = '✗ ' + String(e.message || e);
+    }
+  }
+}
+
+/* ===================== 保存/删除 ===================== */
+async function save() {
+  syncEditingFromForm();
+  const tpl = collectForm();
+  if (!tpl.id) { showSaveTip('err', '模板 id 不能为空'); return; }
+  if (isNew && library.some((t) => t.id === tpl.id)) {
+    showSaveTip('err', `已存在同 id 模板：${tpl.id}`);
+    return;
+  }
+  $('btnSave').disabled = true;
+  try {
+    const res = await fetch('/figure/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tpl)
+    });
+    const data = await res.json();
+    if (data.error) {
+      showSaveTip('err', data.error);
+    } else {
+      showSaveTip('ok', '已保存（默认参数试编译通过）');
+      editing = tpl;
+      isNew = false;
+      $('drawerTitle').textContent = `编辑：${editing.name || editing.id}`;
+      $('fId').disabled = true;
+      markClean();
+      await loadLibrary();
+    }
+  } catch (e) {
+    showSaveTip('err', String(e.message || e));
+  } finally {
+    $('btnSave').disabled = false;
+  }
+}
+
+async function removeTemplate() {
+  if (isNew) { closeDrawer(); return; }
+  if (!confirm(`确认删除模板「${editing.name || editing.id}」？此操作不可恢复。`)) return;
+  const res = await fetch(`/figure/delete/${encodeURIComponent(editing.id)}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (data.error) { showSaveTip('err', data.error); return; }
+  closeDrawer();
+  await loadLibrary();
+}
+
+function showSaveTip(kind, msg) {
+  const el = $('saveTip');
+  el.className = `save-tip ${kind}`;
+  el.textContent = msg;
+}
+
+/* ===================== 抽屉与脏标记 ===================== */
+function openDrawer() {
+  $('drawer').classList.add('show');
+  $('drawerMask').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeDrawer() {
+  $('drawer').classList.remove('show');
+  $('drawerMask').classList.remove('show');
+  document.body.style.overflow = '';
+  renderSeq++; // 丢弃在途预览
+}
+function markDirty() { $('dirtyState').style.display = 'inline'; }
+function markClean() { $('dirtyState').style.display = 'none'; }
+function syncEditingFromForm() {
+  editing.id = $('fId').value.trim();
+  editing.name = $('fName').value.trim();
+  editing.category = $('fCategory').value.trim();
+  editing.tags = $('fTags').value.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
+  editing.desc = $('fDesc').value.trim();
+  editing.whenNotToUse = $('fWhenNot').value.trim();
+  editing.template = $('fTemplate').value;
+  editing.params = collectParams();
+  editing.constraints = collectConstraints();
+}
+
+/* ===================== 事件绑定 ===================== */
+$('btnNew').addEventListener('click', openNew);
+$('drawerClose').addEventListener('click', closeDrawer);
+$('drawerMask').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('drawer').classList.contains('show')) closeDrawer(); });
+$('btnAddParam').addEventListener('click', () => {
+  editing.params.push(emptyParam());
+  renderParamsTable(); renderPreviewParams(); markDirty();
+});
+$('btnAddConstraint').addEventListener('click', () => {
+  editing.constraints.push('');
+  renderConstraints(); markDirty();
+});
+$('btnPreview').addEventListener('click', () => schedulePreview(true));
+$('btnBoundary').addEventListener('click', boundaryTest);
+$('btnSave').addEventListener('click', save);
+$('btnDelete').addEventListener('click', removeTemplate);
+$('btnCancel').addEventListener('click', closeDrawer);
+// 基本信息/代码改动：脏标记 + 立即防抖预览
+['fId', 'fName', 'fCategory', 'fTags', 'fDesc', 'fWhenNot', 'fTemplate'].forEach((id) => {
+  $(id).addEventListener('input', () => { markDirty(); schedulePreview(); });
+});
+// 预览参数改动：即时防抖（不标脏，参数面板只是试调）
+$('previewParams').addEventListener('input', () => schedulePreview());
+$('previewParams').addEventListener('change', () => schedulePreview());
+
+/* ===================== 工具 ===================== */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+/* ===================== 启动 ===================== */
+loadLibrary().catch((e) => {
+  $('emptyHint').style.display = 'block';
+  $('emptyHint').textContent = '图库加载失败：' + (e.message || e);
+});
+</script>
+</body>
+</html>

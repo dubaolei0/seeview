@@ -44,6 +44,10 @@ question:
     # 单张图片转述读超时（秒）；慢模型 + 重试 1 次时最坏等待约 2 倍
     timeout-seconds: 120
 
+# 图库：参数化图形模板目录（figures/*.json 一模板一文件，见 FigureLibraryService）
+figure:
+  library-dir: ${user.dir}/figure_library
+
 langchain4j:
   open-ai:
     chat-model:

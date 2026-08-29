@@ -275,6 +275,27 @@ body {
 }
 .prompt-box:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
 
+/* ---------------- 学科选择 ---------------- */
+.subject-select {
+  width: 160px; padding: 7px 10px;
+  font: 13px/1.5 var(--sans); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 7px; background: #fff;
+  cursor: pointer;
+}
+.subject-select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+
+/* ---------------- 指定配图模板 ---------------- */
+.fig-tpl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.fig-tpl-label { flex: 1 1 100%; font-size: 13px; color: var(--ink-2); line-height: 1.6; }
+.fig-tpl-select {
+  padding: 7px 10px; font: 13px/1.5 var(--sans); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 7px; background: #fff;
+  min-width: 220px; flex: 0 1 auto;
+}
+.fig-tpl-select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+.fig-tpl-link { font-size: 12px; color: var(--green-deep); text-decoration: none; white-space: nowrap; }
+.fig-tpl-link:hover { text-decoration: underline; }
+
 /* ---------------- 提交 ---------------- */
 .submit-row { border-top: 1px dashed var(--dash); padding: 24px 0 4px; }
 .btn-gen {
@@ -410,6 +431,25 @@ body {
 .q-fig-btn:hover, .q-edit-btn:hover { background: #eef3fa; }
 /* 题干/答案编辑入口：靠右浮在题干上方 */
 .q-edit-bar { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 2px; }
+
+/* 图库配图参数面板：图库轨道的配图下方挂参数控件，改参数即时重出图（不走 AI 对话修图） */
+.q-fig-panel {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  margin: 6px 0 2px; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--line-2);
+}
+.q-fig-panel .pname { font: 600 11.5px var(--sans); color: var(--ink-2); }
+.q-fig-panel .pid { font: 400 11px var(--mono); color: var(--ink-3); margin-right: 4px; }
+.q-fig-panel .pp { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.q-fig-panel .pp label { color: var(--ink-2); }
+.q-fig-panel input[type=number] { width: 64px; padding: 2px 6px; font: 12px var(--mono);
+  border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); }
+.q-fig-panel input[type=checkbox] { accent-color: var(--green); }
+.q-fig-panel select { padding: 2px 6px; font-size: 12px; border: 1px solid var(--line);
+  border-radius: 5px; background: #fff; color: var(--ink); }
+.q-fig-panel .pstatus { margin-left: auto; font-size: 11px; color: var(--ink-3); }
+.q-fig-panel .pstatus.err { color: var(--red); }
+.q-fig-panel input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 2px var(--green-soft); }
 
 /* TikZ 配图编辑弹窗 */
 .fig-modal {
@@ -628,9 +668,11 @@ body {
 .fig-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; }
 .fig-status { flex: 1; font-size: 12px; color: #b45309; }
 
-/* 题干/选项/解析中的插图（几何图、函数图等） */
+/* 题干/选项/解析中的插图（几何图、函数图等）
+   PNG 按 300DPI 渲染：6cm 的几何图也有 ~700px，max-width:100% 会让小图撑满整屏。
+   改用 min(100%, 360px)：宽屏下小图显示成小图，窄屏仍自适应不溢出。大图（电路/函数）按内容自然宽度，上限 360px 仍可读。 */
 .q-stem img, .q-opts img, .q-ans img {
-  max-width: 100%;
+  max-width: min(100%, 360px);
   vertical-align: middle;
   margin: 4px 0;
   border: 1px solid var(--line);
@@ -682,6 +724,7 @@ body {
     <p class="eyebrow">备课工具 · 智能命题</p>
     <h1>AI 命题台</h1>
     <p class="sub">上传一份材料，选定题型与难度，AI 自动识别学科与考点，生成一组可复核的题目。</p>
+    <p class="sub" style="margin-top:8px"><a href="figure-library.html" style="color:var(--green);text-decoration:none;border-bottom:1px dashed var(--dash)">图库 · 参数化图形模板 →</a>（维护参数化图形，生题配图可按参数调整形状）</p>
   </header>
 
   <!-- 设置卡 -->
@@ -741,6 +784,21 @@ body {
         <h2 class="step-title">出题设置</h2>
       </div>
       <div class="field">
+        <p class="field-label">学科</p>
+        <select id="subjectSelect" class="subject-select" aria-label="命题学科">
+          <option value="">请选择学科</option>
+          <option value="数学">数学</option>
+          <option value="物理">物理</option>
+          <option value="化学">化学</option>
+          <option value="生物">生物</option>
+          <option value="语文">语文</option>
+          <option value="英语">英语</option>
+          <option value="政治">政治</option>
+          <option value="历史">历史</option>
+          <option value="地理">地理</option>
+        </select>
+      </div>
+      <div class="field">
         <p class="field-label">题型（可多选）</p>
         <div class="chip-row" id="typeRow"></div>
       </div>
@@ -769,6 +827,22 @@ body {
       </div>
       <textarea class="prompt-box" id="promptBox"
         placeholder="例如：侧重基础知识，题目贴近生活情境；解答题需附详细解析；不要出现超纲内容……"></textarea>
+    </section>
+
+    <!-- 指定配图模板（可选）：选定后大模型只按该模板参数范围造题、fig.id 固定，不再自行选图 -->
+    <section class="step" id="figTemplateStep">
+      <div class="step-head">
+        <span class="step-num">04</span>
+        <h2 class="step-title">指定配图模板</h2>
+        <span class="step-tag">可选</span>
+      </div>
+      <div class="fig-tpl-row">
+        <label for="figTplSelect" class="fig-tpl-label">从图库指定一个配图模板，生题时大模型围绕它造题并自动出图（不指定则由大模型自行判断是否配图）：</label>
+        <select id="figTplSelect" class="fig-tpl-select">
+          <option value="">不指定（大模型自行选图）</option>
+        </select>
+        <a class="fig-tpl-link" href="figure-library.html" target="_blank">管理图库 ↗</a>
+      </div>
     </section>
 
     <!-- 生成 -->
@@ -960,10 +1034,10 @@ body {
 <script>
 /* ============================================================
    配置：POST /langchain/question/generate（后端 LangChainController），
-   发 {types, difficulty, count, prompt, fileName, content}，
-   回 {title, topic, difficulty, sections: [{type, items: [{q, o?, a, note?, d?}]}],
+   发 {types, difficulty, count, subject, prompt, fileName, content, figureTemplateId?}，
+   回 {title, topic, difficulty, sections: [{type, items: [{q, o?, a, note?, d?, fig?}]}],
       totalQ, source, prompt}
-   学科不单独设置，由 AI 依据材料自动识别。
+   学科由用户在页面下拉中选择（必选），后端不再调大模型判定。
    ============================================================ */
 const CONFIG = { apiEndpoint: '/langchain/question/generate' };
 
@@ -975,6 +1049,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 /* ---------------- 状态 ---------------- */
 const state = {
   file: null,
+  subject: '',            // 命题学科（前端选择，生题必选；不再由大模型判定）
   types: new Set(['单选题']),
   difficulty: '中等',
   count: 5,
@@ -982,6 +1057,8 @@ const state = {
   previewMode: 'view',   // 材料预览模式：view（渲染）| edit（编辑）
   pdfPagesHtml: null,    // 扫描版 PDF 按页渲染的图片 HTML
   pdfPagesMeta: '',      // PDF 页数信息
+  figureCatalog: null,   // 图库目录（id -> {name,params,...}），生题页配图参数面板用，首次渲染时懒加载
+  figureTemplateId: '',  // 生题前指定的配图模板 id（空=不指定，由大模型自行选图）
 };
 
 /* ---------------- 工具 ---------------- */
@@ -1218,12 +1295,230 @@ function renderPaper(p) {
   });
   $('showAns').checked = false;
   body.querySelectorAll('.q-ans').forEach((el) => el.classList.remove('show'));
+  // 图库轨道配图：item.fig 引用了模板的题，在配图下方挂参数面板（改参数即时重渲染）。
+  // 异步加载目录后再逐题挂面板；自由 TikZ 轨道（带源码块）由上面的 pre.q-code 逻辑处理，互不干扰。
+  attachFigPanels(p);
+}
+
+/* 遍历卷面题目，对带 item.fig 的题在 .q-stem 的配图下挂参数面板 */
+async function attachFigPanels(p) {
+  const items = flatItems(p);
+  if (!items.some((it) => it && it.fig && it.fig.id)) return;
+  const catalog = await loadFigureCatalog();
+  const itemEls = document.querySelectorAll('#paperBody .q-item');
+  items.forEach((item, idx) => {
+    if (!item || !item.fig || !item.fig.id) return;
+    const el = itemEls[idx];
+    if (!el) return;
+    const stemEl = el.querySelector('.q-stem');
+    if (!stemEl) return;
+    renderFigPanel(stemEl, item.fig, catalog.get(item.fig.id));
+  });
 }
 
 /* ---------------- 题干编辑（对话式 AI 修改 + 手动改源码） ---------------- */
 /* 卷面所有题目按渲染顺序摊平（配图定位题干、编辑题干共用同一索引口径） */
 function flatItems(p) {
   return (p && Array.isArray(p.sections)) ? p.sections.flatMap((sec) => sec.items || []) : [];
+}
+
+/* ---------------- 图库轨道配图参数面板 ---------------- */
+/* 生题时大模型可能输出 fig: {id, params} 引用图库模板（替代自由 TikZ）。
+   这类配图在题干里只留一张 ![配图](path) 图片、不带 ```tikz 源码块，
+   因此改图不走 AI 对话，而是在配图下方挂参数面板，改参数即时调 /figure/render 重出图。
+   自由 TikZ 轨道（题干带 ```tikz 源码块）维持原有「编辑配图/调整配图」对话，不受此处影响。 */
+
+/* 懒加载图库目录：首次需要面板时拉取 /figure/list，缓存为 id -> Catalog 的 Map。
+   返回 Map（可能为空）；网络失败不抛错，仅返回空 Map，面板退化为只显示模板 id。 */
+async function loadFigureCatalog() {
+  if (state.figureCatalog) return state.figureCatalog;
+  try {
+    const res = await fetch('/figure/list');
+    const list = await res.json();
+    const map = new Map();
+    (Array.isArray(list) ? list : []).forEach((tpl) => {
+      if (tpl && tpl.id) map.set(tpl.id, tpl);
+    });
+    state.figureCatalog = map;
+    return map;
+  } catch {
+    state.figureCatalog = new Map();
+    return state.figureCatalog;
+  }
+}
+
+/* 初始化「指定配图模板」下拉：加载图库目录，填入模板选项并绑定 change。
+   页面打开时调用一次；图库为空时下拉只剩「不指定」占位项，不报错。 */
+async function populateFigureTemplateSelect() {
+  const sel = $('figTplSelect');
+  if (!sel) return;
+  const catalog = await loadFigureCatalog();
+  // 保留占位项，追加每个模板
+  const cur = state.figureTemplateId;
+  Array.from(catalog.values()).forEach((tpl) => {
+    const opt = document.createElement('option');
+    opt.value = tpl.id;
+    opt.textContent = `${tpl.name}（${tpl.category || '未分类'}）`;
+    if (cur === tpl.id) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', () => {
+    state.figureTemplateId = sel.value;
+  });
+}
+
+/* 取某题当前参数值：优先 item.fig.params，缺省回退模板默认值，再缺省给类型空值。 */
+function figureParamValues(fig, tpl) {
+  const vals = {};
+  const given = (fig && fig.params) ? fig.params : {};
+  (tpl && tpl.params ? tpl.params : []).forEach((p) => {
+    const name = p.name;
+    let v = given[name];
+    if (v === undefined || v === null || v === '') v = p['default'];
+    if (v === undefined || v === null || v === '') {
+      v = (p.type === 'bool') ? 'false' : (p.type === 'number') ? '' : (p.options && p.options[0]) || '';
+    }
+    vals[name] = v;
+  });
+  return vals;
+}
+
+/* 渲染单个题目的参数面板：基于模板参数表生成 number input / bool checkbox / string select。
+   面板挂在 .q-stem 内的 ![配图] <img> 之后；改参数防抖调 /figure/render 重出图替换该 img。 */
+function renderFigPanel(stemEl, fig, tpl) {
+  const img = stemEl.querySelector('img.q-inline-img[alt="配图"], img[alt="配图"]');
+  if (!img) return; // 题干没有配图（fig 渲染失败回退等），不挂面板
+  // 清掉旧面板（重渲染场景）
+  const old = img.nextElementSibling;
+  if (old && old.classList.contains('q-fig-panel')) old.remove();
+
+  const panel = document.createElement('div');
+  panel.className = 'q-fig-panel';
+  const pid = document.createElement('span');
+  pid.className = 'pid';
+  pid.textContent = (tpl && tpl.name) ? tpl.name : (fig.id || '');
+  panel.appendChild(pid);
+
+  const params = (tpl && tpl.params) ? tpl.params : [];
+  const vals = figureParamValues(fig, tpl);
+  const status = document.createElement('span');
+  status.className = 'pstatus';
+
+  params.forEach((p) => {
+    const wrap = document.createElement('span');
+    wrap.className = 'pp';
+    const lbl = document.createElement('label');
+    lbl.textContent = p.desc ? p.desc.replace(/\s*（.*$/, '') : p.name;
+    lbl.htmlFor = `figp-${fig.id}-${p.name}`;
+    wrap.appendChild(lbl);
+    const type = p.type || 'number';
+    let input;
+    if (type === 'bool') {
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.id = `figp-${fig.id}-${p.name}`;
+      input.checked = /^(true|1)$/i.test(String(vals[p.name]));
+    } else if (type === 'string' && Array.isArray(p.options) && p.options.length) {
+      input = document.createElement('select');
+      input.id = `figp-${fig.id}-${p.name}`;
+      p.options.forEach((opt) => {
+        const o = document.createElement('option');
+        o.value = opt; o.textContent = opt;
+        if (String(vals[p.name]) === String(opt)) o.selected = true;
+        input.appendChild(o);
+      });
+    } else {
+      input = document.createElement('input');
+      input.type = 'number';
+      input.id = `figp-${fig.id}-${p.name}`;
+      input.value = String(vals[p.name]);
+      if (p.min != null) input.min = p.min;
+      if (p.max != null) input.max = p.max;
+      if (p.step == null) input.step = 'any';
+    }
+    input.dataset.param = p.name;
+    input.dataset.type = type;
+    wrap.appendChild(input);
+    panel.appendChild(wrap);
+  });
+  panel.appendChild(status);
+  img.after(panel);
+
+  // 收集面板当前值（与后端 appendDefs 约定一致：bool 转小写 true/false，number/string 原样）
+  const collectParams = () => {
+    const out = {};
+    panel.querySelectorAll('input,select').forEach((el) => {
+      const name = el.dataset.param;
+      const t = el.dataset.type;
+      if (t === 'bool') out[name] = el.checked ? 'true' : 'false';
+      else out[name] = String(el.value).trim();
+    });
+    return out;
+  };
+
+  // 防抖重渲染：改参数 450ms 后调 /figure/render，成功替换 img.src，失败在面板右侧报错
+  let timer = null;
+  let seq = 0;
+  const rerender = () => {
+    clearTimeout(timer);
+    status.classList.remove('err');
+    status.textContent = '重渲染中…';
+    timer = setTimeout(async () => {
+      const my = ++seq;
+      try {
+        const res = await fetch('/figure/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: fig.id, params: collectParams() }),
+        });
+        const data = await res.json();
+        if (my !== seq) return; // 已有更新的请求在途，丢弃旧结果
+        if (data.error) {
+          status.classList.add('err');
+          status.textContent = data.error;
+          return;
+        }
+        // 用时间戳破缓存，原地替换配图
+        img.src = `/seeview/local-image?path=${encodeURIComponent(data.path)}&t=${Date.now()}`;
+        status.textContent = '';
+        // 同步回 state.paper，供后续保存/导出带走最新参数
+        const item = flatItems(state.paper).find((it) => it.fig && it.fig.id === fig.id);
+        if (item && item.fig) {
+          item.fig.params = collectParams();
+          // 题干里的图片路径同步替换（与自由 TikZ 的 syncPaperImage 同口径）
+          syncPaperImageByImg(img, data.path);
+        }
+      } catch {
+        if (my !== seq) return;
+        status.classList.add('err');
+        status.textContent = '网络错误，重试';
+      }
+    }, 450);
+  };
+  panel.addEventListener('input', rerender);
+  panel.addEventListener('change', rerender);
+}
+
+/* 把卷面里某张 <img> 的源路径在 state.paper 各字段里替换为新路径（图库参数重渲染后同步） */
+function syncPaperImageByImg(img, newPath) {
+  const p = state.paper;
+  if (!p || !Array.isArray(p.sections)) return;
+  // 反查当前 img 的绝对路径（去掉 local-image 前缀与查询串）
+  const cur = img.getAttribute('src') || '';
+  const m = cur.match(/[?&]path=([^&]+)/);
+  const oldPath = m ? decodeURIComponent(m[1]) : null;
+  const clean = (s) => s ? s.replace(/\\/g, '/') : s;
+  const replace = (text) => {
+    if (!text || !oldPath) return text;
+    return text.split(clean(oldPath)).join(clean(newPath));
+  };
+  p.sections.forEach((sec) => {
+    (sec.items || []).forEach((it) => {
+      if (it.q) it.q = replace(it.q);
+      if (it.note) it.note = replace(it.note);
+      if (it.o) it.o = it.o.map(replace);
+    });
+  });
 }
 
 /* 弹窗里的题干渲染预览（公式/图片/TikZ 块与卷面同一套渲染） */
@@ -2062,6 +2357,7 @@ async function generate() {
   let ok = true;
   if (!state.file) { $('uploadError').classList.add('show'); ok = false; }
   if (state.types.size === 0) { toast('请至少选择一种题型'); ok = false; }
+  if (!state.subject) { toast('请选择命题学科'); ok = false; }
   if (!ok) {
     $('sheet').scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
     return;
@@ -2082,9 +2378,11 @@ async function generate() {
         types: [...state.types],
         difficulty: state.difficulty,
         count: state.count,
+        subject: state.subject,
         prompt: $('promptBox').value.trim(),
         fileName: state.file.name,
         content,
+        figureTemplateId: state.figureTemplateId || undefined,
       }),
     });
     if (!res.ok) throw new Error(`接口返回 ${res.status}`);
@@ -2651,6 +2949,8 @@ function init() {
   initStepper();
   initUpload();
   initPreviewToggle();
+  $('subjectSelect').addEventListener('change', () => { state.subject = $('subjectSelect').value; });
+  populateFigureTemplateSelect();   // 填充「指定配图模板」下拉（异步，不阻塞页面）
   $('btnGen').addEventListener('click', generate);
   $('btnWord').addEventListener('click', downloadWord);
   $('btnCopy').addEventListener('click', copyText);

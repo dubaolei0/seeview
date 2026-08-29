@@ -3,6 +3,7 @@ package com.yuanxuan.seeview.controller;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yuanxuan.seeview.dto.ChatTurn;
+import com.yuanxuan.seeview.dto.FigureTemplate;
 import com.yuanxuan.seeview.dto.LectureBatchRequest;
 import com.yuanxuan.seeview.dto.LectureRequest;
 import com.yuanxuan.seeview.dto.LectureResult;
@@ -78,6 +79,9 @@ public class LangChainController {
 
     @Autowired
     private LectureGenerateService lectureGenerateService;
+
+    @Autowired
+    private com.yuanxuan.seeview.service.FigureLibraryService figureLibrary;
 
     /** 题目插图本地保存目录：远程图片下载、本地图片拷贝到此处，题目内链接改写为副本绝对路径 */
     @Value("${question.image-dir:${user.dir}/question_output/images}")
@@ -883,10 +887,11 @@ public class LangChainController {
     /**
      * AI 生题（智能命题工作台）：依据上传材料与命题参数生成一组题目。
      *
-     * <p>学科不单独指定，由大模型依据材料内容自动识别，任意学科通用；
+     * <p>学科由用户在前端页面上选择（高中各学科），后端不再调大模型判定，直接采用所选学科
+     * 选用对应的 TikZ 绘图规范；未选择时按「材料自识别」口径交给大模型处理。
      * 大模型只需产出 title/topic/sections，总题量由后端统计补齐。
      *
-     * @param request 题型、难度、题量、材料等（types 必填）
+     * @param request 题型、难度、题量、学科、材料等（types 必填）
      * @return 题目组（含各题题干/选项/答案/解析，按题型分组）
      */
     @PostMapping("/question/generate")
@@ -895,8 +900,8 @@ public class LangChainController {
             throw new IllegalArgumentException("types 不能为空");
         }
 
-        // 先判定材料学科，再按学科选用对应的 TikZ 绘图规范
-        String subject = detectSubject(request.content(), request.fileName());
+        // 学科：前端页面选择，直接采用（不调大模型判定）；未选时按材料自识别口径处理
+        String subject = request.subject() == null ? "" : request.subject().strip();
 
         String system = questionSystemPrompt(request, subject);
         String raw = chat(system, questionUserPrompt(request, subject));
@@ -913,6 +918,8 @@ public class LangChainController {
         }
         // 题目里的图片落地保存（远程下载/本地拷贝），链接改写为副本路径
         paper = persistImages(paper);
+        // 题干中的图库引用（fig 字段）渲染为配图 PNG，插入题干（先于 TikZ 代码块处理）
+        paper = renderFigureRefs(paper);
         // 题干中的 ```tikz 代码块编译为配图 PNG，代码块改写为图片链接
         paper = renderTikzFigures(paper);
         return finalizePaper(paper, request);
@@ -1030,8 +1037,9 @@ public class LangChainController {
     private static final int SUBJECT_CLASSIFY_LIMIT = 2000;
 
     /**
-     * 依据材料文本（辅以文件名）判断学科：数学 / 物理 / 化学 / 其他，
-     * 用于生题与配图修正时选用对应学科的 TikZ 绘图规范；失败或无法判断返回"其他"。
+     * 依据材料文本（辅以文件名）判断学科：数学 / 物理 / 化学 / 其他。
+     * 生题已改为前端页面选择学科（不调大模型）；本方法仅供配图修正（fix-tikz）按题干判定学科、
+     * 选用对应学科的 TikZ 绘图规范；失败或无法判断返回"其他"。
      */
     private String detectSubject(String content, String fileName) {
         String text = content == null ? "" : content.strip();
@@ -1057,11 +1065,37 @@ public class LangChainController {
     }
 
     private String questionSystemPrompt(QuestionGenerateRequest req, String subject) {
+        boolean designated = req.figureTemplateId() != null && !req.figureTemplateId().isBlank();
+        // 第 10 条按是否指定模板切换：指定→围绕该模板造题、id 固定、不选图；未指定→命题即选图
+        String rule10 = designated ? """
+                10. 配图模板已指定（fig 字段，重要）：用户已指定本次命题使用某个图库模板，用户消息给出了该模板的 id、参数名与取值范围。
+                    本组每道题都必须围绕该模板造题：把题干的图形数值设计在模板参数范围内，题干命名与模板保持一致
+                    （如模板为 Rt△ABC、∠B=90°，题干就按这套命名写），并在该题输出 fig 字段——id 固定为用户指定的模板 id，
+                    params 填入你造题时实际使用的参数值，参数值与题干数值严格一致，系统会按参数把模板渲染成配图。
+                    指定模式下不要自行判断选哪个图（id 已固定），也不要写 ```tikz 代码块自己画图；fig 与 ```tikz 二选一，同一条题干不要同时输出。
+                    不需要图形的纯计算题也应围绕该模板的几何情境命制并输出 fig（参数取模板默认范围内的合理值）。
+                    fig 字段形如 {"id": "模板id", "params": {"参数名": 参数值}}；
+                    参数值为数字时写数字（如 6），布尔写 true/false，不要给参数加单位或多余文字。
+                """ : """
+                10. 图库配图（fig 字段，重要）：用户消息的【可用图库模板】列出了系统维护的参数化图形模板。
+                    命题时只要某题的图形条件能被【可用图库模板】中的某个模板覆盖，就必须采用该模板出图，
+                    不要再用 ```tikz 代码块自己画同类图形：先把题干的图形数值设计在模板参数范围内，
+                    再在该题输出 fig 字段引用模板，参数值与题干数值严格一致，系统会按参数把模板渲染成配图。
+                    fig 与题干里的 ```tikz 代码块二选一，同一条题干不要既输出 fig 又输出 tikz 代码块；
+                    仅当【可用图库模板】确实没有合适模板（函数图像、复合图形、模板不覆盖的图形等）时，才输出 ```tikz 代码块自由绘制。
+                    引用模板时题干命名与模板保持一致（如模板为 Rt△ABC、∠B=90°，题干就按这套命名写）。
+                    fig 字段形如 {"id": "模板id", "params": {"参数名": 参数值}}，各类题型均可携带；
+                    参数值为数字时写数字（如 6），布尔写 true/false，不要给参数加单位或多余文字。
+                """;
+        // 第 1 条按用户是否选择学科切换：选了->以用户选择为准；未选->材料自识别（旧口径）
+        String rule1 = subject.isBlank() ? """
+                1. 先依据材料内容自动识别所属学科与核心考点，再围绕它们命题（用户未指定学科，以材料实际内容为准）；
+                """ : ("1. 命题学科以用户在前端页面上选择的【" + subject + "】为准；"
+                + "先依据材料内容识别该学科的核心考点，再围绕它们命题，不要输出其他学科的题目；\n");
         return """
                 你是一名资深的命题专家，负责依据用户提供的材料生成一组高质量的学科检测题。命题要求：
 
-                1. 先依据材料内容自动识别所属学科与核心考点，再围绕它们命题；学科不单独指定，以材料为准
-                   （系统已初步判定学科为【%s】，明显有误时以材料实际内容为准）；
+                """ + rule1 + """
                 2. 默认学段为高中，所有题目均按高中阶段的知识范围、难度要求和命题风格命制；
                    除非材料明确指向小学/初中/大学等其他学段，否则一律以高中课标为基准；
                 3. 题目必须紧扣材料内容与知识点，不得照抄材料原文，考查理解与运用；
@@ -1073,15 +1107,17 @@ public class LangChainController {
                    物理量符号规范：矢量用 \\vec{v}，单位用正体如 $\\mathrm{m/s^2}$，希腊字母用 \\omega、\\mu 等标准命令。
                 9. 材料中若出现 codecogs 之类公式图片链接（如 ![公式图](https://latex.codecogs.com/svg.image?B_1E...)），
                    其问号后的内容是 URL 编码的 LaTeX，请解码还原为标准 LaTeX 公式写进题目，题目中不得保留任何公式图片链接。
-                10. 高考题改编式命题：材料中的 XXX（知识点）、XX 与 XXX（数量、层级）由你依据材料和用户设置自动确定——
+                """ + rule10 + """
+                11. 高考题改编式命题：材料中的 XXX（知识点）、XX 与 XXX（数量、层级）由你依据材料和用户设置自动确定——
                    知识点取自材料考点，数量与层级对应用户指定的题量与难度档位。
                    （1）对于知识点关联相对充分的题目：请根据 XXX 知识点，挑选 XX 道高考题，并根据每道高考题在 XXX 层级改编 XXX 道题。
-                       请围绕原题中的概念、公式、模型、具体应用等要素特征进行改编，可以替换原题中的数字，可以调整物理场景设定，
-                       尽可能保留原始题目的特征和命题逻辑。如果题目配有图片，在已改编的题目中可以不使用图片、使用原图片，
+                       改编必须显著、不得与原题雷同：保持考查的知识点不变，但必须改变题目的情境设定、设问方式或条件结构
+                       （如更换应用背景、改变已知与所求的角色、增删约束条件、换问法），只换数字而保留原题结构是不合格的改编；
+                       每道改编题与原题对照，应能明显看出是两道不同的题。如果题目配有图片，在已改编的题目中可以不使用图片、使用原图片，
                        或者在必要的情况下用 TikZ 重新绘制题目配图（系统会把 TikZ 代码自动编译为配图；
                        TikZ 代码用 ```tikz 围栏代码块包裹，放在题干末尾；因为最终输出是 JSON 字符串，TikZ 命令反斜杠必须写成 JSON 合法转义后的双反斜杠，例如输出 \\\\node、\\\\draw、\\\\coordinate，严禁输出会被 JSON 解析成换行的 \\node；
                        TikZ 绘图强制规范（已按学科【%s】选用对应规范，必须严格遵守）：
-                """.formatted(subject, subject) + tikzRulesForSubject(subject) + """
+                """.formatted(subject) + tikzRulesForSubject(subject) + """
                        若用户补充要求不得直接使用原图片，则必须用 TikZ 重绘配图、不得输出原图片链接；
                        重绘时按改编后的实际尺寸取比例，改编数字尽量打破原图的等比关系（如长宽高改为不同比例），
                        使新配图与原图有肉眼可辨的差异。
@@ -1089,18 +1125,18 @@ public class LangChainController {
                        不使用图片时题干中不得出现"如图"等指代图片的表述，需改写为不含图的说法。
                    （2）对于知识点关联不充分的题目：请围绕 XXX 题，根据 XXX 知识点进行改编。
 
-                11.配图：立体几何、平面几何、函数图像、圆、椭圆、双曲线、抛物线、运动过程、受力分析、电路、光路、实验装置等需要
-                   图形辅助理解的题目，在解析（note 字段）的文字说明之后附一张 ```tikz 辅助图，
-                   画出解题的关键元素（辅助线、截面、坐标系、运动轨迹、受力示意、等效电路等），帮助学生看懂解题过程；
-                   TikZ 代码块放在 note 文字末尾，反斜杠转义规则与题干配图相同（JSON 里必须写成双反斜杠，如输出 \\\\node）；
-                   绘图同样严格遵守上文 TikZ 强制规范；解析配图只画解题涉及的辅助元素与关键中间状态，
-                   不要整幅重复题干已有的配图；纯计算、不需要图形辅助的题目不要强行配图。
-                   配图必须先算后画：先按题干条件完成计算得出答案，再依据计算结果确定图中每个元素的位置和数量关系
-                   （辅助线的位置、交点坐标、角度大小、比例关系、动点最终位置等都要与计算结果严格一致），
-                   严禁凭题干的印象直接作图；图中任何元素不得与题干条件或解析计算结果矛盾。
-                   如果题干里有参数方程，改用参数方程绘制，每一支就是一条完整曲线。
-                   例：解析算出切点坐标为 (1,2)，图中切点就必须画在 (1,2)；算出夹角为 60°，图中角度就要接近 60°；
-                   算出动点在棱中点，图中点就必须落在线段中点。
+//                12.配图：立体几何、平面几何、函数图像、圆、椭圆、双曲线、抛物线、运动过程、受力分析、电路、光路、实验装置等需要
+//                   图形辅助理解的题目，在解析（note 字段）的文字说明之后附一张 ```tikz 辅助图，
+//                   画出解题的关键元素（辅助线、截面、坐标系、运动轨迹、受力示意、等效电路等），帮助学生看懂解题过程；
+//                   TikZ 代码块放在 note 文字末尾，反斜杠转义规则与题干配图相同（JSON 里必须写成双反斜杠，如输出 \\\\node）；
+//                   绘图同样严格遵守上文 TikZ 强制规范；解析配图只画解题涉及的辅助元素与关键中间状态，
+//                   不要整幅重复题干已有的配图；纯计算、不需要图形辅助的题目不要强行配图。
+//                   配图必须先算后画：先按题干条件完成计算得出答案，再依据计算结果确定图中每个元素的位置和数量关系
+//                   （辅助线的位置、交点坐标、角度大小、比例关系、动点最终位置等都要与计算结果严格一致），
+//                   严禁凭题干的印象直接作图；图中任何元素不得与题干条件或解析计算结果矛盾。
+//                   如果题干里有参数方程，改用参数方程绘制，每一支就是一条完整曲线。
+//                   例：解析算出切点坐标为 (1,2)，图中切点就必须画在 (1,2)；算出夹角为 60°，图中角度就要接近 60°；
+//                   算出动点在棱中点，图中点就必须落在线段中点。
 
                 输出要求：只输出一个合法的 JSON 对象，不要输出任何其他文字或代码块标记，结构如下：
                 {
@@ -1114,8 +1150,9 @@ public class LangChainController {
                           "q": "题干",
                           "o": ["选项一", "选项二", "选项三", "选项四"],
                           "a": "答案",
-                          "note": "简要解析（一两句话；需要图形辅助理解的题目按第 11 条在末尾附 ```tikz 辅助图）",
-                          "d": "难度（容易/中等/较难）"
+                          "note": "简要解析（一两句话；需要图形辅助理解的题目按第 12 条在末尾附 ```tikz 辅助图）",
+                          "d": "难度（容易/中等/较难）",
+                          "fig": {"id": "图库模板id（按第 10 条引用模板时才输出）", "params": {"参数名": "参数值"}}
                         }
                       ]
                     }
@@ -1125,7 +1162,8 @@ public class LangChainController {
                 字段约定：
                 - "o" 仅客观题（单选题/多选题/判断题）提供，为字符串数组；判断题固定为 ["正确", "错误"]；填空题/解答题不要输出 "o" 字段；
                 - "a" 为答案：单选题填字母（如 "A"），多选题填字母组合（如 "ABD"），判断题填 "正确" 或 "错误"，填空题填结果，解答题填要点式答案；
-                - "note" 为红笔解析，需要图形辅助理解的题目按第 11 条在文字末尾附 ```tikz 辅助图；"d" 为该题难度。
+                - "note" 为红笔解析，需要图形辅助理解的题目按第 12 条在文字末尾附 ```tikz 辅助图；"d" 为该题难度；
+                - "fig" 为图库配图引用（可选，规则见第 10 条）：引用时模板参数值必须与题干数值一致；不引用模板的题不要输出 "fig" 字段。
                 """;
     }
 
@@ -1134,17 +1172,40 @@ public class LangChainController {
         int count = req.count() == null ? 5 : Math.min(30, Math.max(1, req.count()));
 
         StringBuilder sb = new StringBuilder();
-        sb.append("【学科判定】").append(subject).append('\n');
+        sb.append(subject.isBlank()
+                ? "【学科】用户未指定，请依据材料自行识别\n"
+                : "【命题学科】用户选择：" + subject + "\n");
         sb.append("【题型组合】").append(String.join("、", req.types())).append('\n');
         sb.append("【总题量】").append(count).append(" 题\n");
         sb.append("【难度】").append(difficulty).append('\n');
+
+        // 图库目录（运行时加载，模板增删即时生效；图库为空不注入，行为与旧版一致）
+        // 指定模板模式：只注入所选模板，要求模型围绕它造题、填参数值（id 固定、不自行选图）；
+        // 未指定：注入完整图库目录，模型命题即选图（fig 字段）。
+        String figureTemplateId = req.figureTemplateId();
+        if (figureTemplateId != null && !figureTemplateId.isBlank()) {
+            String designated = designatedFigurePrompt(figureTemplateId.strip());
+            if (designated != null) {
+                sb.append(designated).append('\n');
+            } else {
+                // 指定的模板不存在：降级为未指定，避免阻塞出题
+                sb.append("（注：指定的配图模板不存在，已忽略，按常规方式命题）\n");
+            }
+        } else {
+            String catalog = figureCatalogPrompt();
+            if (catalog != null) {
+                sb.append(catalog).append('\n');
+            }
+        }
 
         String content = req.content();
         if (content != null && !content.isBlank()) {
             // 材料里的本地图片懒加载转述（视觉模型 + 内容哈希缓存），【原图内容】随图片链接注入
             String material = describeMaterialImages(content.strip());
-            sb.append("【命题材料】（请先识别材料所属学科，再依据材料命题）\n")
-                    .append(material).append('\n');
+            sb.append(subject.isBlank()
+                    ? "【命题材料】（请先识别材料所属学科，再依据材料命题）\n"
+                    : "【命题材料】（学科以上方【命题学科】为准，依据材料考点命题）\n");
+            sb.append(material).append('\n');
             if (material.contains("![材料图片]")) {
                 if (material.contains("【原图内容】")) {
                     sb.append("（注：材料中「![材料图片](…)」下方的【原图内容】为视觉模型对原图的转述，")
@@ -1332,7 +1393,7 @@ public class LangChainController {
                         item.o() == null ? null : item.o().stream().map(this::normalizeLiteralLineBreakEscapes).toList(),
                         normalizeLiteralLineBreakEscapes(item.a()),
                         normalizeLiteralLineBreakEscapes(item.note()),
-                        item.d());
+                        item.d(), item.fig());
             }).toList();
             return new QuestionPaper.Section(sec.type(), items);
         }).toList();
@@ -1462,6 +1523,295 @@ public class LangChainController {
         return code;
     }
 
+    // ===================== AI 生题：图库引用渲染 =====================
+
+    /**
+     * 把题目里的图库引用（fig 字段，大模型按题干条件选模板填参数）渲染为配图 PNG：
+     * 校验 + 渲染成功 -> 图片链接插入题干末尾（题干里若有 ```tikz 兜底块一并去掉，避免双图）；
+     * 失败 -> 汇总错误回传大模型修一轮参数（复用生题 JSON 修正模式），仍失败则 fig 置 null
+     * （题目无配图或走题干自带的自由 TikZ 轨道）。
+     */
+    private QuestionPaper renderFigureRefs(QuestionPaper paper) {
+        if (paper.sections() == null) return paper;
+
+        // 失败项累积（键 "小节号-题号"）：引用、题干、错误摘要，修正轮提示词用
+        Map<String, QuestionPaper.FigureRef> figs = new java.util.LinkedHashMap<>();
+        Map<String, String> qTexts = new java.util.LinkedHashMap<>();
+        Map<String, String> errors = new java.util.LinkedHashMap<>();
+        paper = renderFigureRefsOnce(paper, figs, qTexts, errors, null);
+        if (figs.isEmpty()) return paper; // 全部成功（或本就没有 fig）
+
+        // 修正轮：把失败项的题干 + 引用 + 错误回传模型，要求按参数范围重填
+        try {
+            String fixRaw = chat(figureFixSystemPrompt(), figureFixUserPrompt(figs, qTexts, errors));
+            Map<String, QuestionPaper.FigureRef> fixed = parseFigureFixes(fixRaw);
+            if (!fixed.isEmpty()) {
+                paper = renderFigureRefsOnce(paper, figs, qTexts, errors, fixed);
+            }
+        } catch (Exception e) {
+            log.warn("图库引用参数修正轮失败，放弃 fig: {}", e.getMessage());
+        }
+        // 仍有失败的：置 null（题目退回自由 TikZ 轨道或无图）
+        if (!figs.isEmpty()) {
+            paper = clearFailedFigures(paper, figs);
+            log.warn("图库引用渲染失败的题目已回退自由绘图轨道: {}", figs.keySet());
+        }
+        return paper;
+    }
+
+    /**
+     * 单轮渲染：fixed 非空时只重试其中的修正引用，成功或模型主动放弃的项从 figs 移除。
+     *
+     * @param figs   失败项累积（键 "小节号-题号"），调用方读取
+     * @param qTexts 失败项题干（修正轮提示词用）
+     * @param errors 失败项错误摘要（修正轮提示词用）
+     */
+    private QuestionPaper renderFigureRefsOnce(QuestionPaper paper,
+                                               Map<String, QuestionPaper.FigureRef> figs,
+                                               Map<String, String> qTexts,
+                                               Map<String, String> errors,
+                                               Map<String, QuestionPaper.FigureRef> fixed) {
+        List<QuestionPaper.Section> sections = new ArrayList<>();
+        for (int si = 0; si < paper.sections().size(); si++) {
+            QuestionPaper.Section sec = paper.sections().get(si);
+            if (sec.items() == null || sec.items().isEmpty()) {
+                sections.add(sec);
+                continue;
+            }
+            List<QuestionPaper.Item> items = new ArrayList<>();
+            for (int ii = 0; ii < sec.items().size(); ii++) {
+                QuestionPaper.Item item = sec.items().get(ii);
+                String key = si + "-" + ii;
+                QuestionPaper.FigureRef fig = item.fig();
+                if (fixed != null) {
+                    // 修正轮：只重试失败且已修正的项
+                    if (!figs.containsKey(key) || !fixed.containsKey(key)) {
+                        items.add(item);
+                        continue;
+                    }
+                    fig = fixed.get(key);
+                    if (fig == null) {
+                        // 模型主动放弃该模板：置 null 走自由绘制，从失败项移除
+                        items.add(new QuestionPaper.Item(item.q(), item.o(), item.a(), item.note(), item.d(), null));
+                        figs.remove(key);
+                        continue;
+                    }
+                }
+                if (fig == null || fig.id() == null || fig.id().isBlank()) {
+                    items.add(new QuestionPaper.Item(item.q(), item.o(), item.a(), item.note(), item.d(), null));
+                    figs.remove(key);
+                    continue;
+                }
+                var r = figureLibrary.render(fig.id(), fig.params());
+                if (r.error() != null) {
+                    figs.put(key, fig);
+                    qTexts.put(key, item.q() == null ? "" : item.q());
+                    errors.put(key, r.error());
+                    items.add(new QuestionPaper.Item(item.q(), item.o(), item.a(), item.note(), item.d(), fig));
+                    continue;
+                }
+                String img = "![配图](" + r.path().toString().replace('\\', '/') + ")";
+                String q = item.q() == null ? "" : item.q();
+                q = q.strip();
+                // fig 成功：题干自带的 ```tikz 兜底块去掉，避免一题双图
+                if (q.contains("```tikz")) {
+                    q = TIKZ_BLOCK.matcher(q).replaceAll("").strip();
+                }
+                q = q.isEmpty() ? img : q + "\n\n" + img;
+                items.add(new QuestionPaper.Item(q, item.o(), item.a(), item.note(), item.d(), fig));
+                figs.remove(key); // 修正轮重试成功的清掉
+            }
+            sections.add(new QuestionPaper.Section(sec.type(), items));
+        }
+        return new QuestionPaper(paper.title(), paper.topic(), paper.difficulty(),
+                sections, paper.totalQ(), paper.source(), paper.prompt());
+    }
+
+    /** 修正轮后仍失败的项：fig 置 null（题目回退自由 TikZ 或无图） */
+    private QuestionPaper clearFailedFigures(QuestionPaper paper, Map<String, QuestionPaper.FigureRef> figs) {
+        List<QuestionPaper.Section> sections = new ArrayList<>();
+        for (int si = 0; si < paper.sections().size(); si++) {
+            QuestionPaper.Section sec = paper.sections().get(si);
+            if (sec.items() == null || sec.items().isEmpty()) {
+                sections.add(sec);
+                continue;
+            }
+            List<QuestionPaper.Item> items = new ArrayList<>();
+            for (int ii = 0; ii < sec.items().size(); ii++) {
+                QuestionPaper.Item item = sec.items().get(ii);
+                if (item.fig() != null && figs.containsKey(si + "-" + ii)) {
+                    items.add(new QuestionPaper.Item(item.q(), item.o(), item.a(), item.note(), item.d(), null));
+                } else {
+                    items.add(item);
+                }
+            }
+            sections.add(new QuestionPaper.Section(sec.type(), items));
+        }
+        return new QuestionPaper(paper.title(), paper.topic(), paper.difficulty(),
+                sections, paper.totalQ(), paper.source(), paper.prompt());
+    }
+
+    /** 图库引用修正轮系统提示词 */
+    private String figureFixSystemPrompt() {
+        return """
+                你是配图参数修正助手。之前生成的题目里引用了图库模板，但参数不合法或渲染失败。
+                你会看到每道题的题干、引用的模板与失败原因，请按题干条件重新填参数：
+                1. 参数值必须与题干数值严格一致（题干说 AB=6 就填 6）；
+                2. 参数值必须落在给定范围内；数值条件冲突时宁可调整题干数字表述与参数一致，也不要硬填；
+                3. 模板不合适时把 fig 置为 null（题目走自由绘制）。
+
+                输出要求：只输出一个合法的 JSON 数组，不要任何其他文字，每个元素形如：
+                {"key": "小节号-题号", "fig": {"id": "模板id", "params": {"参数名": 值}}}
+                fig 置 null 时写 {"key": "...", "fig": null}
+                """;
+    }
+
+    /** 修正轮用户提示词：失败项的题干 + 引用 + 错误 + 模板参数表 */
+    private String figureFixUserPrompt(Map<String, QuestionPaper.FigureRef> figs,
+                                       Map<String, String> qTexts, Map<String, String> errors) {
+        StringBuilder sb = new StringBuilder();
+        for (var e : figs.entrySet()) {
+            String key = e.getKey();
+            QuestionPaper.FigureRef fig = e.getValue();
+            sb.append("【题目 ").append(key).append("】\n题干：").append(qTexts.getOrDefault(key, "")).append('\n');
+            sb.append("引用：id=").append(fig.id()).append(" params=").append(fig.params()).append('\n');
+            sb.append("失败原因：").append(errors.getOrDefault(key, "未知")).append('\n');
+            FigureTemplate tpl = figureLibrary.get(fig.id());
+            if (tpl != null) {
+                sb.append("模板参数表：\n").append(catalogEntry(tpl)).append('\n');
+            }
+            sb.append('\n');
+        }
+        sb.append("请按系统要求输出修正后的 JSON 数组。");
+        return sb.toString();
+    }
+
+    /** 解析修正轮输出：截取首尾方括号之间的 JSON 数组，逐项取 key/fig */
+    private Map<String, QuestionPaper.FigureRef> parseFigureFixes(String raw) {
+        Map<String, QuestionPaper.FigureRef> out = new java.util.LinkedHashMap<>();
+        if (raw == null) return out;
+        int start = raw.indexOf('[');
+        int end = raw.lastIndexOf(']');
+        if (start < 0 || end <= start) return out;
+        try {
+            List<?> arr = QUESTION_MAPPER.readValue(raw.substring(start, end + 1), List.class);
+            for (Object o : arr) {
+                if (!(o instanceof Map<?, ?> m)) continue;
+                Object key = m.get("key");
+                Object fig = m.get("fig");
+                if (key == null) continue;
+                if (fig == null) {
+                    out.put(String.valueOf(key), null);
+                    continue;
+                }
+                @SuppressWarnings("unchecked")
+                Map<String, Object> params = ((Map<String, Object>) fig).get("params") instanceof Map<?, ?> pm
+                        ? (Map<String, Object>) pm : Map.of();
+                out.put(String.valueOf(key), new QuestionPaper.FigureRef(
+                        String.valueOf(((Map<?, ?>) fig).get("id")), params));
+            }
+        } catch (Exception e) {
+            log.warn("图库引用修正输出解析失败: {}", e.getMessage());
+        }
+        return out;
+    }
+
+    // ===================== AI 生题：图库目录注入 =====================
+
+    /**
+     * 指定模板模式注入提示词：只注入用户选定的那一个模板（id + 参数表 + 适用描述），
+     * 要求模型围绕该模板造题、fig.id 固定、不自行选图。模板不存在返回 null（调用方降级为未指定）。
+     */
+    private String designatedFigurePrompt(String templateId) {
+        FigureTemplate tpl = figureLibrary.get(templateId);
+        if (tpl == null) return null;
+        StringBuilder sb = new StringBuilder();
+        sb.append("【指定配图模板】（用户已指定本次命题使用此模板，每道题都围绕它造题并输出 fig 字段；")
+                .append("fig.id 固定为 \"").append(tpl.id()).append("\"，params 填你造题实际用的参数值，")
+                .append("题干图形数值必须落在参数范围内、命名与模板一致；不要写 ```tikz 代码块自行画图）\n");
+        sb.append("模板：").append(tpl.name())
+                .append("（").append(tpl.category() == null ? "未分类" : tpl.category()).append("）\n");
+        if (tpl.desc() != null && !tpl.desc().isBlank()) {
+            sb.append("适用：").append(tpl.desc()).append('\n');
+        }
+        if (tpl.params() != null && !tpl.params().isEmpty()) {
+            sb.append("参数：\n").append(catalogEntry(tpl)).append('\n');
+        }
+        if (tpl.constraints() != null && !tpl.constraints().isEmpty()) {
+            sb.append("约束：").append(String.join("；", tpl.constraints())).append('\n');
+        }
+        if (tpl.whenNotToUse() != null && !tpl.whenNotToUse().isBlank()) {
+            sb.append("注意：").append(tpl.whenNotToUse()).append('\n');
+        }
+        return sb.toString();
+    }
+
+    /** 图库目录注入提示词（每个模板约 50~80 token）；图库为空返回 null，提示词不注入 */
+    private String figureCatalogPrompt() {
+        List<FigureTemplate.Catalog> list = figureLibrary.list();
+        if (list.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        sb.append("【可用图库模板】（命题时图形条件优先匹配下列模板；匹配则在该题输出 fig 字段引用模板并填参数，")
+                .append("题干数值必须先落在参数范围内再写进题干；无合适模板时不要强行引用，正常输出 ```tikz 代码块自由绘制；")
+                .append("fig 与 ```tikz 二选一，不要同时输出）\n");
+        int n = 1;
+        for (FigureTemplate.Catalog c : list) {
+            sb.append(n++).append(". id=").append(c.id()).append(" ")
+                    .append(c.name()).append("（").append(c.category() == null ? "未分类" : c.category()).append("）：")
+                    .append(c.desc() == null ? "" : c.desc()).append('\n');
+            if (c.params() != null && !c.params().isEmpty()) {
+                sb.append("   参数：");
+                for (FigureTemplate.Param p : c.params()) {
+                    String range;
+                    if ("number".equals(p.type() == null ? "number" : p.type())) {
+                        range = (p.min() != null || p.max() != null)
+                                ? numRange(p.min(), p.max()) : "数值";
+                    } else if ("bool".equals(p.type())) {
+                        range = "true/false";
+                    } else {
+                        range = String.join("/", p.options() == null ? List.of() : p.options());
+                    }
+                    sb.append(p.name()).append("（").append(range)
+                            .append(p.desc() == null ? "" : "，" + p.desc())
+                            .append("）、");
+                }
+                sb.setLength(sb.length() - 1); // 去掉尾顿号
+                sb.append('\n');
+            }
+            if (c.whenNotToUse() != null && !c.whenNotToUse().isBlank()) {
+                sb.append("   不适用：").append(c.whenNotToUse()).append('\n');
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String numRange(Double min, Double max) {
+        String lo = min == null ? "-∞" : String.valueOf(min);
+        String hi = max == null ? "+∞" : String.valueOf(max);
+        return lo + "~" + hi;
+    }
+
+    /** 单个模板的参数表文本（修正轮提示词用） */
+    private String catalogEntry(FigureTemplate tpl) {
+        StringBuilder sb = new StringBuilder();
+        for (FigureTemplate.Param p : tpl.params()) {
+            sb.append("  ").append(p.name()).append("（").append(p.type()).append(' ');
+            if ("number".equals(p.type())) {
+                sb.append(numRange(p.min(), p.max())).append("，默认 ").append(p.def());
+            } else if ("bool".equals(p.type())) {
+                sb.append("默认 ").append(p.def());
+            } else {
+                sb.append(String.join("/", p.options() == null ? List.of() : p.options()))
+                        .append("，默认 ").append(p.def());
+            }
+            if (p.desc() != null && !p.desc().isBlank()) {
+                sb.append("，").append(p.desc());
+            }
+            sb.append("）\n");
+        }
+        return sb.toString();
+    }
+
     /**
      * 把题目里的 ```tikz 代码块编译成配图 PNG（调用 latex_snippet_tool.py，xelatex 编译并裁剪），
      * 保存到题目插图目录，代码块改写为 Markdown 图片链接。
@@ -1476,7 +1826,7 @@ public class LangChainController {
                     item.o() == null ? null : item.o().stream().map(this::localizeTikzBlocks).toList(),
                     localizeTikzBlocks(item.a()),
                     localizeTikzBlocks(item.note()),
-                    item.d())).toList();
+                    item.d(), item.fig())).toList();
             return new QuestionPaper.Section(sec.type(), items);
         }).toList();
         return new QuestionPaper(paper.title(), paper.topic(), paper.difficulty(),
@@ -1606,7 +1956,7 @@ public class LangChainController {
                     item.o() == null ? null : item.o().stream().map(this::localizeImageRefs).toList(),
                     localizeImageRefs(item.a()),
                     localizeImageRefs(item.note()),
-                    item.d())).toList();
+                    item.d(), item.fig())).toList();
             return new QuestionPaper.Section(sec.type(), items);
         }).toList();
         return new QuestionPaper(paper.title(), paper.topic(), paper.difficulty(),
