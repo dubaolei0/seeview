@@ -8,6 +8,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -37,6 +41,12 @@ public class FigureLibraryService {
     private String libraryDir;
 
     private final TikzCompiler tikzCompiler;
+
+    /** 图库配图统一输出宽度；参数改变形状比例，但不改变题面视觉尺寸 */
+    private static final int NORMALIZED_WIDTH = 360;
+    /** 避免极高窄图撑开题面；超过时改按高度缩放 */
+    private static final int NORMALIZED_MAX_HEIGHT = 280;
+
     /** 忽略未知字段（模板 JSON 由人/AI 起草，字段演进时不至于整库加载失败） */
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -151,7 +161,7 @@ public class FigureLibraryService {
         if (!r.ok()) {
             return new RenderResult(null, r.error());
         }
-        return new RenderResult(r.path(), null);
+        return new RenderResult(normalizeImage(r.path()), null);
     }
 
     /**
@@ -178,7 +188,47 @@ public class FigureLibraryService {
         if (!r.ok()) {
             return new RenderResult(null, r.error());
         }
-        return new RenderResult(r.path(), null);
+        return new RenderResult(normalizeImage(r.path()), null);
+    }
+
+    /** 图库配图 PNG 尺寸归一：统一宽度，过高时按最大高度兜底；失败不影响原图返回。 */
+    private Path normalizeImage(Path path) {
+        if (path == null || !Files.isRegularFile(path)) return path;
+        try {
+            BufferedImage src = ImageIO.read(path.toFile());
+            if (src == null || src.getWidth() <= 0 || src.getHeight() <= 0) return path;
+
+            double scale = NORMALIZED_WIDTH / (double) src.getWidth();
+            int width = NORMALIZED_WIDTH;
+            int height = Math.max(1, (int) Math.round(src.getHeight() * scale));
+            if (height > NORMALIZED_MAX_HEIGHT) {
+                scale = NORMALIZED_MAX_HEIGHT / (double) src.getHeight();
+                height = NORMALIZED_MAX_HEIGHT;
+                width = Math.max(1, (int) Math.round(src.getWidth() * scale));
+            }
+            if (width == src.getWidth() && height == src.getHeight()) return path;
+
+            BufferedImage dst = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = dst.createGraphics();
+            try {
+                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g.drawImage(src, 0, 0, width, height, null);
+            } finally {
+                g.dispose();
+            }
+
+            String name = path.getFileName().toString();
+            int dot = name.lastIndexOf('.');
+            String base = dot > 0 ? name.substring(0, dot) : name;
+            Path normalized = path.resolveSibling(base + "_norm.png");
+            ImageIO.write(dst, "png", normalized.toFile());
+            return normalized;
+        } catch (Exception e) {
+            log.warn("图库配图尺寸归一化失败，使用原图: {} -> {}", path, e.getMessage());
+            return path;
+        }
     }
 
     /** 渲染结果：成功带 PNG 路径，失败带面向用户的错误摘要 */

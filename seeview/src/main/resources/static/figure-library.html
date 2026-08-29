@@ -180,7 +180,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 var(-
   <header class="masthead">
     <p class="eyebrow">FIGURE LIBRARY</p>
     <h1>图库 · 参数化图形模板</h1>
-    <p class="sub">维护参数化的 TikZ 图形模板：调整参数即时重绘；生题时按题干条件选模板、填参数出图。</p>
+    <p class="sub">维护参数化的 TikZ 图形模板：参数修改后先标记待渲染，点击按钮再重绘；生题时按题干条件选模板、填参数出图。</p>
     <p class="links"><a href="ai-question.html">← 智能命题工作台</a></p>
   </header>
 
@@ -254,7 +254,7 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 var(-
     </div>
 
     <div class="drawer-section">
-      <p class="sec-title">实时预览（改参数即时重绘，保存前先在这里确认）</p>
+      <p class="sec-title">实时预览（改参数后先标记待渲染，点击按钮再重绘）</p>
       <div class="preview-wrap">
         <div class="preview-params" id="previewParams"></div>
         <div id="previewBody">
@@ -349,7 +349,7 @@ async function openEditor(id) {
   isNew = false;
   fillForm();
   openDrawer();
-  schedulePreview();
+  schedulePreview(true);
 }
 
 function openNew() {
@@ -418,11 +418,24 @@ function renderParamsTable() {
       <input class="input" data-k="default" placeholder="默认值" value="${escapeAttr(p.default)}">
       <input class="input" data-k="desc" placeholder="直角边 AB 长度" value="${escapeAttr(p.desc)}">
       <button class="del" title="删除参数">×</button>`;
-    row.addEventListener('input', () => { syncParamRow(row, i); markDirty(); schedulePreview(); });
-    row.addEventListener('change', () => { syncParamRow(row, i); markDirty(); schedulePreview(); });
+    row.addEventListener('input', () => {
+      syncParamRow(row, i);
+      markDirty();
+      renderPreviewParams(currentPreviewParams());
+      markPreviewPending();
+    });
+    row.addEventListener('change', () => {
+      syncParamRow(row, i);
+      markDirty();
+      renderPreviewParams(currentPreviewParams());
+      markPreviewPending();
+    });
     row.querySelector('.del').addEventListener('click', () => {
       editing.params.splice(i, 1);
-      renderParamsTable(); renderPreviewParams(); markDirty(); schedulePreview();
+      renderParamsTable();
+      renderPreviewParams(currentPreviewParams());
+      markDirty();
+      markPreviewPending();
     });
     table.appendChild(row);
   });
@@ -481,23 +494,25 @@ function collectConstraints() {
 /* ===================== 预览 ===================== */
 
 /** 预览参数面板（按当前草稿参数表生成控件） */
-function renderPreviewParams() {
+function renderPreviewParams(values = {}) {
   const box = $('previewParams');
   box.innerHTML = '';
   for (const p of editing.params || []) {
     if (!p.name) continue;
     const item = document.createElement('span');
     item.className = 'pp-item';
+    const value = values[p.name] ?? p.default;
     if (p.type === 'bool') {
+      const checked = value === true || String(value) === '1' || String(value).toLowerCase() === 'true';
       item.innerHTML = `<label>${escapeHtml(p.desc || p.name)}</label>
-        <input type="checkbox" data-p="${escapeAttr(p.name)}" ${String(p.default) === 'true' || p.default === '1' ? 'checked' : ''}>`;
+        <input type="checkbox" data-p="${escapeAttr(p.name)}" ${checked ? 'checked' : ''}>`;
     } else if (p.type === 'string') {
       const opts = (p.options || []).map((o) =>
-        `<option value="${escapeAttr(o)}" ${o === p.default ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
+        `<option value="${escapeAttr(o)}" ${String(o) === String(value ?? '') ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
       item.innerHTML = `<label>${escapeHtml(p.desc || p.name)}</label><select data-p="${escapeAttr(p.name)}">${opts}</select>`;
     } else {
       item.innerHTML = `<label>${escapeHtml(p.desc || p.name)}</label>
-        <input class="input" type="number" step="any" data-p="${escapeAttr(p.name)}" value="${escapeAttr(p.default ?? '')}"
+        <input class="input" type="number" step="any" data-p="${escapeAttr(p.name)}" value="${escapeAttr(value ?? '')}"
           ${p.min != null ? `min="${p.min}"` : ''} ${p.max != null ? `max="${p.max}"` : ''}>`;
     }
     box.appendChild(item);
@@ -517,20 +532,25 @@ function currentPreviewParams() {
   return out;
 }
 
-/** 防抖预览（参数试调 400ms；代码/结构改动立即） */
+/** 显式预览：仅打开页面或点击按钮时重绘。 */
 function schedulePreview(immediate) {
   clearTimeout(previewTimer);
-  if (immediate) { doPreview(); return; }
-  previewTimer = setTimeout(doPreview, 400);
+  if (immediate) { doPreview(); }
+}
+
+function markPreviewPending() {
+  setStatus('参数已修改，点击重新渲染');
 }
 
 async function doPreview(paramsOverride) {
-  // 先把表单同步进草稿（参数行输入即时同步，这里再兜底一次）
+  // 先把表单同步进草稿（参数行输入即时同步，这里再兜底一次）；
+  // 预览参数是试调值，重建控件前必须先收集，否则 checkbox 会被默认值覆盖。
   syncEditingFromForm();
-  renderPreviewParams();
+  const params = paramsOverride || currentPreviewParams();
+  renderPreviewParams(params);
   const body = {
     template: collectForm(),
-    params: paramsOverride || currentPreviewParams()
+    params
   };
   const seq = ++renderSeq;
   setStatus('渲染中…');
@@ -706,24 +726,29 @@ $('drawerMask').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('drawer').classList.contains('show')) closeDrawer(); });
 $('btnAddParam').addEventListener('click', () => {
   editing.params.push(emptyParam());
-  renderParamsTable(); renderPreviewParams(); markDirty();
+  renderParamsTable();
+  renderPreviewParams(currentPreviewParams());
+  markDirty();
+  markPreviewPending();
 });
 $('btnAddConstraint').addEventListener('click', () => {
   editing.constraints.push('');
-  renderConstraints(); markDirty();
+  renderConstraints();
+  markDirty();
+  markPreviewPending();
 });
 $('btnPreview').addEventListener('click', () => schedulePreview(true));
 $('btnBoundary').addEventListener('click', boundaryTest);
 $('btnSave').addEventListener('click', save);
 $('btnDelete').addEventListener('click', removeTemplate);
 $('btnCancel').addEventListener('click', closeDrawer);
-// 基本信息/代码改动：脏标记 + 立即防抖预览
+// 基本信息/代码改动：只标记待渲染，不自动调预览
 ['fId', 'fName', 'fCategory', 'fTags', 'fDesc', 'fWhenNot', 'fTemplate'].forEach((id) => {
-  $(id).addEventListener('input', () => { markDirty(); schedulePreview(); });
+  $(id).addEventListener('input', () => { markDirty(); markPreviewPending(); });
 });
-// 预览参数改动：即时防抖（不标脏，参数面板只是试调）
-$('previewParams').addEventListener('input', () => schedulePreview());
-$('previewParams').addEventListener('change', () => schedulePreview());
+// 预览参数改动：只标记待渲染，按钮才会真正渲染
+$('previewParams').addEventListener('input', () => markPreviewPending());
+$('previewParams').addEventListener('change', () => markPreviewPending());
 
 /* ===================== 工具 ===================== */
 function escapeHtml(s) {

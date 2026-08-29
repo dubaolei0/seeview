@@ -1401,6 +1401,10 @@ function renderFigPanel(stemEl, fig, tpl) {
 
   const params = (tpl && tpl.params) ? tpl.params : [];
   const vals = figureParamValues(fig, tpl);
+  const renderBtn = document.createElement('button');
+  renderBtn.type = 'button';
+  renderBtn.className = 'q-fig-btn';
+  renderBtn.textContent = '渲染配图';
   const status = document.createElement('span');
   status.className = 'pstatus';
 
@@ -1441,6 +1445,7 @@ function renderFigPanel(stemEl, fig, tpl) {
     wrap.appendChild(input);
     panel.appendChild(wrap);
   });
+  panel.appendChild(renderBtn);
   panel.appendChild(status);
   img.after(panel);
 
@@ -1456,47 +1461,49 @@ function renderFigPanel(stemEl, fig, tpl) {
     return out;
   };
 
-  // 防抖重渲染：改参数 450ms 后调 /figure/render，成功替换 img.src，失败在面板右侧报错
-  let timer = null;
+  // 显式重渲染：参数变化只标记待渲染，用户点击按钮后才调 /figure/render。
   let seq = 0;
-  const rerender = () => {
-    clearTimeout(timer);
+  const markPending = () => {
+    status.classList.remove('err');
+    status.textContent = '参数已修改，点击渲染';
+  };
+  const rerender = async () => {
     status.classList.remove('err');
     status.textContent = '重渲染中…';
-    timer = setTimeout(async () => {
-      const my = ++seq;
-      try {
-        const res = await fetch('/figure/render', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: fig.id, params: collectParams() }),
-        });
-        const data = await res.json();
-        if (my !== seq) return; // 已有更新的请求在途，丢弃旧结果
-        if (data.error) {
-          status.classList.add('err');
-          status.textContent = data.error;
-          return;
-        }
-        // 用时间戳破缓存，原地替换配图
-        img.src = `/seeview/local-image?path=${encodeURIComponent(data.path)}&t=${Date.now()}`;
-        status.textContent = '';
-        // 同步回 state.paper，供后续保存/导出带走最新参数
-        const item = flatItems(state.paper).find((it) => it.fig && it.fig.id === fig.id);
-        if (item && item.fig) {
-          item.fig.params = collectParams();
-          // 题干里的图片路径同步替换（与自由 TikZ 的 syncPaperImage 同口径）
-          syncPaperImageByImg(img, data.path);
-        }
-      } catch {
-        if (my !== seq) return;
+    const my = ++seq;
+    try {
+      const params = collectParams();
+      const res = await fetch('/figure/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: fig.id, params }),
+      });
+      const data = await res.json();
+      if (my !== seq) return; // 已有更新的请求在途，丢弃旧结果
+      if (data.error) {
         status.classList.add('err');
-        status.textContent = '网络错误，重试';
+        status.textContent = data.error;
+        return;
       }
-    }, 450);
+      // 用时间戳破缓存，原地替换配图
+      img.src = `/seeview/local-image?path=${encodeURIComponent(data.path)}&t=${Date.now()}`;
+      status.textContent = '';
+      // 同步回 state.paper，供后续保存/导出带走最新参数
+      const item = flatItems(state.paper).find((it) => it.fig && it.fig.id === fig.id);
+      if (item && item.fig) {
+        item.fig.params = params;
+        // 题干里的图片路径同步替换（与自由 TikZ 的 syncPaperImage 同口径）
+        syncPaperImageByImg(img, data.path);
+      }
+    } catch {
+      if (my !== seq) return;
+      status.classList.add('err');
+      status.textContent = '网络错误，重试';
+    }
   };
-  panel.addEventListener('input', rerender);
-  panel.addEventListener('change', rerender);
+  renderBtn.addEventListener('click', rerender);
+  panel.addEventListener('input', markPending);
+  panel.addEventListener('change', markPending);
 }
 
 /* 把卷面里某张 <img> 的源路径在 state.paper 各字段里替换为新路径（图库参数重渲染后同步） */
