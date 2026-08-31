@@ -3,8 +3,8 @@
   "name" : "通用三角形",
   "category" : "平面几何",
   "tags" : [ "三角形", "任意三角形", "等腰三角形", "等边三角形", "锐角三角形", "钝角三角形", "正弦定理", "余弦定理", "面积", "中线", "中点", "中位线" ],
-  "desc" : "任意平面三角形问题：正余弦定理、面积、中线/高/中位线、相似与全等。由两边长 AB、AC 及夹角∠A 决定形状，顶点自动标注；可选辅助点 D/E/F（分别是 BC/AC/AB 边的中点）、对应中线和中位线。覆盖等腰、等边、锐角、钝角等各类三角形。",
-  "whenNotToUse" : "含内切圆/外接圆、动点轨迹、复合图形时用自由 TikZ；直角三角形优先用 right-triangle 模板（带直角记号）；等腰三角形专题优先 isosceles-triangle 模板（带三线合一辅助线）。",
+  "desc" : "任意平面三角形问题：正余弦定理、面积、中线/高/中位线、相似与全等。由两边长 AB、AC 及夹角∠A 决定形状，顶点自动标注；三个角均可标注直角记号（rightmarka/rightmarkb/rightmarkc）、可选∠A 角弧、辅助点 D/E/F（分别是 BC/AC/AB 边的中点）、中线 AD 和中位线三角形。覆盖等腰、等边、锐角、钝角、直角等各类三角形。",
+  "whenNotToUse" : "含内切圆/外接圆、动点轨迹、复合图形时用自由 TikZ；直角在 B 点的标准直角三角形优先用 right-triangle 模板（直角在 A/C 可用本模板）；等腰三角形专题优先 isosceles-triangle 模板（带三线合一辅助线）。",
   "params" : [ {
     "name" : "ab",
     "type" : "number",
@@ -37,6 +37,30 @@
     "options" : null,
     "default" : "true",
     "desc" : "是否画∠A 的角弧"
+  }, {
+    "name" : "rightmarka",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠A 是否画直角记号（∠A 为直角时开启，开了就不画角弧）"
+  }, {
+    "name" : "rightmarkb",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠B 是否画直角记号（∠B 为直角时开启）"
+  }, {
+    "name" : "rightmarkc",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠C 是否画直角记号（∠C 为直角时开启）"
   }, {
     "name" : "showd",
     "type" : "bool",
@@ -80,5 +104,5 @@
   } ],
   "constraints" : [ ],
   "coordScale" : 0.8,
-  "template" : "% 参数由系统自动注入：\\def\\ab{5} \\def\\ac{6} \\def\\anglea{60} \\def\\showangle{1} \\def\\showd{0} \\def\\showe{0} \\def\\showf{0} \\def\\showmedianad{0} \\def\\showmidseg{0}\n% 视觉归一化：把最长边缩放到 6（单位由 coordScale 决定），保证图形视觉大小稳定；\n% 只缩放坐标，线宽、字体、虚线样式保持不变。\n\\pgfmathsetmacro{\\figscale}{6 / max(\\ab, \\ac)}\n% 辅助点圆点半径（绝对尺寸，不随图形缩放，保证视觉一致性）\n\\def\\ptRad{1.6pt}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % 三个顶点\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\ab,0);\n  \\pgfmathsetmacro{\\Cx}{\\ac*cos(\\anglea)}\n  \\pgfmathsetmacro{\\Cy}{\\ac*sin(\\anglea)}\n  \\coordinate (C) at (\\Cx,\\Cy);\n  % 三边中点：D=BC中点, E=AC中点, F=AB中点\n  \\pgfmathsetmacro{\\Dx}{(\\ab + \\Cx)/2}\n  \\pgfmathsetmacro{\\Dy}{\\Cy/2}\n  \\coordinate (D) at (\\Dx,\\Dy);\n  \\pgfmathsetmacro{\\Ex}{\\Cx/2}\n  \\pgfmathsetmacro{\\Ey}{\\Cy/2}\n  \\coordinate (E) at (\\Ex,\\Ey);\n  \\coordinate (F) at (\\ab/2,0);\n  % 三角形三边\n  \\draw[thick] (A) -- (B) -- (C) -- cycle;\n  % ∠A 角弧（朝三角形内部）\n  \\ifnum\\showangle>0\n    \\pgfmathsetmacro{\\arcr}{min(0.4, \\ab*0.18, \\ac*0.18)}\n    \\draw[thick] (\\arcr,0) arc[start angle=0, end angle=\\anglea, radius=\\arcr];\n  \\fi\n  % 中线 AD（实线，从顶点 A 到 BC 中点 D）\n  \\ifnum\\showmedianad>0\n    \\draw[thick] (A) -- (D);\n  \\fi\n  % 中位线（虚线，连接 D-E-F-D 构成中位线三角形）\n  \\ifnum\\showmidseg>0\n    \\draw[dashed] (D) -- (E);\n    \\draw[dashed] (E) -- (F);\n    \\draw[dashed] (F) -- (D);\n  \\fi\n  % 中点处画实心小圆点（绝对半径，不随坐标缩放，明确标出边上有个点）\n  \\ifnum\\showd>0\n    \\fill (D) circle [radius=\\ptRad];\n  \\fi\n  \\ifnum\\showe>0\n    \\fill (E) circle [radius=\\ptRad];\n  \\fi\n  \\ifnum\\showf>0\n    \\fill (F) circle [radius=\\ptRad];\n  \\fi\n  % 顶点标签\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below right=3pt] at (B) {$B$};\n  \\node[above=3pt] at (C) {$C$};\n  % 中点标签：根据对应 bool 显示\n  \\ifnum\\showd>0\n    \\node[above right=3pt] at (D) {$D$};\n  \\fi\n  \\ifnum\\showe>0\n    \\node[left=3pt] at (E) {$E$};\n  \\fi\n  \\ifnum\\showf>0\n    \\node[below=3pt] at (F) {$F$};\n  \\fi\n\\end{tikzpicture}"
+  "template" : "% 参数由系统自动注入：\\def\\ab{5} \\def\\ac{6} \\def\\anglea{60} \\def\\showangle{1} \\def\\rightmarka{0} \\def\\rightmarkb{0} \\def\\rightmarkc{0} \\def\\showd{0} \\def\\showe{0} \\def\\showf{0} \\def\\showmedianad{0} \\def\\showmidseg{0}\n% 视觉归一化：把最长边缩放到 6（单位由 coordScale 决定），保证图形视觉大小稳定；\n% 只缩放坐标，线宽、字体、虚线样式保持不变。\n\\pgfmathsetmacro{\\figscale}{6 / max(\\ab, \\ac)}\n% 辅助点圆点半径（绝对尺寸，不随图形缩放，保证视觉一致性）\n\\def\\ptRad{1.6pt}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % 三个顶点\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\ab,0);\n  \\pgfmathsetmacro{\\Cx}{\\ac*cos(\\anglea)}\n  \\pgfmathsetmacro{\\Cy}{\\ac*sin(\\anglea)}\n  \\coordinate (C) at (\\Cx,\\Cy);\n  % 三边中点：D=BC中点, E=AC中点, F=AB中点\n  \\pgfmathsetmacro{\\Dx}{(\\ab + \\Cx)/2}\n  \\pgfmathsetmacro{\\Dy}{\\Cy/2}\n  \\coordinate (D) at (\\Dx,\\Dy);\n  \\pgfmathsetmacro{\\Ex}{\\Cx/2}\n  \\pgfmathsetmacro{\\Ey}{\\Cy/2}\n  \\coordinate (E) at (\\Ex,\\Ey);\n  \\coordinate (F) at (\\ab/2,0);\n  % 三角形三边\n  \\draw[thick] (A) -- (B) -- (C) -- cycle;\n  % ∠A 角弧（朝三角形内部，开直角记号时不画角弧）\n  \\ifnum\\showangle>0\n    \\ifnum\\rightmarka=0\n      \\pgfmathsetmacro{\\arcr}{min(0.4, \\ab*0.18, \\ac*0.18)}\n      \\draw[thick] (\\arcr,0) arc[start angle=0, end angle=\\anglea, radius=\\arcr];\n    \\fi\n  \\fi\n  % ∠A 直角记号（小正方形两边，朝三角形内部，∠A=90 时使用）\n  \\ifnum\\rightmarka>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3, \\ab*0.2, \\ac*0.2)}\n    \\draw[thick] (\\rmsz,0) -- (\\rmsz,\\rmsz) -- (0,\\rmsz);\n  \\fi\n  % ∠B 直角记号（B 在(\\ab,0)，BA 沿-x，BC 斜向上）\n  \\ifnum\\rightmarkb>0\n    \\pgfmathsetmacro{\\rmszb}{min(0.3, \\ab*0.2, \\Cy*0.2)}\n    \\pgfmathsetmacro{\\bclen}{sqrt((\\Cx-\\ab)^2 + \\Cy^2)}\n    \\pgfmathsetmacro{\\rmbax}{\\ab - \\rmszb}\n    \\pgfmathsetmacro{\\rmbcx}{\\ab + (\\Cx-\\ab)/\\bclen*\\rmszb}\n    \\pgfmathsetmacro{\\rmbcy}{\\Cy/\\bclen*\\rmszb}\n    \\pgfmathsetmacro{\\rmbmx}{\\rmbax + (\\Cx-\\ab)/\\bclen*\\rmszb}\n    \\pgfmathsetmacro{\\rmbmy}{\\Cy/\\bclen*\\rmszb}\n    \\draw[thick] (\\rmbax,0) -- (\\rmbmx,\\rmbmy) -- (\\rmbcx,\\rmbcy);\n  \\fi\n  % ∠C 直角记号（C 在(\\Cx,\\Cy)，沿 CA、CB 两边方向）\n  \\ifnum\\rightmarkc>0\n    \\pgfmathsetmacro{\\rmszc}{min(0.3, \\ac*0.2, sqrt((\\Cx-\\ab)^2 + \\Cy^2)*0.2)}\n    \\pgfmathsetmacro{\\bclen}{sqrt((\\Cx-\\ab)^2 + \\Cy^2)}\n    \\pgfmathsetmacro{\\rmcax}{\\Cx - \\Cx/\\ac*\\rmszc}\n    \\pgfmathsetmacro{\\rmcay}{\\Cy - \\Cy/\\ac*\\rmszc}\n    \\pgfmathsetmacro{\\rmcbx}{\\Cx + (\\ab-\\Cx)/\\bclen*\\rmszc}\n    \\pgfmathsetmacro{\\rmcby}{\\Cy - \\Cy/\\bclen*\\rmszc}\n    \\pgfmathsetmacro{\\rmcmx}{\\rmcax + (\\ab-\\Cx)/\\bclen*\\rmszc}\n    \\pgfmathsetmacro{\\rmcmy}{\\rmcay - \\Cy/\\bclen*\\rmszc}\n    \\draw[thick] (\\rmcax,\\rmcay) -- (\\rmcmx,\\rmcmy) -- (\\rmcbx,\\rmcby);\n  \\fi\n  % 中线 AD（实线，从顶点 A 到 BC 中点 D）\n  \\ifnum\\showmedianad>0\n    \\draw[thick] (A) -- (D);\n  \\fi\n  % 中位线（虚线，连接 D-E-F-D 构成中位线三角形）\n  \\ifnum\\showmidseg>0\n    \\draw[dashed] (D) -- (E);\n    \\draw[dashed] (E) -- (F);\n    \\draw[dashed] (F) -- (D);\n  \\fi\n  % 中点处画实心小圆点（绝对半径，不随坐标缩放，明确标出边上有个点）\n  \\ifnum\\showd>0\n    \\fill (D) circle [radius=\\ptRad];\n  \\fi\n  \\ifnum\\showe>0\n    \\fill (E) circle [radius=\\ptRad];\n  \\fi\n  \\ifnum\\showf>0\n    \\fill (F) circle [radius=\\ptRad];\n  \\fi\n  % 顶点标签\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below right=3pt] at (B) {$B$};\n  \\node[above=3pt] at (C) {$C$};\n  % 中点标签：根据对应 bool 显示\n  \\ifnum\\showd>0\n    \\node[above right=3pt] at (D) {$D$};\n  \\fi\n  \\ifnum\\showe>0\n    \\node[left=3pt] at (E) {$E$};\n  \\fi\n  \\ifnum\\showf>0\n    \\node[below=3pt] at (F) {$F$};\n  \\fi\n\\end{tikzpicture}"
 }
