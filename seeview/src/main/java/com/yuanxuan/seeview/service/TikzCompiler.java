@@ -36,6 +36,9 @@ public class TikzCompiler {
     @Value("${question.image-dir:${user.dir}/question_output/images}")
     private String outputDir;
 
+    /** 编译时给 TikZ 的安全大画布宽度，避免大图在页面边界被裁掉。 */
+    private static final int RENDER_WIDTH_CM = 100;
+
     /** 时间戳前缀计数（防多实例/多次运行撞名） */
     private static final AtomicInteger SEQ = new AtomicInteger();
 
@@ -60,7 +63,7 @@ public class TikzCompiler {
             logFile = Files.createTempFile("tikz_", ".log");
             Files.writeString(tex, code, StandardCharsets.UTF_8);
             ProcessBuilder pb = new ProcessBuilder(Path.of(tikzPython).toString(), script.toString(),
-                            "--file", tex.toString(), "--width", "20", "--crop-x", "--out", dst.toString())
+                            "--file", tex.toString(), "--width", String.valueOf(RENDER_WIDTH_CM), "--crop-x", "--out", dst.toString())
                     .redirectErrorStream(true)
                     .redirectOutput(logFile.toFile());
             pb.environment().put("PYTHONIOENCODING", "utf-8");

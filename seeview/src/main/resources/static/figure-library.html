@@ -230,6 +230,10 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 var(-
         <label>不适用情形</label>
         <textarea class="textarea" id="fWhenNot" rows="2" placeholder="什么题不要用这个模板（可选，防止生硬套用）"></textarea>
       </div>
+      <div class="form-row">
+        <label>坐标尺度</label>
+        <input class="input mono" id="fCoordScale" placeholder="1.0（可选）">
+      </div>
     </div>
 
     <div class="drawer-section">
@@ -355,6 +359,7 @@ async function openEditor(id) {
 function openNew() {
   editing = {
     id: '', name: '', category: '', tags: [], desc: '', whenNotToUse: '',
+    coordScale: null,
     params: [emptyParam()],
     constraints: [],
     template: ''
@@ -373,6 +378,7 @@ function fillForm() {
   $('fTags').value = (editing.tags || []).join(', ');
   $('fDesc').value = editing.desc || '';
   $('fWhenNot').value = editing.whenNotToUse || '';
+  $('fCoordScale').value = editing.coordScale != null ? String(editing.coordScale) : '';
   $('fTemplate').value = editing.template || '';
   renderParamsTable();
   renderConstraints();
@@ -388,6 +394,7 @@ function collectForm() {
     tags: $('fTags').value.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
     desc: $('fDesc').value.trim(),
     whenNotToUse: $('fWhenNot').value.trim(),
+    coordScale: $('fCoordScale').value.trim() === '' ? null : Number($('fCoordScale').value.trim()),
     params: collectParams(),
     constraints: collectConstraints(),
     template: $('fTemplate').value
@@ -743,7 +750,7 @@ $('btnSave').addEventListener('click', save);
 $('btnDelete').addEventListener('click', removeTemplate);
 $('btnCancel').addEventListener('click', closeDrawer);
 // 基本信息/代码改动：只标记待渲染，不自动调预览
-['fId', 'fName', 'fCategory', 'fTags', 'fDesc', 'fWhenNot', 'fTemplate'].forEach((id) => {
+['fId', 'fName', 'fCategory', 'fTags', 'fDesc', 'fWhenNot', 'fCoordScale', 'fTemplate'].forEach((id) => {
   $(id).addEventListener('input', () => { markDirty(); markPreviewPending(); });
 });
 // 预览参数改动：只标记待渲染，按钮才会真正渲染
