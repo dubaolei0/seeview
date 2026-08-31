@@ -1,0 +1,16 @@
+{
+  "id": "cuboid",
+  "name": "长方体（斜二测）",
+  "category": "立体几何",
+  "tags": ["长方体", "直棱柱", "斜二测", "立体几何", "ABCD-A1B1C1D1", "体积", "表面积", "外接球"],
+  "desc": "长方体 ABCD-A₁B₁C₁D₁ 问题：体积、表面积、对角线、外接球、棱上点、线面角与二面角。斜二测画法，长宽高可调，可见棱实线、被遮挡棱虚线，顶点按教材 ABCD-A₁B₁C₁D₁ 规则命名。",
+  "whenNotToUse": "正方体（设三参数相等即可用本模板，但旋转体/棱锥/圆柱请用对应模板）；需要棱上动点或内部连线时用自由 TikZ。",
+  "params": [
+    {"name": "len", "type": "number", "min": 1, "max": 8, "default": "4", "desc": "长 AB（x 方向）"},
+    {"name": "wid", "type": "number", "min": 1, "max": 8, "default": "3", "desc": "宽 AD（y 方向，斜二测画原长一半）"},
+    {"name": "hgt", "type": "number", "min": 1, "max": 8, "default": "3", "desc": "高 AA₁（z 方向）"}
+  ],
+  "constraints": ["len + wid + hgt <= 20"],
+  "coordScale": 0.45,
+  "template": "% 参数由系统自动注入：\\def\\len{4} \\def\\wid{3} \\def\\hgt{3}\n% 视觉归一化：把长(len)缩放到 6（单位由 coordScale 决定），保证图形视觉大小稳定；\n% 只缩放坐标，线宽、字体、虚线样式保持不变。\n\\pgfmathsetmacro{\\figscale}{6 / \\len}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % 斜二测：y 轴与 x 轴夹角 45 度、长度取一半\n  \\pgfmathsetmacro\\yd{\\wid/2}\n  \\pgfmathsetmacro\\ys{\\yd*cos(45)}\n  \\pgfmathsetmacro\\zs{\\yd*sin(45)}\n  % 底面 ABCD（A 原点，AB 沿 x，AD 沿 45 度斜向）\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\len,0);\n  \\coordinate (D) at (\\ys,\\zs);\n  \\pgfmathsetmacro\\bx{\\len+\\ys}\n  \\coordinate (C) at (\\bx,\\zs);\n  % 顶面 A1B1C1D1 平移高 hgt\n  \\coordinate (A1) at (0,\\hgt);\n  \\coordinate (B1) at (\\len,\\hgt);\n  \\coordinate (C1) at (\\bx,\\hgt+\\zs);\n  \\coordinate (D1) at (\\ys,\\hgt+\\zs);\n  % 可见棱：前面 AB、BC 与三条竖棱 A A1、B B1、C C1 实线\n  \\draw[thick] (A) -- (B) -- (C) -- (C1) -- (B1) -- (A1) -- cycle;\n  \\draw[thick] (B) -- (B1);\n  % 被遮挡棱：AD、DC、DD1 虚线\n  \\draw[thick, dashed] (A) -- (D) -- (C);\n  \\draw[thick, dashed] (D) -- (D1);\n  % 顶点标签放外轮廓外侧\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below=3pt] at (B) {$B$};\n  \\node[right=3pt] at (C) {$C$};\n  \\node[above left=3pt] at (D) {$D$};\n  \\node[left=3pt] at (A1) {$A_1$};\n  \\node[above=3pt] at (B1) {$B_1$};\n  \\node[above right=3pt] at (C1) {$C_1$};\n  \\node[right=3pt] at (D1) {$D_1$};\n\\end{tikzpicture}"
+}
