@@ -1,0 +1,147 @@
+[
+  {
+    "id": "K-DS-003-A",
+    "title": "曲线上一点处切线",
+    "knowledge_title": "用导数求已知切点处的切线方程",
+    "lesson_type": "考法分支课",
+    "example_plan": [
+      {"source": "molecular", "count": 2},
+      {"source": "original", "count": 1}
+    ],
+    "preferred_sources": ["2021全国甲卷理13", "2023全国甲卷文8", "2024全国甲卷理6", "2024全国甲卷文7", "2022北京20", "2024新高考II16"],
+    "include": ["切线", "在点", "斜率", "导数"],
+    "exclude": ["圆", "椭圆", "抛物线", "双曲线", "空间", "向量"]
+  },
+  {
+    "id": "K-DS-003-B",
+    "title": "过曲线外一点的切线",
+    "knowledge_title": "设切点法求过定点的切线",
+    "lesson_type": "考法分支课",
+    "example_plan": [
+      {"source": "molecular", "count": 2},
+      {"source": "original", "count": 1}
+    ],
+    "preferred_sources": ["2021新高考I7", "2022新高考I15", "2022新高考II14"],
+    "include": ["切线", "过", "切点", "导数"],
+    "exclude": ["圆", "椭圆", "抛物线", "双曲线", "空间", "向量"]
+  },
+  {
+    "id": "K-DS-001-A",
+    "title": "不含参函数求单调区间",
+    "knowledge_title": "用导数符号判断函数单调性",
+    "lesson_type": "考法分支课",
+    "example_plan": [
+      {"source": "molecular", "count": 2},
+      {"source": "original", "count": 1}
+    ],
+    "preferred_sources": ["2022浙江22", "2023新高考II22", "2025北京20", "2021新高考I22"],
+    "include": ["单调", "单调区间", "导数"],
+    "exclude": ["参数", "求参数", "向量", "数列", "圆锥曲线"]
+  },
+  {
+    "id": "K-DS-001-B",
+    "title": "含参函数分类讨论单调区间",
+    "knowledge_title": "导函数零点含参数时的分类讨论",
+    "lesson_type": "考法分支课",
+    "example_plan": [
+      {"source": "molecular", "count": 2},
+      {"source": "original", "count": 1}
+    ],
+    "preferred_sources": ["2021全国甲卷文20", "2021新高考II22", "2023新高考I19", "2021全国乙卷文21"],
+    "include": ["单调", "参数", "分类", "导数"],
+    "exclude": ["向量", "数列", "圆锥曲线", "立体几何"]
+  },
+  {
+    "id": "K-DS-001-C",
+    "title": "由单调性反求参数",
+    "knowledge_title": "把单调性条件转化为导数恒成立",
+    "type": "考法分支课",
+    "preferred_sources": ["2023新高考II6", "2023全国乙卷文20", "2024全国甲卷文20"],
+    "include": ["单调", "参数", "恒成立", "导数"],
+    "exclude": ["向量", "数列", "圆锥曲线", "立体几何"],
+    "example_count": 3
+  },
+  {
+    "id": "K-DS-002-A",
+    "title": "构造辅助函数证明不等式",
+    "knowledge_title": "把函数不等式转化为差函数最值",
+    "type": "考法分支课",
+    "preferred_sources": ["2023新高考I19", "2024全国甲卷文20", "2021天津20", "2025新高考II18"],
+    "include": ["不等式", "证明", "构造", "函数", "导数"],
+    "exclude": ["数列", "解析几何", "圆锥曲线", "空间"],
+    "example_count": 3
+  },
+  {
+    "id": "K-DS-002-B",
+    "title": "参变分离处理恒成立",
+    "knowledge_title": "把含参不等式转化为函数最值",
+    "type": "考法分支课",
+    "preferred_sources": ["2024全国甲卷文16", "2023新高考II6", "2021全国甲卷文20", "2022全国甲卷理21"],
+    "include": ["参数", "恒成立", "最值", "导数"],
+    "exclude": ["数列", "解析几何", "圆锥曲线", "空间"],
+    "example_count": 3
+  },
+  {
+    "id": "K-DS-004-A",
+    "title": "不含参函数求极值最值",
+    "knowledge_title": "用导数求极值并比较端点最值",
+    "type": "考法分支课",
+    "preferred_sources": ["2022天津20", "2025北京20", "2023新高考II11", "2025新高考II13"],
+    "include": ["极值", "最值", "导数"],
+    "exclude": ["参数", "数列", "圆锥曲线", "立体几何"],
+    "example_count": 3
+  },
+  {
+    "id": "K-DS-005-A",
+    "title": "画图数零点",
+    "knowledge_title": "用单调性和极值判断零点个数",
+    "type": "考法分支课",
+    "preferred_sources": ["2022全国乙卷理21", "2024全国甲卷文16", "2021全国甲卷理21", "2023全国乙卷文8"],
+    "include": ["零点", "个数", "单调", "极值", "导数"],
+    "exclude": ["数列", "圆锥曲线", "立体几何"],
+    "example_count": 3
+  },
+  {
+    "id": "K-DS-006-A",
+    "title": "由导函数图象推原函数性质",
+    "knowledge_title": "从导函数正负读原函数单调与极值",
+    "type": "考法分支课",
+    "preferred_sources": ["2021新高考I7", "2024新高考II11", "2022新高考I10"],
+    "include": ["导函数", "图象", "单调", "极值"],
+    "exclude": ["数列", "圆锥曲线", "立体几何"],
+    "example_count": 3
+  },
+  {
+    "id": "B-DS-001",
+    "title": "基本初等函数导数公式",
+    "knowledge_title": "常用导数公式速记",
+    "lesson_type": "原子基础微课",
+    "example_plan": [
+      {"source": "atomic", "count": 3}
+    ],
+    "include": ["导数公式", "导数", "求导"],
+    "exclude": ["分类讨论", "恒成立", "零点", "不等式"]
+  },
+  {
+    "id": "B-DS-002",
+    "title": "导数的几何意义",
+    "knowledge_title": "导数即切线斜率",
+    "lesson_type": "原子基础微课",
+    "example_plan": [
+      {"source": "atomic", "count": 3}
+    ],
+    "include": ["切线", "斜率", "几何意义", "导数"],
+    "exclude": ["分类讨论", "恒成立", "零点", "不等式", "圆", "椭圆"]
+  },
+  {
+    "id": "B-DS-003",
+    "title": "复合函数求导",
+    "knowledge_title": "链式法则",
+    "lesson_type": "原子基础微课",
+    "example_plan": [
+      {"source": "atomic", "count": 3}
+    ],
+    "include": ["复合", "链式", "求导", "导数"],
+    "exclude": ["分类讨论", "恒成立", "零点"]
+  }
+]
