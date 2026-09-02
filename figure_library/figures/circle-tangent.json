@@ -1,0 +1,75 @@
+{
+  "id": "circle-tangent",
+  "name": "圆的切线",
+  "category": "平面几何-圆",
+  "tags": [
+    "圆",
+    "切线",
+    "切点",
+    "切线长",
+    "切线长定理",
+    "切线的性质",
+    "切线的判定"
+  ],
+  "desc": "圆的切线问题：切线 l 过切点 T 且垂直于切点半径 OT（性质/判定），切线长定理（圆外一点 P 到圆的切线长 PT）。T 由位置角 anglea 决定，可勾选切点半径与直角记号、切线 l、圆外点 P 与切线长 PT，覆盖切线与半径垂直、切线长相等等考点。",
+  "whenNotToUse": "含弦/扇形/弓形等圆内元素用 circle-sector；含垂径定理用 circle-perp-chord；切线与其他图形复合（如切线+内接三角形）、双切线夹角问题建议用自由 TikZ 补画。",
+  "params": [
+    {
+      "name": "radius",
+      "type": "number",
+      "min": 1,
+      "max": 10,
+      "options": null,
+      "default": "3",
+      "desc": "圆的半径"
+    },
+    {
+      "name": "anglea",
+      "type": "number",
+      "min": 5,
+      "max": 175,
+      "options": null,
+      "default": "30",
+      "desc": "切点 T 的位置角（度，从正 x 轴逆时针）"
+    },
+    {
+      "name": "showradius",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画切点半径 OT 并标直角记号"
+    },
+    {
+      "name": "showtangent",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画切线 l（过切点 T 垂直于 OT）"
+    },
+    {
+      "name": "showpoint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否标圆外点 P 与切线长 PT"
+    },
+    {
+      "name": "ptlen",
+      "type": "number",
+      "min": 0.5,
+      "max": 8,
+      "options": null,
+      "default": "2.5",
+      "desc": "切线长 PT（P 沿切线到切点的距离）"
+    }
+  ],
+  "constraints": [],
+  "coordScale": 0.7,
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{30} \\def\\showradius{1} \\def\\showtangent{1} \\def\\showpoint{0} \\def\\ptlen{2.5}\n% 视觉归一化：把圆直径缩放到 6（单位由 coordScale 决定）。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n\\pgfmathsetmacro{\\Tx}{\\radius*cos(\\anglea)}\n\\pgfmathsetmacro{\\Ty}{\\radius*sin(\\anglea)}\n\\pgfmathsetmacro{\\tdx}{cos(\\anglea+90)}\n\\pgfmathsetmacro{\\tdy}{sin(\\anglea+90)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (T) at (\\Tx,\\Ty);\n  % 圆\n  \\draw[thick] (O) circle [radius=\\radius];\n  % 切线 l：过切点 T 沿垂直方向向两侧延伸\n  \\ifnum\\showtangent>0\n    \\draw[thick] ({\\Tx + 3.2*\\tdx},{\\Ty + 3.2*\\tdy}) -- ({\\Tx - 3.2*\\tdx},{\\Ty - 3.2*\\tdy});\n    \\node[left=2pt] at ({\\Tx + 2.4*\\tdx},{\\Ty + 2.4*\\tdy}) {$l$};\n  \\fi\n  % 切点半径 OT + 直角记号（OT 与切线垂直）\n  \\ifnum\\showradius>0\n    \\draw[thick] (O) -- (T);\n    \\pgfmathsetmacro{\\rs}{min(0.28, \\radius*0.16)}\n    \\pgfmathsetmacro{\\qax}{\\Tx - \\rs*cos(\\anglea)}\n    \\pgfmathsetmacro{\\qay}{\\Ty - \\rs*sin(\\anglea)}\n    \\pgfmathsetmacro{\\qbx}{\\Tx + \\rs*\\tdx}\n    \\pgfmathsetmacro{\\qby}{\\Ty + \\rs*\\tdy}\n    \\pgfmathsetmacro{\\qcx}{\\qax + \\rs*\\tdx}\n    \\pgfmathsetmacro{\\qcy}{\\qay + \\rs*\\tdy}\n    \\draw[thick] (\\qax,\\qay) -- (\\qcx,\\qcy) -- (\\qbx,\\qby);\n    \\fill (T) circle [radius=1.6pt];\n    \\node[above left=3pt] at (T) {$T$};\n  \\fi\n  % 外点 P 与切线长 PT（沿切线方向）\n  \\ifnum\\showpoint>0\n    \\pgfmathsetmacro{\\Px}{\\Tx + \\ptlen*\\tdx}\n    \\pgfmathsetmacro{\\Py}{\\Ty + \\ptlen*\\tdy}\n    \\coordinate (P) at (\\Px,\\Py);\n    \\draw[thick] (T) -- (P);\n    \\fill (P) circle [radius=1.6pt];\n    \\node[above right=3pt] at (P) {$P$};\n  \\fi\n  % 圆心 O\n  \\fill (O) circle [radius=1.6pt];\n  \\node[below left=3pt] at (O) {$O$};\n\\end{tikzpicture}"
+}

@@ -1,0 +1,76 @@
+{
+  "id": "circle-perp-chord",
+  "name": "垂径定理（直径平分弦）",
+  "category": "平面几何-圆",
+  "tags": [
+    "圆",
+    "弦",
+    "直径",
+    "垂径定理",
+    "弦的中点",
+    "圆的对称性",
+    "勾股定理",
+    "圆内计算"
+  ],
+  "desc": "垂径定理相关计算问题：垂直于弦的直径平分弦及弦所对的两条弧。弦 AB 水平置于圆心上方（端点仰角 anglea），过圆心 O 的直径 CD 垂直于弦，垂足 M 为弦中点；可勾选弦、直径、垂线段 OM 与中点 M，覆盖弦长、弦心距、半径三者勾股关系等考点。",
+  "whenNotToUse": "无垂径结构的单圆/扇形问题用 circle / circle-sector；弦不关于直径对称、含切线或圆内接多边形的图形建议用自由 TikZ。",
+  "params": [
+    {
+      "name": "radius",
+      "type": "number",
+      "min": 1,
+      "max": 10,
+      "options": null,
+      "default": "3",
+      "desc": "圆的半径"
+    },
+    {
+      "name": "anglea",
+      "type": "number",
+      "min": 10,
+      "max": 85,
+      "options": null,
+      "default": "40",
+      "desc": "弦 AB 端点 B 的仰角（0~90，弦在圆心上方水平放置）"
+    },
+    {
+      "name": "showchord",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画弦 AB"
+    },
+    {
+      "name": "showdiameter",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画垂直于弦的直径 CD"
+    },
+    {
+      "name": "showperp",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画圆心到弦的垂线段 OM 并标直角记号"
+    },
+    {
+      "name": "showmidpoint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注弦中点 M"
+    }
+  ],
+  "constraints": [],
+  "coordScale": 0.7,
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{40} \\def\\showchord{1} \\def\\showdiameter{1} \\def\\showperp{1} \\def\\showmidpoint{1}\n% 视觉归一化：把圆直径缩放到 6（单位由 coordScale 决定）。\n% 弦 AB 水平对称放置：A(-x,y)、B(x,y)，直径 CD 垂直、过弦中点 M。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n\\pgfmathsetmacro{\\chordx}{\\radius*cos(\\anglea)}\n\\pgfmathsetmacro{\\chordy}{\\radius*sin(\\anglea)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (A) at (-\\chordx,\\chordy);\n  \\coordinate (B) at (\\chordx,\\chordy);\n  \\coordinate (M) at (0,\\chordy);\n  \\coordinate (C) at (0,\\radius);\n  \\coordinate (D) at (0,-\\radius);\n  % 圆\n  \\draw[thick] (O) circle [radius=\\radius];\n  % 直径 CD（垂直于弦）\n  \\ifnum\\showdiameter>0\n    \\draw[thick] (C) -- (D);\n  \\fi\n  % 弦 AB\n  \\ifnum\\showchord>0\n    \\draw[thick] (A) -- (B);\n  \\fi\n  % 垂线段 OM + 直角记号（OM 与 AB 垂直）\n  \\ifnum\\showperp>0\n    \\draw[thick] (O) -- (M);\n    \\pgfmathsetmacro{\\rs}{min(0.25, \\radius*0.14)}\n    \\draw[thick] (\\rs,\\chordy) -- (\\rs,{\\chordy-\\rs}) -- (0,{\\chordy-\\rs});\n  \\fi\n  % 端点与中点\n  \\ifnum\\showchord>0\n    \\fill (A) circle [radius=1.6pt];\n    \\fill (B) circle [radius=1.6pt];\n    \\node[left=3pt] at (A) {$A$};\n    \\node[right=3pt] at (B) {$B$};\n  \\fi\n  \\ifnum\\showdiameter>0\n    \\fill (C) circle [radius=1.6pt];\n    \\fill (D) circle [radius=1.6pt];\n    \\node[above=3pt] at (C) {$C$};\n    \\node[below=3pt] at (D) {$D$};\n  \\fi\n  \\ifnum\\showmidpoint>0\n    \\fill (M) circle [radius=1.6pt];\n    \\node[below=3pt] at (M) {$M$};\n  \\fi\n  % 圆心 O\n  \\fill (O) circle [radius=1.6pt];\n  \\node[below left=3pt] at (O) {$O$};\n\\end{tikzpicture}"
+}

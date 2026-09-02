@@ -1,0 +1,66 @@
+{
+  "id": "circle-inscribed-triangle",
+  "name": "圆内接三角形（外接圆）",
+  "category": "平面几何-圆",
+  "tags": [
+    "圆",
+    "内接三角形",
+    "外接圆",
+    "圆心",
+    "正弦定理",
+    "圆周角",
+    "三角形的外心"
+  ],
+  "desc": "三角形内接于圆（圆为外接圆）的问题：△ABC 三个顶点 A、B、C 均在圆上，外心 O 为圆心，外接圆半径 radius；顶点位置由三个位置角 anglea/angleb/anglec 决定，可标注外心 O。覆盖正弦定理 a/sinA=2R、圆周角定理、外心性质与外接圆相关考点。",
+  "whenNotToUse": "无外接圆的单个圆问题用 circle；三角形顶点不全在圆上、圆内接四边形或含切线的复合图形建议用自由 TikZ；需要同时显示外接圆半径与边长标注时可用本模板配合题干条件。",
+  "params": [
+    {
+      "name": "radius",
+      "type": "number",
+      "min": 1,
+      "max": 10,
+      "options": null,
+      "default": "3",
+      "desc": "外接圆半径"
+    },
+    {
+      "name": "anglea",
+      "type": "number",
+      "min": 0,
+      "max": 360,
+      "options": null,
+      "default": "90",
+      "desc": "顶点 A 的位置角（度，从正 x 轴逆时针）"
+    },
+    {
+      "name": "angleb",
+      "type": "number",
+      "min": 0,
+      "max": 360,
+      "options": null,
+      "default": "210",
+      "desc": "顶点 B 的位置角（度）"
+    },
+    {
+      "name": "anglec",
+      "type": "number",
+      "min": 0,
+      "max": 360,
+      "options": null,
+      "default": "330",
+      "desc": "顶点 C 的位置角（度）"
+    },
+    {
+      "name": "showcenter",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注外心 O（圆心）"
+    }
+  ],
+  "constraints": [],
+  "coordScale": 0.7,
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{90} \\def\\angleb{210} \\def\\anglec{330} \\def\\showcenter{1}\n% 视觉归一化：把外接圆直径缩放到 6（单位由 coordScale 决定）。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n\\pgfmathsetmacro{\\Ax}{\\radius*cos(\\anglea)}\n\\pgfmathsetmacro{\\Ay}{\\radius*sin(\\anglea)}\n\\pgfmathsetmacro{\\Bx}{\\radius*cos(\\angleb)}\n\\pgfmathsetmacro{\\By}{\\radius*sin(\\angleb)}\n\\pgfmathsetmacro{\\Cx}{\\radius*cos(\\anglec)}\n\\pgfmathsetmacro{\\Cy}{\\radius*sin(\\anglec)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (A) at (\\Ax,\\Ay);\n  \\coordinate (B) at (\\Bx,\\By);\n  \\coordinate (C) at (\\Cx,\\Cy);\n  % 外接圆\n  \\draw[thick] (O) circle [radius=\\radius];\n  % 内接三角形\n  \\draw[thick] (A) -- (B) -- (C) -- cycle;\n  % 外心 O\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=1.6pt];\n    \\node[below left=3pt] at (O) {$O$};\n  \\fi\n  % 顶点（标签沿径向外移，避免压在圆上）\n  \\fill (A) circle [radius=1.6pt];\n  \\fill (B) circle [radius=1.6pt];\n  \\fill (C) circle [radius=1.6pt];\n  \\node at ({1.16*\\Ax},{1.16*\\Ay}) {$A$};\n  \\node at ({1.16*\\Bx},{1.16*\\By}) {$B$};\n  \\node at ({1.16*\\Cx},{1.16*\\Cy}) {$C$};\n\\end{tikzpicture}"
+}

@@ -1,0 +1,76 @@
+{
+  "id": "two-circles",
+  "name": "两圆位置关系（含同心圆）",
+  "category": "平面几何-圆",
+  "tags": [
+    "圆",
+    "两圆位置关系",
+    "相切",
+    "相交",
+    "同心圆",
+    "圆环",
+    "连心线",
+    "圆心距"
+  ],
+  "desc": "两圆位置关系问题：由圆心距 dist 与两半径 radiusa/radiusb 的大小关系决定外离、外切、相交、内切、内含；dist=0 时为同心圆（可勾选填充圆环）。可标注圆心 O₁、O₂ 与连心线，覆盖两圆位置关系的判定、连心线性质与圆环面积等考点。",
+  "whenNotToUse": "单个圆问题用 circle 模板；两圆与切线/内接图形复合、公切线作图建议用自由 TikZ；需精确展示相切交点等细节时可结合题干另画。",
+  "params": [
+    {
+      "name": "radiusa",
+      "type": "number",
+      "min": 1,
+      "max": 10,
+      "options": null,
+      "default": "3",
+      "desc": "圆 O₁ 的半径"
+    },
+    {
+      "name": "radiusb",
+      "type": "number",
+      "min": 0.5,
+      "max": 10,
+      "options": null,
+      "default": "2",
+      "desc": "圆 O₂ 的半径"
+    },
+    {
+      "name": "dist",
+      "type": "number",
+      "min": 0,
+      "max": 12,
+      "options": null,
+      "default": "2.5",
+      "desc": "两圆心距 O₁O₂（0 表示同心圆）"
+    },
+    {
+      "name": "showcenters",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注圆心 O₁、O₂"
+    },
+    {
+      "name": "showline",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画连心线 O₁O₂"
+    },
+    {
+      "name": "showring",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否填充两圆之间区域（同心圆 dist=0 时为圆环）"
+    }
+  ],
+  "constraints": [],
+  "coordScale": 0.7,
+  "template": "% 参数由系统自动注入：\\def\\radiusa{3} \\def\\radiusb{2} \\def\\dist{2.5} \\def\\showcenters{1} \\def\\showline{1} \\def\\showring{0}\n% 视觉归一化：把两圆最宽跨度缩放到 6（单位由 coordScale 决定）。\n\\pgfmathsetmacro{\\figscale}{6 / (\\dist + \\radiusa + \\radiusb)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O1) at (0,0);\n  \\coordinate (O2) at (\\dist,0);\n  % 两圆之间区域 / 同心圆环（even-odd 填充）\n  \\ifnum\\showring>0\n    \\fill[green!12, even odd rule] (O1) circle [radius=\\radiusa] (O2) circle [radius=\\radiusb];\n  \\fi\n  \\draw[thick] (O1) circle [radius=\\radiusa];\n  \\draw[thick] (O2) circle [radius=\\radiusb];\n  % 连心线 O1O2\n  \\ifnum\\showline>0\n    \\draw[thick] (O1) -- (O2);\n  \\fi\n  % 圆心\n  \\ifnum\\showcenters>0\n    \\fill (O1) circle [radius=1.6pt];\n    \\fill (O2) circle [radius=1.6pt];\n    \\node[below=3pt] at (O1) {$O_1$};\n    \\node[below=3pt] at (O2) {$O_2$};\n  \\fi\n\\end{tikzpicture}"
+}

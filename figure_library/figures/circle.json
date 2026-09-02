@@ -1,0 +1,58 @@
+{
+  "id": "circle",
+  "name": "圆（圆心·半径·直径）",
+  "category": "平面几何-圆",
+  "tags": [
+    "圆",
+    "圆心",
+    "半径",
+    "直径",
+    "圆的基本性质",
+    "弦",
+    "弧",
+    "圆的对称性"
+  ],
+  "desc": "单个圆的基本要素问题：圆心 O、半径、直径、弦、弧。由半径 radius 决定大小，圆以 O 为圆心居中；可勾选标注圆心 O、画半径 OA 或画直径 AB（直径优先于半径），覆盖圆的基本性质、半径与直径关系、同圆半径相等等考点。",
+  "whenNotToUse": "含扇形/弓形/弦长与弧长（要中心角、填充）用 circle-sector 模板；含切线/垂径/圆周角、圆内接三角形、两圆位置关系分别用对应模板；多圆复合或需自由标注的图形用自由 TikZ。",
+  "params": [
+    {
+      "name": "radius",
+      "type": "number",
+      "min": 1,
+      "max": 10,
+      "options": null,
+      "default": "3",
+      "desc": "圆的半径"
+    },
+    {
+      "name": "showcenter",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注圆心 O"
+    },
+    {
+      "name": "showradius",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画半径 OA（A 在圆上）"
+    },
+    {
+      "name": "showdiameter",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画直径 AB（过圆心，优先于半径）"
+    }
+  ],
+  "constraints": [],
+  "coordScale": 0.7,
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\showcenter{1} \\def\\showradius{1} \\def\\showdiameter{0}\n% 视觉归一化：把圆直径缩放到 6（单位由 coordScale 决定），保证图形视觉大小稳定。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (A) at (\\radius,0);\n  \\coordinate (B) at (-\\radius,0);\n  % 圆\n  \\draw[thick] (O) circle [radius=\\radius];\n  % 直径 AB（含右端 A、左端 B，优先于半径展示）\n  \\ifnum\\showdiameter>0\n    \\draw[thick] (A) -- (B);\n    \\fill (A) circle [radius=1.6pt];\n    \\fill (B) circle [radius=1.6pt];\n    \\node[above right=3pt] at (A) {$A$};\n    \\node[above left=3pt] at (B) {$B$};\n  \\fi\n  % 半径 OA（未画直径时才单独画）\n  \\ifnum\\showdiameter=0\n    \\ifnum\\showradius>0\n      \\draw[thick] (O) -- (A);\n      \\fill (A) circle [radius=1.6pt];\n      \\node[above right=3pt] at (A) {$A$};\n    \\fi\n  \\fi\n  % 圆心 O\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=1.6pt];\n    \\node[below left=3pt] at (O) {$O$};\n  \\fi\n\\end{tikzpicture}"
+}
