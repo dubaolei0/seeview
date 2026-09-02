@@ -24,8 +24,6 @@ public record FigureTemplate(
         List<Param> params,
         /** 参数约束表达式（如 "ab + bc < 20"），后端求值校验，违反拒绝渲染 */
         List<String> constraints,
-        /** 坐标尺度：仅缩放几何坐标，不缩放线宽和字体；1 表示不缩放，可选 */
-        Double coordScale,
         /** TikZ 代码骨架（\begin{tikzpicture}...\end{tikzpicture}） */
         String template
 ) {

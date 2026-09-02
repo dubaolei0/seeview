@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -50,8 +49,6 @@ public class FigureLibraryService {
     private static final Pattern TEMPLATE_ID = Pattern.compile("^[a-z0-9][a-z0-9-]{0,60}$");
     /** 数值参数合法格式（含小数；分数/表达式不支持，由前端/模型先换算） */
     private static final Pattern NUMBER_VALUE = Pattern.compile("-?\\d+(\\.\\d+)?");
-    /** TikZ 起始标签：用于在不改字体/线宽的前提下注入坐标尺度。 */
-    private static final Pattern TIKZ_BEGIN = Pattern.compile("\\\\begin\\{tikzpicture\\}(\\[[^\\]]*\\])?");
 
     public FigureLibraryService(TikzCompiler tikzCompiler) {
         this.tikzCompiler = tikzCompiler;
@@ -106,7 +103,7 @@ public class FigureLibraryService {
         if (err != null) {
             throw new IllegalArgumentException("默认参数不合法：" + err);
         }
-        TikzCompiler.Result r = tikzCompiler.compile(defs + "\n" + buildTemplate(t));
+        TikzCompiler.Result r = tikzCompiler.compile(defs + "\n" + t.template().strip());
         if (!r.ok()) {
             throw new IllegalArgumentException("默认参数下模板编译失败，请先修正代码：" + r.error());
         }
@@ -152,7 +149,7 @@ public class FigureLibraryService {
         if (err != null) {
             return new RenderResult(null, err);
         }
-        TikzCompiler.Result r = tikzCompiler.compile(defs + "\n" + buildTemplate(t));
+        TikzCompiler.Result r = tikzCompiler.compile(defs + "\n" + t.template().strip());
         if (!r.ok()) {
             return new RenderResult(null, r.error());
         }
@@ -179,32 +176,11 @@ public class FigureLibraryService {
         if (err != null) {
             return new RenderResult(null, err);
         }
-        TikzCompiler.Result r = tikzCompiler.compile(defs + "\n" + buildTemplate(t));
+        TikzCompiler.Result r = tikzCompiler.compile(defs + "\n" + t.template().strip());
         if (!r.ok()) {
             return new RenderResult(null, r.error());
         }
         return new RenderResult(r.path(), null);
-    }
-
-    /** 根据模板的 coordScale 注入 TikZ 坐标尺度；不缩放线宽和字体。 */
-    private String buildTemplate(FigureTemplate t) {
-        String template = t.template().strip();
-        Double scale = t.coordScale();
-        if (scale == null || Double.compare(scale, 1.0) == 0) {
-            return template;
-        }
-        Matcher m = TIKZ_BEGIN.matcher(template);
-        if (!m.find()) {
-            return template;
-        }
-        StringBuilder begin = new StringBuilder("\\begin{tikzpicture}[x=")
-                .append(num(scale)).append("cm,y=").append(num(scale)).append("cm");
-        String options = m.group(1);
-        if (options != null && !options.isBlank()) {
-            begin.append(", ").append(options, 1, options.length() - 1);
-        }
-        begin.append(']');
-        return m.replaceFirst(Matcher.quoteReplacement(begin.toString()));
     }
 
     /** 渲染结果：成功带 PNG 路径，失败带面向用户的错误摘要 */
@@ -314,9 +290,6 @@ public class FigureLibraryService {
         }
         if (t.name() == null || t.name().isBlank()) {
             throw new IllegalArgumentException("name 不能为空");
-        }
-        if (t.coordScale() != null && (!Double.isFinite(t.coordScale()) || t.coordScale() <= 0)) {
-            throw new IllegalArgumentException("coordScale 需为正数（仅缩放坐标的倍率）");
         }
         // desc 是模型选图与检索的依据，质量直接决定匹配率，强制具体
         if (t.desc() == null || t.desc().strip().length() < 20) {
