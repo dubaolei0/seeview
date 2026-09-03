@@ -106,16 +106,27 @@ public class FigureLibraryService {
         return out;
     }
 
-    /** 按 id 取完整模板；不存在返回 null */
+    /** 按 id 取完整模板；不存在返回 null。id 即文件名（不含 .json），可在子目录任意深度 */
     public synchronized FigureTemplate get(String id) {
+        if (id == null || !TEMPLATE_ID.matcher(id).matches()) return null;
         Path f = figureFile(id);
-        if (!Files.isRegularFile(f)) return null;
+        if (f == null) return null;
         try {
             return readTemplate(f);
         } catch (Exception e) {
             log.warn("图库模板加载失败: {} -> {}", f, e.getMessage());
             return null;
         }
+    }
+
+    /** 按 id 定位模板文件：先看顶层（旧行为），再在子目录里按文件名查找 */
+    private Path figureFile(String id) {
+        Path top = figuresDir().resolve(id + ".json");
+        if (Files.isRegularFile(top)) return top;
+        for (Path f : figureFiles()) {
+            if (f.getFileName().toString().equals(id + ".json")) return f;
+        }
+        return null;
     }
 
     /**
@@ -137,7 +148,9 @@ public class FigureLibraryService {
             throw new IllegalArgumentException("默认参数下模板编译失败，请先修正代码：" + r.error());
         }
         try {
+            // 已有模板原地更新（可能在子目录）；新模板写到 figures/ 顶层
             Path f = figureFile(t.id());
+            if (f == null) f = figuresDir().resolve(t.id() + ".json");
             Files.createDirectories(f.getParent());
             Files.writeString(f, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(t),
                     StandardCharsets.UTF_8);
@@ -150,8 +163,9 @@ public class FigureLibraryService {
 
     /** 删除模板；不存在返回 false */
     public synchronized boolean delete(String id) {
-        if (id == null) return false;
+        if (id == null || !TEMPLATE_ID.matcher(id).matches()) return false;
         Path f = figureFile(id);
+        if (f == null) return false;
         try {
             return Files.deleteIfExists(f);
         } catch (IOException e) {
@@ -432,15 +446,15 @@ public class FigureLibraryService {
         return libraryDir().resolve("figures");
     }
 
-    private Path figureFile(String id) {
-        return figuresDir().resolve(id + ".json");
-    }
-
     private List<Path> figureFiles() {
+        // 递归扫描：figures/ 下可按学科分子目录（如 plane_geometry/）组织模板文件
         try {
             if (!Files.isDirectory(figuresDir())) return List.of();
-            try (var stream = Files.list(figuresDir())) {
-                return stream.filter(f -> f.getFileName().toString().endsWith(".json")).toList();
+            try (var stream = Files.walk(figuresDir())) {
+                return stream.filter(Files::isRegularFile)
+                        .filter(f -> f.getFileName().toString().endsWith(".json"))
+                        .sorted()
+                        .toList();
             }
         } catch (IOException e) {
             log.warn("图库目录读取失败: {}", e.getMessage());
