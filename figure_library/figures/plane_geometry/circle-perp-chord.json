@@ -2,6 +2,7 @@
   "id": "circle-perp-chord",
   "name": "垂径定理（直径平分弦）",
   "category": "平面几何-圆",
+  "parent" : "circle",
   "tags": [
     "圆",
     "弦",

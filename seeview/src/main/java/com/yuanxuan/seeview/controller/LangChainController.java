@@ -1754,10 +1754,18 @@ public class LangChainController {
         sb.append("【可用图库模板】（命题时图形条件优先匹配下列模板；匹配则在该题输出 fig 字段引用模板并填参数，")
                 .append("题干数值必须先落在参数范围内再写进题干；无合适模板时不要强行引用，正常输出 ```tikz 代码块自由绘制；")
                 .append("fig 与 ```tikz 二选一，不要同时输出）\n");
+        // id->名称映射：标注某专用模板的上级通用模板
+        java.util.Map<String, String> names = new java.util.LinkedHashMap<>();
+        for (FigureTemplate.Catalog c : list) names.put(c.id(), c.name());
+        sb.append("（层级说明：模板分 通用 与 专用（专用模板会注明其上级通用模板，如直角三角形的上级是通用三角形）。")
+                .append("多个模板都匹配时必须优先选用 专用 模板，只有专用模板的限定条件或参数范围不满足时才回退其上级 通用 模板）\n");
         int n = 1;
         for (FigureTemplate.Catalog c : list) {
+            String parentNote = c.parent() == null || c.parent().isBlank()
+                    ? "通用" : "专用，上级：" + names.getOrDefault(c.parent(), c.parent());
             sb.append(n++).append(". id=").append(c.id()).append(" ")
-                    .append(c.name()).append("（").append(c.category() == null ? "未分类" : c.category()).append("）：")
+                    .append(c.name()).append("（").append(c.category() == null ? "未分类" : c.category())
+                    .append("，").append(parentNote).append("）：")
                     .append(c.desc() == null ? "" : c.desc()).append('\n');
             if (c.params() != null && !c.params().isEmpty()) {
                 sb.append("   参数：");

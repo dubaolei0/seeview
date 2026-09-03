@@ -2,6 +2,7 @@
   "id": "circle-tangent",
   "name": "圆的切线",
   "category": "平面几何-圆",
+  "parent" : "circle",
   "tags": [
     "圆",
     "切线",

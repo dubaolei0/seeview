@@ -1355,10 +1355,12 @@ async function populateFigureTemplateSelect() {
   const catalog = await loadFigureCatalog();
   // 保留占位项，追加每个模板
   const cur = state.figureTemplateId;
+  // 层级显示：顶级模板在前，专用模板以 └ 前缀缩进挂在其上级之后
   Array.from(catalog.values()).forEach((tpl) => {
     const opt = document.createElement('option');
     opt.value = tpl.id;
-    opt.textContent = `${tpl.name}（${tpl.category || '未分类'}）`;
+    const mark = tpl.parent ? '　└ ' : '';
+    opt.textContent = `${mark}${tpl.name}（${tpl.category || '未分类'}${tpl.parent ? ' · 专用' : ' · 通用'}）`;
     if (cur === tpl.id) opt.selected = true;
     sel.appendChild(opt);
   });

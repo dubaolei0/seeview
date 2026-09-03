@@ -89,6 +89,21 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 var(-
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .fig-card .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
 .fig-card .tag { font-size: 11px; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 1px 9px; }
+.fig-card .lv { font-size: 11px; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+.fig-card .lv.gen { color: var(--ink-3); background: var(--line-2); }
+.fig-card .lv.spec { color: #8a5a00; background: #fdf3e0; }
+.fig-card .card-head { display: flex; align-items: center; gap: 8px; }
+.fig-card .card-head h3 { flex: 1; min-width: 0; }
+/* 专用变体：挂在父卡片下面的缩进子卡片 */
+.child-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--dash); }
+.child-strip .strip-label { font-size: 11px; color: var(--ink-3); align-self: center; white-space: nowrap; }
+.child-chip {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); padding: 5px 10px; cursor: pointer; font-size: 12.5px; color: var(--ink-2);
+  transition: border-color .15s, color .15s;
+}
+.child-chip:hover { border-color: var(--green); color: var(--green); }
+.child-chip .cid { font: 400 10.5px var(--mono); color: var(--ink-3); }
 .fig-card .thumb { width: 100%; height: 110px; object-fit: contain; border: 1px solid var(--line-2); border-radius: 6px; background: var(--line-2); }
 .empty-hint { color: var(--ink-3); text-align: center; padding: 60px 0; font-size: 14px; }
 .empty-hint a { color: var(--green); }
@@ -219,6 +234,11 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.7 var(-
         <input class="input" id="fCategory" placeholder="平面几何 / 立体几何 / 函数图像 / 物理示意图…">
       </div>
       <div class="form-row">
+        <label>上级模板</label>
+        <select class="input" id="fParent"></select>
+        <span class="field-hint">专用模板选其上级通用模板（如直角三角形→通用三角形）；顶级通用模板选「无」；AI 选图时优先专用模板</span>
+      </div>
+      <div class="form-row">
         <label>标签</label>
         <input class="input" id="fTags" placeholder="逗号分隔：三角形, 勾股定理, Rt△">
       </div>
@@ -305,8 +325,20 @@ function renderGroups() {
   $('count').textContent = `共 ${library.length} 个模板`;
   $('emptyHint').style.display = library.length ? 'none' : 'block';
 
+  // id->模板 与 id->直接子模板：层级显示（父卡片下挂专用变体）
+  const byId = new Map(library.map((t) => [t.id, t]));
+  const childrenOf = new Map();
+  for (const t of library) {
+    const p = t.parent;
+    if (!p || !byId.has(p)) continue; // 父不存在按顶级处理
+    if (!childrenOf.has(p)) childrenOf.set(p, []);
+    childrenOf.get(p).push(t);
+  }
+
   const groups = new Map();
   for (const t of library) {
+    const p = t.parent;
+    if (p && byId.has(p)) continue; // 有有效父的模板不单独成卡，挂在父卡片下
     const cat = t.category || '未分类';
     if (!groups.has(cat)) groups.set(cat, []);
     groups.get(cat).push(t);
@@ -319,21 +351,43 @@ function renderGroups() {
     const grid = document.createElement('div');
     grid.className = 'grid';
     for (const t of items) {
-      grid.appendChild(templateCard(t));
+      grid.appendChild(templateCard(t, childrenOf));
     }
     box.appendChild(grid);
   }
 }
 
-function templateCard(t) {
+function templateCard(t, childrenOf) {
   const card = document.createElement('article');
   card.className = 'fig-card';
   card.tabIndex = 0;
+  const badge = t.parent
+    ? `<span class="lv spec">专用</span>`
+    : `<span class="lv gen">通用</span>`;
   card.innerHTML = `
-    <h3>${escapeHtml(t.name || t.id)}</h3>
+    <div class="card-head">
+      <h3>${escapeHtml(t.name || t.id)}</h3>${badge}
+    </div>
     <div class="fid">${escapeHtml(t.id)}</div>
     <p class="fdesc">${escapeHtml(t.desc || '')}</p>
     <div class="tags">${(t.tags || []).slice(0, 6).map((x) => `<span class="tag">${escapeHtml(x)}</span>`).join('')}</div>`;
+  // 直接子模板以小卡片挂在下方（专用变体）
+  const kids = childrenOf ? (childrenOf.get(t.id) || []) : [];
+  if (kids.length) {
+    const strip = document.createElement('div');
+    strip.className = 'child-strip';
+    strip.innerHTML = '<span class="strip-label">专用变体</span>';
+    kids.forEach((k) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'child-chip';
+      chip.title = k.desc || k.id;
+      chip.innerHTML = `${escapeHtml(k.name || k.id)}<span class="cid">${escapeHtml(k.id)}</span>`;
+      chip.addEventListener('click', (e) => { e.stopPropagation(); openEditor(k.id); });
+      strip.appendChild(chip);
+    });
+    card.appendChild(strip);
+  }
   card.addEventListener('click', () => openEditor(t.id));
   card.addEventListener('keydown', (e) => { if (e.key === 'Enter') openEditor(t.id); });
   return card;
@@ -354,7 +408,7 @@ async function openEditor(id) {
 
 function openNew() {
   editing = {
-    id: '', name: '', category: '', tags: [], desc: '', whenNotToUse: '',
+    id: '', name: '', category: '', parent: null, tags: [], desc: '', whenNotToUse: '',
     params: [emptyParam()],
     constraints: [],
     template: ''
@@ -364,12 +418,45 @@ function openNew() {
   openDrawer();
 }
 
+/* 上级模板下拉：图库目录里除自己与自己的后代以外的模板（后端仍会校验，这里先挡住明显误选） */
+function fillParentSelect() {
+  const sel = $('fParent');
+  sel.innerHTML = '';
+  const noneOpt = document.createElement('option');
+  noneOpt.value = '';
+  noneOpt.textContent = '无（顶级通用模板）';
+  sel.appendChild(noneOpt);
+  // 自己及后代不可作上级（防环）
+  const byId = new Map(library.map((t) => [t.id, t]));
+  const banned = new Set();
+  if (editing.id) {
+    let grew = true;
+    banned.add(editing.id);
+    while (grew) {
+      grew = false;
+      for (const t of library) {
+        if (t.parent && banned.has(t.parent) && !banned.has(t.id)) { banned.add(t.id); grew = true; }
+      }
+    }
+  }
+  for (const t of library) {
+    if (banned.has(t.id)) continue;
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = `${t.name || t.id}（${t.id}）`;
+    sel.appendChild(opt);
+  }
+  sel.value = (editing.parent && byId.has(editing.parent)) ? editing.parent : '';
+  sel.onchange = () => { markDirty(); };
+}
+
 function fillForm() {
   $('drawerTitle').textContent = isNew ? '新建模板' : `编辑：${editing.name || editing.id}`;
   $('fId').value = editing.id || '';
   $('fId').disabled = !isNew; // id 即文件名，编辑时不允许改
   $('fName').value = editing.name || '';
   $('fCategory').value = editing.category || '';
+  fillParentSelect();
   $('fTags').value = (editing.tags || []).join(', ');
   $('fDesc').value = editing.desc || '';
   $('fWhenNot').value = editing.whenNotToUse || '';
@@ -385,6 +472,7 @@ function collectForm() {
     id: $('fId').value.trim(),
     name: $('fName').value.trim(),
     category: $('fCategory').value.trim() || '未分类',
+    parent: $('fParent').value || null,
     tags: $('fTags').value.split(/[,，]/).map((s) => s.trim()).filter(Boolean),
     desc: $('fDesc').value.trim(),
     whenNotToUse: $('fWhenNot').value.trim(),
@@ -711,6 +799,7 @@ function syncEditingFromForm() {
   editing.id = $('fId').value.trim();
   editing.name = $('fName').value.trim();
   editing.category = $('fCategory').value.trim();
+  editing.parent = $('fParent').value || null;
   editing.tags = $('fTags').value.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
   editing.desc = $('fDesc').value.trim();
   editing.whenNotToUse = $('fWhenNot').value.trim();

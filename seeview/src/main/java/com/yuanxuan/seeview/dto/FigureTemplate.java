@@ -15,6 +15,8 @@ public record FigureTemplate(
         String id,
         String name,
         String category,
+        /** 上级通用模板 id（如 right-triangle 的 parent 是 general-triangle）；顶级通用模板为 null */
+        String parent,
         List<String> tags,
         /** 一句话描述：什么题适合用这个模板（模型选图与检索的依据，必填且具体） */
         String desc,
@@ -46,7 +48,7 @@ public record FigureTemplate(
     }
 
     /** 目录条目：图库列表与提示词注入用，不含 template 大字段 */
-    public record Catalog(String id, String name, String category,
+    public record Catalog(String id, String name, String category, String parent,
                           List<String> tags, String desc, String whenNotToUse,
                           List<Param> params) {
     }

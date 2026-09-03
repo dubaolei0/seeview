@@ -2,6 +2,7 @@
   "id": "circle-sector",
   "name": "弦·弧·扇形·弓形",
   "category": "平面几何-圆",
+  "parent" : "circle",
   "tags": [
     "圆",
     "弦",

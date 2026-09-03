@@ -63,16 +63,45 @@ public class FigureLibraryService {
             try {
                 FigureTemplate t = readTemplate(f);
                 if (t != null) {
-                    out.add(new FigureTemplate.Catalog(t.id(), t.name(), t.category(),
+                    out.add(new FigureTemplate.Catalog(t.id(), t.name(), t.category(), t.parent(),
                             t.tags(), t.desc(), t.whenNotToUse(), t.params()));
                 }
             } catch (Exception e) {
                 log.warn("图库模板加载失败，跳过: {} -> {}", f, e.getMessage());
             }
         }
+        // 排序：分类 -> 分类内 DFS（顶级模板按名称排，其专用变体紧随其后，保证层级连续）
+        java.util.Map<String, String> parentOf = new java.util.HashMap<>();
+        for (FigureTemplate.Catalog c : out) parentOf.put(c.id(), c.parent());
+        java.util.Map<String, java.util.List<FigureTemplate.Catalog>> kidsOf = new java.util.HashMap<>();
+        for (FigureTemplate.Catalog c : out) {
+            if (c.parent() != null && !c.parent().isBlank() && parentOf.containsKey(c.parent())) {
+                kidsOf.computeIfAbsent(c.parent(), k -> new ArrayList<>()).add(c);
+            }
+        }
+        java.util.Map<String, Integer> order = new java.util.HashMap<>();
+        for (java.util.List<FigureTemplate.Catalog> kids : kidsOf.values()) {
+            kids.sort((a, b) -> String.valueOf(a.name()).compareTo(String.valueOf(b.name())));
+        }
+        for (FigureTemplate.Catalog c : out) {
+            if (c.parent() != null && parentOf.containsKey(c.parent())) continue; // 只从顶级出发
+            java.util.Deque<FigureTemplate.Catalog> stack = new java.util.ArrayDeque<>();
+            stack.push(c);
+            while (!stack.isEmpty()) {
+                FigureTemplate.Catalog cur = stack.pop();
+                order.putIfAbsent(cur.id(), order.size());
+                java.util.List<FigureTemplate.Catalog> kids = kidsOf.getOrDefault(cur.id(), List.of());
+                for (int i = kids.size() - 1; i >= 0; i--) stack.push(kids.get(i)); // 倒序入栈保持正序出栈
+            }
+        }
+        // 父模板不存在/环上的残余模板（理论上被校验挡住，防御性兜底）排到最后
+        for (FigureTemplate.Catalog c : out) order.putIfAbsent(c.id(), Integer.MAX_VALUE);
         out.sort((a, b) -> {
             int c = String.valueOf(a.category()).compareTo(String.valueOf(b.category()));
-            return c != 0 ? c : String.valueOf(a.name()).compareTo(String.valueOf(b.name()));
+            if (c != 0) return c;
+            int o = Integer.compare(order.get(a.id()), order.get(b.id()));
+            if (o != 0) return o;
+            return String.valueOf(a.name()).compareTo(String.valueOf(b.name()));
         });
         return out;
     }
@@ -290,6 +319,29 @@ public class FigureLibraryService {
         }
         if (t.name() == null || t.name().isBlank()) {
             throw new IllegalArgumentException("name 不能为空");
+        }
+        // 上级模板可选：须是图库中已存在的其他模板，且父链不能成环（自己是自己的祖先）
+        if (t.parent() != null && !t.parent().isBlank()) {
+            if (t.parent().equals(t.id())) {
+                throw new IllegalArgumentException("parent 不能指向自己");
+            }
+            if (!TEMPLATE_ID.matcher(t.parent()).matches()) {
+                throw new IllegalArgumentException("parent 须是模板 id（小写字母/数字/连字符）");
+            }
+            FigureTemplate p = get(t.parent());
+            if (p == null) {
+                throw new IllegalArgumentException("上级模板不存在: " + t.parent());
+            }
+            // 沿父链上溯，出现自己即成环
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            String cur = p.id();
+            while (cur != null && seen.add(cur)) {
+                if (cur.equals(t.id())) {
+                    throw new IllegalArgumentException("parent 链成环: " + t.parent());
+                }
+                FigureTemplate next = get(cur);
+                cur = next == null ? null : (next.parent() == null || next.parent().isBlank() ? null : next.parent());
+            }
         }
         // desc 是模型选图与检索的依据，质量直接决定匹配率，强制具体
         if (t.desc() == null || t.desc().strip().length() < 20) {

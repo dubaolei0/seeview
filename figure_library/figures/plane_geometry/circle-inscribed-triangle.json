@@ -2,6 +2,7 @@
   "id": "circle-inscribed-triangle",
   "name": "圆内接三角形（外接圆）",
   "category": "平面几何-圆",
+  "parent" : "circle",
   "tags": [
     "圆",
     "内接三角形",
