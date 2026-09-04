@@ -42,3 +42,11 @@ lecture_pipeline/*.log
 
 ### Claude Code 本地数据（工具会话/记忆，不应上传）###
 .claude/
+
+### 图库模板编译验证脚本与产物（本地复用，不入版本库）###
+figure_library/compile_test/
+
+### 生题产物与本地会话状态 ###
+question_output/
+.plans/
+.ssq-ai-dlc/

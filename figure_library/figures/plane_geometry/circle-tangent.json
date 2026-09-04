@@ -17,7 +17,7 @@
     "夹角"
   ],
   "desc": "圆的切线问题：切线过切点 A 且垂直于切点半径 OA（性质/判定），可加圆外点 P 与切线长 PA，也可加第二条切线 PB 构成双切线（切线长定理）。A 由位置角 anglea 决定，P 由 OP 距离 opdist 决定（切线长 = 根号(OP^2-r^2)），第二切点 B 自动由 OA⊥PA 解出。可勾选切点半径与直角记号、连心线 OP、切线长等长记号、切点弦 AB、两切线夹角 ∠APB、圆心角 ∠AOB，覆盖切线⊥半径、PA=PB、OP 平分夹角、∠APB 与 ∠AOB 互补等考点。",
-  "whenNotToUse": "含弦/扇形/弓形等圆内元素用 circle-sector；含垂径定理用 circle-perp-chord；弦切角问题用 chord-tangent-angle；切割线定理、割线定理（圆幂）用 circle-power-point；三角形内切圆用 incircle。",
+  "whenNotToUse": "含弦/扇形/弓形等圆内元素用 circle；含垂径定理用 circle-perp-chord；弦切角问题用 chord-tangent-angle；切割线定理、割线定理（圆幂）用 circle-power-point；三角形内切圆用 incircle。",
   "params": [
     {
       "name": "radius",

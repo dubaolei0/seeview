@@ -14,7 +14,7 @@
     "三角形与圆"
   ],
   "desc": "三角形 ABC 及其内切圆：三角形按 SAS 给定（AB、AC、∠A），内心 I 与内切圆半径 r 由公式自动算出（r = 面积 / 半周长）。可勾选内心标注、内心到三边切点的半径与直角记号、三边切点 D/E/F、三条角平分线，覆盖内心是角平分线交点、r 与面积/周长关系、切线长 AE=AF、BF=BD、CD=CE 等考点。",
-  "whenNotToUse": "外接圆用 circle-inscribed-triangle；单条切线用 circle-tangent；圆外一点的双切线用 circle-two-tangents；只画三角形不含内切圆用 general-triangle。",
+  "whenNotToUse": "外接圆用 circle-inscribed-triangle；单条切线或圆外一点的双切线用 circle-tangent；只画三角形不含内切圆用 general-triangle。",
   "params": [
     {
       "name": "ab",

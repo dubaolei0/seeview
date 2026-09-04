@@ -20,7 +20,7 @@
     "旋转不变性"
   ],
   "desc": "圆的弦 AB 与垂直平分 AB 的那条直径 CD 构成的基本图形：A、B 位置角自由给定（anglea/angleb），直径 CD 的方向自动取两者角度的中点，垂足 M 即弦中点。可勾选弦 AB、直径 CD（可切换为虚线以表示对称轴）、弦心距 OM、垂足直角记号、AM=MB 等长记号、弧 AC=BC 等量记号、半径 OA/OB、旋转角 ∠AOB 的角弧、A 关于圆心的对称点 E 与直径 AE。既覆盖垂径定理（垂直于弦的直径平分弦及弦所对的两条弧、弦长与弦心距与半径的勾股关系），也覆盖圆是轴对称图形（对称轴为任意直径）、圆是中心对称图形（对称中心为圆心）与旋转不变性等考点。各点字母均可配置以匹配题干。",
-  "whenNotToUse": "无弦结构的单圆/半径/直径问题用 circle；只需圆心角、弧、扇形、弓形用 circle-sector；含切线用 circle-tangent 系列；圆内两条弦相交于一点（相交弦定理）用 intersecting-chords；圆周角与圆心角关系、圆内接三角形用 circle-inscribed-triangle。",
+  "whenNotToUse": "无弦结构的单圆/半径/直径、圆心角、弧、扇形、弓形问题用 circle；含切线用 circle-tangent 系列；圆内或圆外一点引出的两条弦/割线（圆幂定理）用 circle-power-point；圆周角与圆心角关系、圆内接三角形用 circle-inscribed-triangle。",
   "params": [
     {
       "name": "radius",
