@@ -4,7 +4,7 @@
   "category" : "平面几何",
   "tags" : [ "四边形", "任意四边形", "多边形", "对角线", "内角", "中点四边形", "中点", "面积" ],
   "desc" : "任意平面凸四边形问题：内角和、对角线、中点四边形（顺次连接各边中点恒为平行四边形）、面积分割。由三边长 ab/bc/cd 及内角∠B（angleb）、∠C（anglec）决定形状，第四边 AD 自动闭合，顶点 A B C D 自动标注（逆时针）；四个角均可标注直角记号（rightmarka/b/c/d，矩形/正方形/垂直条件时用）；两条对角线 AC/BD（showdiagac/showdiagbd，两线同开时交点自动标 O）；四边中点 E/F/G/H（showe/showf/showg/showh 分别是 AB/BC/CD/DA 边中点）与中点四边形（showmidseg，虚线连接 E-F-G-H）。覆盖不规则四边形、矩形、正方形、梯形（AD 为斜腰）等各类凸四边形。",
-  "whenNotToUse" : "含内切圆/外接圆、动点轨迹、复合图形、需画高线或角平分线等辅助线时用自由 TikZ；平行四边形/菱形/矩形等带专门性质讨论的专题建议后续建专用模板（本模板可先通用兜底）；凹四边形（有一内角大于 180°）不适用，用自由 TikZ。",
+  "whenNotToUse" : "含内切圆/外接圆、动点轨迹、复合图形、需画高线或角平分线等辅助线时用自由 TikZ；平行四边形用 parallelogram，菱形用 rhombus，矩形用 rectangle，正方形用 square，上下底平行的梯形用 trapezoid；凹四边形（有一内角大于 180°）不适用，用自由 TikZ。",
   "params" : [ {
     "name" : "ab",
     "type" : "number",
