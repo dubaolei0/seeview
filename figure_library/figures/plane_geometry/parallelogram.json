@@ -1,0 +1,84 @@
+{
+  "id" : "parallelogram",
+  "name" : "平行四边形",
+  "category" : "平面几何",
+  "parent" : "general-quadrilateral",
+  "tags" : [ "四边形", "平行四边形", "对边平行", "对边相等", "对角相等", "对角线互相平分", "面积", "高线", "垂线" ],
+  "desc" : "平行四边形问题：对边平行且相等、对角相等、对角线互相平分、面积=底×高。由邻边 ab、ad 与夹角∠A 决定形状，顶点 A B C D 自动标注；可画 D 向直线 AB 所作的垂线/高线（虚线，垂足 H 带直角记号，垂足字母可指定须与题干一致，∠A 为钝角时垂足落在 AB 延长线上）、C 向直线 AB 所作的高线、两条对角线 AC/BD（同开时交点自动标 O）。",
+  "whenNotToUse" : "矩形/正方形（角为直角）用对应专用模板；邻边相等的菱形用 rhombus 模板；需角平分线、延长线另画、平移全等等辅助线或含动点时用自由 TikZ。",
+  "params" : [ {
+    "name" : "ab",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "5",
+    "desc" : "底边 AB 长度"
+  }, {
+    "name" : "ad",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "3",
+    "desc" : "邻边 AD 长度"
+  }, {
+    "name" : "anglea",
+    "type" : "number",
+    "min" : 15,
+    "max" : 165,
+    "options" : null,
+    "default" : "60",
+    "desc" : "∠DAB 的度数（15~165，避免退化；大于 90 时 D 向 AB 的垂足落在 AB 延长线上）"
+  }, {
+    "name" : "showheightd",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画 D 向直线 AB 所作的垂线/高线（虚线，垂足带直角记号并标字母；题干出现\"过 D 作 DH⊥AB\"\"D 到 AB 的距离\"时开启）"
+  }, {
+    "name" : "showheightc",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画 C 向直线 AB 所作的垂线/高线（虚线，垂足带直角记号并标字母；两条高线同时开启时是平行线段）"
+  }, {
+    "name" : "footlabel",
+    "type" : "string",
+    "min" : null,
+    "max" : null,
+    "options" : [ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" ],
+    "default" : "H",
+    "desc" : "D 的垂线垂足字母（默认 H，须与题干一致且不与顶点字母冲突）"
+  }, {
+    "name" : "cfootlabel",
+    "type" : "string",
+    "min" : null,
+    "max" : null,
+    "options" : [ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" ],
+    "default" : "G",
+    "desc" : "C 的垂线垂足字母（默认 G，须与题干一致且不与顶点字母冲突）"
+  }, {
+    "name" : "showdiagac",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画对角线 AC"
+  }, {
+    "name" : "showdiagbd",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画对角线 BD；与 showdiagac 同开时交点自动画小圆点并标 O"
+  } ],
+  "constraints" : [ ],
+  "template" : "% 参数由系统自动注入；平行四边形：对边平行且相等\n% 视觉归一化：把较长的一边缩放到 6 个坐标单位，线宽字体不缩放；装饰尺寸已做 figscale 补偿\n\\pgfmathsetmacro{\\Dx}{\\ad*cos(\\anglea)}\n\\pgfmathsetmacro{\\Dy}{\\ad*sin(\\anglea)}\n\\pgfmathsetmacro{\\figscale}{6 / max(\\ab, \\ad)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\ab,0);\n  \\coordinate (C) at (\\ab+\\Dx,\\Dy);\n  \\coordinate (D) at (\\Dx,\\Dy);\n  \\draw[thick] (A) -- (B) -- (C) -- (D) -- cycle;\n  % D 向直线 AB 的垂线（虚线；钝角时垂足在 AB 延长线上，延长线段自动补画到垂足）\n  \\ifnum\\showheightd>0\n    \\ifdim\\Dx pt<0 pt\n      \\draw[dashed] (0,0) -- (\\Dx,0);\n    \\else\n      \\ifdim\\Dx pt>\\ab pt\n        \\draw[dashed] (\\ab,0) -- (\\Dx,0);\n      \\fi\n    \\fi\n    \\draw[dashed] (D) -- (\\Dx,0);\n    \\fill (\\Dx,0) circle [radius=1.6pt];\n    \\node[below=3pt] at (\\Dx,0) {$\\footlabel$};\n    \\pgfmathsetmacro{\\rmh}{min(0.3/\\figscale, \\Dy*0.2)}\n    % 直角记号画在竖线两侧中有水平线段的一侧（钝角垂足在 A 左侧延长线上时朝右，即图形内侧）\n    \\ifdim\\Dx pt<\\rmh pt\n      \\draw[thick] (\\Dx,\\rmh) -- (\\Dx+\\rmh,\\rmh) -- (\\Dx+\\rmh,0);\n    \\else\n      \\draw[thick] (\\Dx-\\rmh,0) -- (\\Dx-\\rmh,\\rmh) -- (\\Dx,\\rmh);\n    \\fi\n  \\fi\n  % C 向直线 AB 的垂线（虚线；钝角时垂足在 AB 延长线上，延长线段自动补画到垂足）\n  \\ifnum\\showheightc>0\n    \\pgfmathsetmacro{\\Cx}{\\ab+\\Dx}\n    \\ifdim\\Cx pt<0 pt\n      \\draw[dashed] (0,0) -- (\\Cx,0);\n    \\else\n      \\ifdim\\Cx pt>\\ab pt\n        \\draw[dashed] (\\ab,0) -- (\\Cx,0);\n      \\fi\n    \\fi\n    \\draw[dashed] (C) -- (\\Cx,0);\n    \\fill (\\Cx,0) circle [radius=1.6pt];\n    \\node[below=3pt] at (\\Cx,0) {$\\cfootlabel$};\n    \\pgfmathsetmacro{\\rmc}{min(0.3/\\figscale, \\Dy*0.2)}\n    % 直角记号画在竖线两侧中有水平线段的一侧（钝角垂足在 A 左侧延长线上时朝右，即图形内侧）\n    \\ifdim\\Cx pt<\\rmc pt\n      \\draw[thick] (\\Cx,\\rmc) -- (\\Cx+\\rmc,\\rmc) -- (\\Cx+\\rmc,0);\n    \\else\n      \\draw[thick] (\\Cx-\\rmc,0) -- (\\Cx-\\rmc,\\rmc) -- (\\Cx,\\rmc);\n    \\fi\n  \\fi\n  % 对角线 AC\n  \\ifnum\\showdiagac>0\n    \\draw[thick] (A) -- (C);\n  \\fi\n  % 对角线 BD\n  \\ifnum\\showdiagbd>0\n    \\draw[thick] (B) -- (D);\n  \\fi\n  % 对角线交点：两线同开时画小圆点并标 O（O 为 AC 中点；标签沿两对角线较宽夹角的角平分线偏移以避开两条线，偏移量做 figscale 补偿）\n  \\ifnum\\showdiagac>0\n    \\ifnum\\showdiagbd>0\n      \\pgfmathsetmacro{\\Ox}{(\\ab+\\Dx)/2}\n      \\pgfmathsetmacro{\\Oy}{\\Dy/2}\n      \\fill (\\Ox,\\Oy) circle [radius=1.6pt];\n      \\pgfmathsetmacro{\\uax}{(\\ab+\\Dx)/sqrt((\\ab+\\Dx)^2+\\Dy*\\Dy)}\n      \\pgfmathsetmacro{\\uay}{\\Dy/sqrt((\\ab+\\Dx)^2+\\Dy*\\Dy)}\n      \\pgfmathsetmacro{\\ubx}{(\\Dx-\\ab)/sqrt((\\Dx-\\ab)^2+\\Dy*\\Dy)}\n      \\pgfmathsetmacro{\\uby}{\\Dy/sqrt((\\Dx-\\ab)^2+\\Dy*\\Dy)}\n      \\pgfmathsetmacro{\\pax}{\\uax+\\ubx}\n      \\pgfmathsetmacro{\\pay}{\\uay+\\uby}\n      \\pgfmathsetmacro{\\pbx}{\\uax-\\ubx}\n      \\pgfmathsetmacro{\\pby}{\\uay-\\uby}\n      \\pgfmathsetmacro{\\pal}{sqrt(\\pax*\\pax+\\pay*\\pay)}\n      \\pgfmathsetmacro{\\pbl}{sqrt(\\pbx*\\pbx+\\pby*\\pby)}\n      \\ifdim\\pal pt<\\pbl pt\n        \\pgfmathsetmacro{\\wx}{\\pax/\\pal}\n        \\pgfmathsetmacro{\\wy}{\\pay/\\pal}\n      \\else\n        \\pgfmathsetmacro{\\wx}{\\pbx/\\pbl}\n        \\pgfmathsetmacro{\\wy}{\\pby/\\pbl}\n      \\fi\n      \\ifdim\\wy pt<0 pt\n        \\pgfmathsetmacro{\\wx}{-\\wx}\n        \\pgfmathsetmacro{\\wy}{-\\wy}\n      \\fi\n      \\pgfmathsetmacro{\\roff}{0.32/\\figscale}\n      \\node at (\\Ox+\\roff*\\wx, \\Oy+\\roff*\\wy) {$O$};\n    \\fi\n  \\fi\n  % 顶点标签\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below right=3pt] at (B) {$B$};\n  \\node[above right=3pt] at (C) {$C$};\n  \\node[above left=3pt] at (D) {$D$};\n\\end{tikzpicture}"
+}

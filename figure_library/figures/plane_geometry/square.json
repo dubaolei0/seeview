@@ -1,0 +1,76 @@
+{
+  "id" : "square",
+  "name" : "正方形",
+  "category" : "平面几何",
+  "parent" : "general-quadrilateral",
+  "tags" : [ "四边形", "正方形", "四边相等", "直角", "对角线相等", "对角线垂直平分", "面积", "边上动点", "折叠" ],
+  "desc" : "正方形问题：四边相等、四角为直角、对角线相等且互相垂直平分（交点即中心）、面积=边长平方=对角线平方一半；边上有点（如 E 在 BC 上、F 在 CD 上）的面积分割/折叠/全等问题也用本模板。由边长 side 决定形状，顶点 A B C D 自动标注；可在 BC 边画点 E（距 B 为 be，按题干 BE 长度填）、在 CD 边画点 F（距 C 为 cf，按题干 CF 长度填），实心圆点+标签；可画两条对角线（交点自动标 O，对角线与边成 45°）。",
+  "whenNotToUse" : "邻边不等的矩形用 rectangle 模板；角非直角的菱形用 rhombus 模板；点不在 BC/CD 边上（如在对角线、AB/AD 边或形外）、需连线 AE/AF 构成三角形阴影、旋转 45° 摆放或嵌套正方形时用自由 TikZ。",
+  "params" : [ {
+    "name" : "side",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "4",
+    "desc" : "边长（四边相等）"
+  }, {
+    "name" : "showdiag",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画两条对角线 AC、BD，交点自动画小圆点并标 O"
+  }, {
+    "name" : "showe",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否在 BC 边上画点 E（题干出现\"点 E 在 BC 上\"时开启）"
+  }, {
+    "name" : "be",
+    "type" : "number",
+    "min" : 0,
+    "max" : null,
+    "options" : null,
+    "default" : "2",
+    "desc" : "点 E 到 B 的距离（沿 BC 边，按题干 BE 长度填，须不超过边长 side）"
+  }, {
+    "name" : "elabel",
+    "type" : "string",
+    "min" : null,
+    "max" : null,
+    "options" : [ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" ],
+    "default" : "E",
+    "desc" : "BC 边上点的字母（默认 E，须与题干一致）"
+  }, {
+    "name" : "showf",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否在 CD 边上画点 F（题干出现\"点 F 在 CD 上\"时开启）"
+  }, {
+    "name" : "cf",
+    "type" : "number",
+    "min" : 0,
+    "max" : null,
+    "options" : null,
+    "default" : "1",
+    "desc" : "点 F 到 C 的距离（沿 CD 边，按题干 CF 长度填，须不超过边长 side；题干给 DF 时填 side 减 DF）"
+  }, {
+    "name" : "flabel",
+    "type" : "string",
+    "min" : null,
+    "max" : null,
+    "options" : [ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" ],
+    "default" : "F",
+    "desc" : "CD 边上点的字母（默认 F，须与题干一致）"
+  } ],
+  "constraints" : [ "be <= side", "cf <= side" ],
+  "template" : "% 参数由系统自动注入；正方形：四边相等四角为直角，对角线相等且互相垂直平分\n% 视觉归一化：边长缩放到 6 个坐标单位，线宽字体不缩放；装饰尺寸已做 figscale 补偿\n\\pgfmathsetmacro{\\figscale}{6 / \\side}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\side,0);\n  \\coordinate (C) at (\\side,\\side);\n  \\coordinate (D) at (0,\\side);\n  \\draw[thick] (A) -- (B) -- (C) -- (D) -- cycle;\n  % 对角线与中心 O（对角线恰 45°，标签放正下方位于两射线正中的干净扇区）\n  \\ifnum\\showdiag>0\n    \\draw[thick] (A) -- (C);\n    \\draw[thick] (B) -- (D);\n    \\fill (\\side/2,\\side/2) circle [radius=1.6pt];\n    \\node[below] at (\\side/2,{\\side/2 - 0.28/\\figscale}) {$O$};\n  \\fi\n  % BC 边上的点 E（距 B 为 be）\n  \\ifnum\\showe>0\n    \\fill (\\side,\\be) circle [radius=1.6pt];\n    \\node[right=3pt] at (\\side,\\be) {$\\elabel$};\n  \\fi\n  % CD 边上的点 F（距 C 为 cf）\n  \\ifnum\\showf>0\n    \\fill (\\side-\\cf,\\side) circle [radius=1.6pt];\n    \\node[above=3pt] at (\\side-\\cf,\\side) {$\\flabel$};\n  \\fi\n  % 顶点标签\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below right=3pt] at (B) {$B$};\n  \\node[above right=3pt] at (C) {$C$};\n  \\node[above left=3pt] at (D) {$D$};\n\\end{tikzpicture}"
+}

@@ -1,0 +1,44 @@
+{
+  "id" : "rectangle",
+  "name" : "矩形",
+  "category" : "平面几何",
+  "parent" : "general-quadrilateral",
+  "tags" : [ "四边形", "矩形", "长方形", "直角", "对角线相等", "对角线互相平分", "勾股定理", "面积" ],
+  "desc" : "矩形问题：对边相等、四角为直角、对角线相等且互相平分、勾股定理求边或对角线、面积=长×宽。由两邻边 ab、ad 决定形状，顶点 A B C D 自动标注；∠A 直角记号可开关；可画两条对角线（同开时交点自动标 O，OA=OB=OC=OD）。",
+  "whenNotToUse" : "正方形（邻边相等）用 square 模板；角非直角的平行四边形用 parallelogram 模板；需旋转摆放、含动点或折叠加辅助线时用自由 TikZ。",
+  "params" : [ {
+    "name" : "ab",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "6",
+    "desc" : "长边 AB 长度"
+  }, {
+    "name" : "ad",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "4",
+    "desc" : "短边 AD 长度"
+  }, {
+    "name" : "rightmark",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "true",
+    "desc" : "是否画∠A 的直角记号"
+  }, {
+    "name" : "showdiag",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画两条对角线 AC、BD，交点自动画小圆点并标 O"
+  } ],
+  "constraints" : [ ],
+  "template" : "% 参数由系统自动注入；矩形：四角为直角，对角线相等且互相平分\n% 视觉归一化：把较长的一边缩放到 6 个坐标单位，线宽字体不缩放；装饰尺寸已做 figscale 补偿\n\\pgfmathsetmacro{\\figscale}{6 / max(\\ab, \\ad)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\ab,0);\n  \\coordinate (C) at (\\ab,\\ad);\n  \\coordinate (D) at (0,\\ad);\n  \\draw[thick] (A) -- (B) -- (C) -- (D) -- cycle;\n  % ∠A 直角记号\n  \\ifnum\\rightmark>0\n    \\pgfmathsetmacro{\\rm}{min(0.3/\\figscale, \\ab*0.2, \\ad*0.2)}\n    \\draw[thick] (\\rm,0) -- (\\rm,\\rm) -- (0,\\rm);\n  \\fi\n  % 对角线与交点 O（标签按宽高比放干净扇区：宽→正下、高→正右，避开对角线）\n  \\ifnum\\showdiag>0\n    \\draw[thick] (A) -- (C);\n    \\draw[thick] (B) -- (D);\n    \\fill (\\ab/2,\\ad/2) circle [radius=1.6pt];\n    \\ifdim\\ab pt>\\ad pt\n      \\node[below] at (\\ab/2,{\\ad/2 - 0.28/\\figscale}) {$O$};\n    \\else\n      \\node[right] at ({\\ab/2 + 0.28/\\figscale},\\ad/2) {$O$};\n    \\fi\n  \\fi\n  % 顶点标签\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below right=3pt] at (B) {$B$};\n  \\node[above right=3pt] at (C) {$C$};\n  \\node[above left=3pt] at (D) {$D$};\n\\end{tikzpicture}"
+}

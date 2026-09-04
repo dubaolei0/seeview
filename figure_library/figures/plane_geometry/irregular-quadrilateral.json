@@ -1,0 +1,68 @@
+{
+  "id" : "irregular-quadrilateral",
+  "name" : "不规则四边形（折叠原图）",
+  "category" : "平面几何",
+  "parent" : "general-quadrilateral",
+  "tags" : [ "四边形", "不规则四边形", "折叠", "翻折", "折痕", "折叠问题", "原图" ],
+  "desc" : "不规则四边形（折叠问题原图）：矩形/纸片折叠类题目的原图，四个顶点位置完全自由——A(0,0)、B 在 x 轴（由 ab 定）、D 由 ad 与∠A 定、C 由坐标 cx、cy 直接给定；可画对角线 AC/BD（折痕常过对角线）。翻折后的图形请另行配图或用自由 TikZ。",
+  "whenNotToUse" : "上下底平行的梯形用 trapezoid 模板；平行四边形/菱形/矩形/正方形用对应专用模板；凹四边形（C 落在三角形 ABD 内部）会画出自交图形，不适用，请用自由 TikZ；需翻折后重合图形（对称虚线）时用自由 TikZ。",
+  "params" : [ {
+    "name" : "ab",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "6",
+    "desc" : "边 AB 长度（A(0,0)、B 在 x 轴）"
+  }, {
+    "name" : "ad",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "4",
+    "desc" : "边 AD 长度"
+  }, {
+    "name" : "anglea",
+    "type" : "number",
+    "min" : 10,
+    "max" : 170,
+    "options" : null,
+    "default" : "60",
+    "desc" : "∠DAB 的度数（10~170，避免退化）"
+  }, {
+    "name" : "cx",
+    "type" : "number",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "5",
+    "desc" : "顶点 C 的横坐标（自由定位，保证凸四边形）"
+  }, {
+    "name" : "cy",
+    "type" : "number",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "5",
+    "desc" : "顶点 C 的纵坐标（自由定位，保证凸四边形）"
+  }, {
+    "name" : "showdiagac",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画对角线 AC（折叠折痕常沿对角线）"
+  }, {
+    "name" : "showdiagbd",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画对角线 BD"
+  } ],
+  "constraints" : [ ],
+  "template" : "% 参数由系统自动注入；不规则四边形：C 点坐标直接由参数给定（折叠问题原图）\n% 视觉归一化：把最长边缩放到 6 个坐标单位，线宽字体不缩放\n\\pgfmathsetmacro{\\Dx}{\\ad*cos(\\anglea)}\n\\pgfmathsetmacro{\\Dy}{\\ad*sin(\\anglea)}\n\\pgfmathsetmacro{\\bc}{sqrt((\\cx-\\ab)^2 + \\cy*\\cy)}\n\\pgfmathsetmacro{\\cd}{sqrt((\\cx-\\Dx)^2 + (\\cy-\\Dy)^2)}\n\\pgfmathsetmacro{\\figscale}{6 / max(\\ab, \\ad, \\bc, \\cd)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\ab,0);\n  \\coordinate (D) at (\\Dx,\\Dy);\n  \\coordinate (C) at (\\cx,\\cy);\n  \\draw[thick] (A) -- (B) -- (C) -- (D) -- cycle;\n  % 对角线 AC\n  \\ifnum\\showdiagac>0\n    \\draw[thick] (A) -- (C);\n  \\fi\n  % 对角线 BD\n  \\ifnum\\showdiagbd>0\n    \\draw[thick] (B) -- (D);\n  \\fi\n  % 顶点标签\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below right=3pt] at (B) {$B$};\n  \\node[above right=3pt] at (C) {$C$};\n  \\node[above left=3pt] at (D) {$D$};\n\\end{tikzpicture}"
+}
