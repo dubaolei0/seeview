@@ -1,0 +1,100 @@
+{
+  "id" : "trapezoid",
+  "name" : "梯形",
+  "category" : "平面几何",
+  "parent" : "general-quadrilateral",
+  "tags" : [ "四边形", "梯形", "等腰梯形", "直角梯形", "上底", "下底", "中位线", "高线", "面积" ],
+  "desc" : "梯形问题：上下底水平平行，由下底 ab、上底 topbase、高 h、上底偏移 dx 决定形状（等腰梯形取 dx=(ab-topbase)/2，直角梯形取 dx=0，右端直角取 dx=ab-topbase），顶点 A B C D 自动标注；可画中位线（虚线连两腰中点 M、N）、D 到下底的高线（虚线，垂足带直角记号，垂足字母可指定须与题干一致）、四个角的直角记号。",
+  "whenNotToUse" : "上下底不平行的一般四边形用 general-quadrilateral 模板；需腰长相等记号、动点或平移旋转辅助线时用自由 TikZ；直角梯形(dx=0)时高线与腰 AD 重合，改用 rightmarka 而不是 showheight。",
+  "params" : [ {
+    "name" : "ab",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "6",
+    "desc" : "下底 AB 长度"
+  }, {
+    "name" : "topbase",
+    "type" : "number",
+    "min" : 0.5,
+    "max" : null,
+    "options" : null,
+    "default" : "3",
+    "desc" : "上底 CD 长度（须小于下底）"
+  }, {
+    "name" : "h",
+    "type" : "number",
+    "min" : 0.5,
+    "max" : null,
+    "options" : null,
+    "default" : "3",
+    "desc" : "高（上下底距离）"
+  }, {
+    "name" : "dx",
+    "type" : "number",
+    "min" : 0,
+    "max" : null,
+    "options" : null,
+    "default" : "1.5",
+    "desc" : "上底左端点 D 的横坐标：等腰梯形取 (ab-topbase)/2，直角梯形取 0，右端直角取 ab-topbase"
+  }, {
+    "name" : "showmid",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画中位线（虚线，连两腰中点 M、N 并标注）"
+  }, {
+    "name" : "showheight",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画 D 到下底 AB 的高线（虚线，垂足带直角记号）；dx=0 时与腰 AD 重合，请改用 rightmarka"
+  }, {
+    "name" : "footlabel",
+    "type" : "string",
+    "min" : null,
+    "max" : null,
+    "options" : [ "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" ],
+    "default" : "H",
+    "desc" : "高线垂足字母（默认 H，须与题干一致且不与顶点字母冲突）"
+  }, {
+    "name" : "rightmarka",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠A 直角记号（直角梯形 dx=0 时开启）"
+  }, {
+    "name" : "rightmarkb",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠B 直角记号（右端直角 dx=ab-topbase 时开启）"
+  }, {
+    "name" : "rightmarkc",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠C 直角记号（右端直角 dx=ab-topbase 时开启）"
+  }, {
+    "name" : "rightmarkd",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠D 直角记号（直角梯形 dx=0 时开启）"
+  } ],
+  "constraints" : [ "topbase < ab", "dx >= 0", "dx + topbase <= ab" ],
+  "template" : "% 参数由系统自动注入；梯形：上下底水平平行\n% 视觉归一化：把最长边（含两腰）缩放到 6 个坐标单位，线宽字体不缩放；装饰尺寸已做 figscale 补偿\n\\pgfmathsetmacro{\\legad}{sqrt(\\dx*\\dx + \\h*\\h)}\n\\pgfmathsetmacro{\\legbc}{sqrt((\\ab-\\dx-\\topbase)^2 + \\h*\\h)}\n\\pgfmathsetmacro{\\figscale}{6 / max(\\ab, \\topbase, \\legad, \\legbc)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\ab,0);\n  \\coordinate (D) at (\\dx,\\h);\n  \\coordinate (C) at (\\dx+\\topbase,\\h);\n  \\draw[thick] (A) -- (B) -- (C) -- (D) -- cycle;\n  % ∠A 直角记号（沿 AB 与 AD 方向）\n  \\ifnum\\rightmarka>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3/\\figscale, \\ab*0.2, \\legad*0.2)}\n    \\pgfmathsetmacro{\\uax}{\\dx/\\legad}\n    \\pgfmathsetmacro{\\uay}{\\h/\\legad}\n    \\draw[thick] (\\rmsz,0) -- (\\rmsz+\\rmsz*\\uax,\\rmsz*\\uay) -- (\\rmsz*\\uax,\\rmsz*\\uay);\n  \\fi\n  % ∠B 直角记号（沿 BA 与 BC 方向）\n  \\ifnum\\rightmarkb>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3/\\figscale, \\ab*0.2, \\legbc*0.2)}\n    \\pgfmathsetmacro{\\ubx}{(\\dx+\\topbase-\\ab)/\\legbc}\n    \\pgfmathsetmacro{\\uby}{\\h/\\legbc}\n    \\draw[thick] (\\ab-\\rmsz,0) -- (\\ab-\\rmsz+\\rmsz*\\ubx,\\rmsz*\\uby) -- (\\ab+\\rmsz*\\ubx,\\rmsz*\\uby);\n  \\fi\n  % ∠C 直角记号（沿 CB 与 CD 方向）\n  \\ifnum\\rightmarkc>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3/\\figscale, \\topbase*0.2, \\legbc*0.2)}\n    \\pgfmathsetmacro{\\ucx}{(\\dx+\\topbase-\\ab)/\\legbc}\n    \\pgfmathsetmacro{\\ucy}{\\h/\\legbc}\n    \\draw[thick] (\\dx+\\topbase-\\rmsz*\\ucx,\\h-\\rmsz*\\ucy) -- (\\dx+\\topbase-\\rmsz*\\ucx-\\rmsz,\\h-\\rmsz*\\ucy) -- (\\dx+\\topbase-\\rmsz,\\h);\n  \\fi\n  % ∠D 直角记号（沿 DC 与 DA 方向）\n  \\ifnum\\rightmarkd>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3/\\figscale, \\topbase*0.2, \\legad*0.2)}\n    \\pgfmathsetmacro{\\udx}{-\\dx/\\legad}\n    \\pgfmathsetmacro{\\udy}{-\\h/\\legad}\n    \\draw[thick] (\\dx+\\rmsz,\\h) -- (\\dx+\\rmsz+\\rmsz*\\udx,\\h+\\rmsz*\\udy) -- (\\dx+\\rmsz*\\udx,\\h+\\rmsz*\\udy);\n  \\fi\n  % 中位线（虚线，连两腰中点 M、N）\n  \\ifnum\\showmid>0\n    \\coordinate (M) at (\\dx/2,\\h/2);\n    \\coordinate (N) at ({(\\ab+\\dx+\\topbase)/2},\\h/2);\n    \\draw[dashed] (M) -- (N);\n    \\fill (M) circle [radius=1.6pt];\n    \\fill (N) circle [radius=1.6pt];\n    \\node[left=3pt] at (M) {$M$};\n    \\node[right=3pt] at (N) {$N$};\n  \\fi\n  % D 到下底的高线（虚线，垂足带直角记号）\n  \\ifnum\\showheight>0\n    \\draw[dashed] (D) -- (\\dx,0);\n    \\fill (\\dx,0) circle [radius=1.6pt];\n    \\node[below=3pt] at (\\dx,0) {$\\footlabel$};\n    \\pgfmathsetmacro{\\rmh}{min(0.3/\\figscale, \\h*0.2, \\dx*0.5)}\n    \\draw[thick] (\\dx-\\rmh,0) -- (\\dx-\\rmh,\\rmh) -- (\\dx,\\rmh);\n  \\fi\n  % 顶点标签\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below right=3pt] at (B) {$B$};\n  \\node[above right=3pt] at (C) {$C$};\n  \\node[above left=3pt] at (D) {$D$};\n\\end{tikzpicture}"
+}

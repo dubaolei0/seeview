@@ -1,0 +1,76 @@
+{
+  "id" : "cyclic-quadrilateral",
+  "name" : "圆内接四边形",
+  "category" : "平面几何",
+  "parent" : "general-quadrilateral",
+  "tags" : [ "四边形", "圆内接四边形", "外接圆", "圆周角", "对角互补", "托勒密定理", "圆" ],
+  "desc" : "圆内接四边形问题：对角互补、圆周角定理、同弧所对圆周角相等、托勒密定理（对角线乘积=两组对边乘积之和）。四个顶点由圆心角 anga<angb<angc<angd（逆时针序）放在半径 r 的圆上，外接圆实线绘制，顶点 A B C D 自动标注；可画圆心 O（自动标注）与两条对角线 AC/BD。",
+  "whenNotToUse" : "不需要外接圆实线的普通四边形用 general-quadrilateral 模板；圆与切线/割线/圆心角组合用 circle 系列模板；顶点不在同一圆上、含动点沿圆弧运动时用自由 TikZ。",
+  "params" : [ {
+    "name" : "r",
+    "type" : "number",
+    "min" : 1,
+    "max" : null,
+    "options" : null,
+    "default" : "3",
+    "desc" : "外接圆半径"
+  }, {
+    "name" : "anga",
+    "type" : "number",
+    "min" : 0,
+    "max" : 360,
+    "options" : null,
+    "default" : "30",
+    "desc" : "顶点 A 的圆心角（逆时针序：anga<angb<angc<angd）"
+  }, {
+    "name" : "angb",
+    "type" : "number",
+    "min" : 0,
+    "max" : 360,
+    "options" : null,
+    "default" : "120",
+    "desc" : "顶点 B 的圆心角"
+  }, {
+    "name" : "angc",
+    "type" : "number",
+    "min" : 0,
+    "max" : 360,
+    "options" : null,
+    "default" : "220",
+    "desc" : "顶点 C 的圆心角"
+  }, {
+    "name" : "angd",
+    "type" : "number",
+    "min" : 0,
+    "max" : 360,
+    "options" : null,
+    "default" : "310",
+    "desc" : "顶点 D 的圆心角"
+  }, {
+    "name" : "showcenter",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画圆心并标注 O（连半径可用自由 TikZ 补）"
+  }, {
+    "name" : "showdiagac",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画对角线 AC（托勒密定理/圆周角常用）"
+  }, {
+    "name" : "showdiagbd",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画对角线 BD"
+  } ],
+  "constraints" : [ "angb - anga > 10", "angc - angb > 10", "angd - angc > 10", "360 - angd + anga > 10" ],
+  "template" : "% 参数由系统自动注入；圆内接四边形：四顶点在同一圆上，外接圆实线\n% 视觉归一化：外接圆直径缩放到 6 个坐标单位，线宽字体不缩放；顶点标签放圆外\n\\pgfmathsetmacro{\\figscale}{3 / \\r}\n\\pgfmathsetmacro{\\lab}{\\r + 0.45/\\figscale}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % 外接圆\n  \\draw[thick] (0,0) circle [radius=\\r];\n  % 四个顶点按圆心角逆时针放置\n  \\coordinate (A) at (\\anga:\\r);\n  \\coordinate (B) at (\\angb:\\r);\n  \\coordinate (C) at (\\angc:\\r);\n  \\coordinate (D) at (\\angd:\\r);\n  \\draw[thick] (A) -- (B) -- (C) -- (D) -- cycle;\n  % 对角线 AC\n  \\ifnum\\showdiagac>0\n    \\draw[thick] (A) -- (C);\n  \\fi\n  % 对角线 BD\n  \\ifnum\\showdiagbd>0\n    \\draw[thick] (B) -- (D);\n  \\fi\n  % 圆心 O\n  \\ifnum\\showcenter>0\n    \\fill (0,0) circle [radius=1.6pt];\n    \\node[below=3pt] at (0,0) {$O$};\n  \\fi\n  % 顶点标签（圆外沿半径方向）\n  \\node at (\\anga:\\lab) {$A$};\n  \\node at (\\angb:\\lab) {$B$};\n  \\node at (\\angc:\\lab) {$C$};\n  \\node at (\\angd:\\lab) {$D$};\n\\end{tikzpicture}"
+}

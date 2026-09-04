@@ -1,0 +1,139 @@
+{
+  "id" : "general-quadrilateral",
+  "name" : "通用四边形",
+  "category" : "平面几何",
+  "tags" : [ "四边形", "任意四边形", "多边形", "对角线", "内角", "中点四边形", "中点", "面积" ],
+  "desc" : "任意平面凸四边形问题：内角和、对角线、中点四边形（顺次连接各边中点恒为平行四边形）、面积分割。由三边长 ab/bc/cd 及内角∠B（angleb）、∠C（anglec）决定形状，第四边 AD 自动闭合，顶点 A B C D 自动标注（逆时针）；四个角均可标注直角记号（rightmarka/b/c/d，矩形/正方形/垂直条件时用）；两条对角线 AC/BD（showdiagac/showdiagbd，两线同开时交点自动标 O）；四边中点 E/F/G/H（showe/showf/showg/showh 分别是 AB/BC/CD/DA 边中点）与中点四边形（showmidseg，虚线连接 E-F-G-H）。覆盖不规则四边形、矩形、正方形、梯形（AD 为斜腰）等各类凸四边形。",
+  "whenNotToUse" : "含内切圆/外接圆、动点轨迹、复合图形、需画高线或角平分线等辅助线时用自由 TikZ；平行四边形/菱形/矩形等带专门性质讨论的专题建议后续建专用模板（本模板可先通用兜底）；凹四边形（有一内角大于 180°）不适用，用自由 TikZ。",
+  "params" : [ {
+    "name" : "ab",
+    "type" : "number",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "5",
+    "desc" : "边 AB 长度"
+  }, {
+    "name" : "bc",
+    "type" : "number",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "4",
+    "desc" : "边 BC 长度"
+  }, {
+    "name" : "cd",
+    "type" : "number",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "3",
+    "desc" : "边 CD 长度"
+  }, {
+    "name" : "angleb",
+    "type" : "number",
+    "min" : 10,
+    "max" : 170,
+    "options" : null,
+    "default" : "100",
+    "desc" : "∠B（顶点 B 处内角）的度数（10~170，避免退化）"
+  }, {
+    "name" : "anglec",
+    "type" : "number",
+    "min" : 10,
+    "max" : 170,
+    "options" : null,
+    "default" : "110",
+    "desc" : "∠C（顶点 C 处内角）的度数（10~170，避免退化）"
+  }, {
+    "name" : "rightmarka",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠A 是否画直角记号（∠A 为直角时开启，如正方形/矩形）"
+  }, {
+    "name" : "rightmarkb",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠B 是否画直角记号（∠B 为直角时开启）"
+  }, {
+    "name" : "rightmarkc",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠C 是否画直角记号（∠C 为直角时开启）"
+  }, {
+    "name" : "rightmarkd",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "∠D 是否画直角记号（∠D 为直角时开启）"
+  }, {
+    "name" : "showdiagac",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画对角线 AC（实线）"
+  }, {
+    "name" : "showdiagbd",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画对角线 BD（实线）；与 showdiagac 同开时交点自动画小圆点并标 O"
+  }, {
+    "name" : "showe",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否标注 AB 边中点 E"
+  }, {
+    "name" : "showf",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否标注 BC 边中点 F"
+  }, {
+    "name" : "showg",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否标注 CD 边中点 G"
+  }, {
+    "name" : "showh",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否标注 DA 边中点 H"
+  }, {
+    "name" : "showmidseg",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否画中点四边形（虚线，顺次连接 E-F-G-H，恒为平行四边形；建议配合打开 showe/f/g/h 标出中点）"
+  } ],
+  "constraints" : [ ],
+  "template" : "% 视觉归一化：把最长边（含自动闭合的 DA）缩放到 6 个坐标单位（默认 1 单位 = 1cm，即最长边恒约 6cm；参数声明区由系统按参数值自动生成）；\n% 只缩放坐标，线宽、字体、虚线样式保持不变；直角记号等装饰尺寸已除以 figscale 补偿，不随归一化缩小。\n% DA 长度先由参数算出（A(0,0)、C、D 坐标代入两点距离公式），供 figscale 使用\n\\pgfmathsetmacro{\\adlen}{sqrt((\\ab - \\bc*cos(\\angleb) + \\cd*cos(\\angleb+\\anglec))^2 + (\\bc*sin(\\angleb) - \\cd*sin(\\angleb+\\anglec))^2)}\n\\pgfmathsetmacro{\\figscale}{6 / max(\\ab, \\bc, \\cd, \\adlen)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % 四个顶点：A、B 在底边，C 由 bc 与∠B 定，D 由 cd 与∠C 定，DA 自动闭合（顶点逆时针）\n  \\coordinate (A) at (0,0);\n  \\coordinate (B) at (\\ab,0);\n  \\pgfmathsetmacro{\\Cx}{\\ab - \\bc*cos(\\angleb)}\n  \\pgfmathsetmacro{\\Cy}{\\bc*sin(\\angleb)}\n  \\coordinate (C) at (\\Cx,\\Cy);\n  \\pgfmathsetmacro{\\Dx}{\\Cx + \\cd*cos(\\angleb+\\anglec)}\n  \\pgfmathsetmacro{\\Dy}{\\Cy - \\cd*sin(\\angleb+\\anglec)}\n  \\coordinate (D) at (\\Dx,\\Dy);\n  % 闭合边 DA 长度（归一化与直角记号用）\n  \\pgfmathsetmacro{\\adlen}{sqrt(\\Dx*\\Dx + \\Dy*\\Dy)}\n  % 四边中点：E=AB中点, F=BC中点, G=CD中点, H=DA中点\n  \\coordinate (E) at (\\ab/2,0);\n  \\pgfmathsetmacro{\\Fx}{(\\ab + \\Cx)/2}\n  \\pgfmathsetmacro{\\Fy}{\\Cy/2}\n  \\coordinate (F) at (\\Fx,\\Fy);\n  \\pgfmathsetmacro{\\Gx}{(\\Cx + \\Dx)/2}\n  \\pgfmathsetmacro{\\Gy}{(\\Cy + \\Dy)/2}\n  \\coordinate (G) at (\\Gx,\\Gy);\n  \\coordinate (H) at (\\Dx/2,\\Dy/2);\n  % 四边形四边\n  \\draw[thick] (A) -- (B) -- (C) -- (D) -- cycle;\n  % ∠A 直角记号（A 在(0,0)，沿 AB、AD 两边方向）\n  \\ifnum\\rightmarka>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3/\\figscale, \\ab*0.2, \\adlen*0.2)}\n    \\pgfmathsetmacro{\\rmavx}{\\Dx/\\adlen}\n    \\pgfmathsetmacro{\\rmavy}{\\Dy/\\adlen}\n    \\draw[thick] (\\rmsz,0) -- (\\rmsz+\\rmsz*\\rmavx,\\rmsz*\\rmavy) -- (\\rmsz*\\rmavx,\\rmsz*\\rmavy);\n  \\fi\n  % ∠B 直角记号（B 在(\\ab,0)，沿 BA、BC 两边方向）\n  \\ifnum\\rightmarkb>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3/\\figscale, \\ab*0.2, \\bc*0.2)}\n    \\pgfmathsetmacro{\\rmbux}{(\\Cx-\\ab)/\\bc}\n    \\pgfmathsetmacro{\\rmbuy}{\\Cy/\\bc}\n    \\draw[thick] (\\ab-\\rmsz,0) -- (\\ab-\\rmsz+\\rmsz*\\rmbux,\\rmsz*\\rmbuy) -- (\\ab+\\rmsz*\\rmbux,\\rmsz*\\rmbuy);\n  \\fi\n  % ∠C 直角记号（C 在(\\Cx,\\Cy)，沿 CB、CD 两边方向）\n  \\ifnum\\rightmarkc>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3/\\figscale, \\bc*0.2, \\cd*0.2)}\n    \\pgfmathsetmacro{\\rmcux}{(\\ab-\\Cx)/\\bc}\n    \\pgfmathsetmacro{\\rmcuy}{-\\Cy/\\bc}\n    \\pgfmathsetmacro{\\rmcvx}{(\\Dx-\\Cx)/\\cd}\n    \\pgfmathsetmacro{\\rmcvy}{(\\Dy-\\Cy)/\\cd}\n    \\draw[thick] (\\Cx+\\rmsz*\\rmcux,\\Cy+\\rmsz*\\rmcuy) -- (\\Cx+\\rmsz*\\rmcux+\\rmsz*\\rmcvx,\\Cy+\\rmsz*\\rmcuy+\\rmsz*\\rmcvy) -- (\\Cx+\\rmsz*\\rmcvx,\\Cy+\\rmsz*\\rmcvy);\n  \\fi\n  % ∠D 直角记号（D 在(\\Dx,\\Dy)，沿 DC、DA 两边方向）\n  \\ifnum\\rightmarkd>0\n    \\pgfmathsetmacro{\\rmsz}{min(0.3/\\figscale, \\cd*0.2, \\adlen*0.2)}\n    \\pgfmathsetmacro{\\rmdux}{(\\Cx-\\Dx)/\\cd}\n    \\pgfmathsetmacro{\\rmduy}{(\\Cy-\\Dy)/\\cd}\n    \\pgfmathsetmacro{\\rmdvx}{-\\Dx/\\adlen}\n    \\pgfmathsetmacro{\\rmdvy}{-\\Dy/\\adlen}\n    \\draw[thick] (\\Dx+\\rmsz*\\rmdux,\\Dy+\\rmsz*\\rmduy) -- (\\Dx+\\rmsz*\\rmdux+\\rmsz*\\rmdvx,\\Dy+\\rmsz*\\rmduy+\\rmsz*\\rmdvy) -- (\\Dx+\\rmsz*\\rmdvx,\\Dy+\\rmsz*\\rmdvy);\n  \\fi\n  % 对角线（实线）\n  \\ifnum\\showdiagac>0\n    \\draw[thick] (A) -- (C);\n  \\fi\n  \\ifnum\\showdiagbd>0\n    \\draw[thick] (B) -- (D);\n  \\fi\n  % 对角线交点：两线同开时画小圆点并标 O（绝对半径，不随坐标缩放；标签沿两对角线较宽夹角的角平分线偏移以避开两条线，偏移量做 figscale 补偿）\n  \\ifnum\\showdiagac>0\n    \\ifnum\\showdiagbd>0\n      \\pgfmathsetmacro{\\tq}{\\ab*\\Dy/(\\Cx*\\Dy-\\Cy*\\Dx+\\Cy*\\ab)}\n      \\pgfmathsetmacro{\\Ox}{\\tq*\\Cx}\n      \\pgfmathsetmacro{\\Oy}{\\tq*\\Cy}\n      \\fill (\\Ox,\\Oy) circle [radius=1.6pt];\n      \\pgfmathsetmacro{\\uax}{\\Cx/sqrt(\\Cx*\\Cx+\\Cy*\\Cy)}\n      \\pgfmathsetmacro{\\uay}{\\Cy/sqrt(\\Cx*\\Cx+\\Cy*\\Cy)}\n      \\pgfmathsetmacro{\\ubx}{(\\Dx-\\ab)/sqrt((\\Dx-\\ab)^2+\\Dy*\\Dy)}\n      \\pgfmathsetmacro{\\uby}{\\Dy/sqrt((\\Dx-\\ab)^2+\\Dy*\\Dy)}\n      \\pgfmathsetmacro{\\pax}{\\uax+\\ubx}\n      \\pgfmathsetmacro{\\pay}{\\uay+\\uby}\n      \\pgfmathsetmacro{\\pbx}{\\uax-\\ubx}\n      \\pgfmathsetmacro{\\pby}{\\uay-\\uby}\n      \\pgfmathsetmacro{\\pal}{sqrt(\\pax*\\pax+\\pay*\\pay)}\n      \\pgfmathsetmacro{\\pbl}{sqrt(\\pbx*\\pbx+\\pby*\\pby)}\n      \\ifdim\\pal pt<\\pbl pt\n        \\pgfmathsetmacro{\\wx}{\\pax/\\pal}\n        \\pgfmathsetmacro{\\wy}{\\pay/\\pal}\n      \\else\n        \\pgfmathsetmacro{\\wx}{\\pbx/\\pbl}\n        \\pgfmathsetmacro{\\wy}{\\pby/\\pbl}\n      \\fi\n      \\ifdim\\wy pt<0 pt\n        \\pgfmathsetmacro{\\wx}{-\\wx}\n        \\pgfmathsetmacro{\\wy}{-\\wy}\n      \\fi\n      \\pgfmathsetmacro{\\roff}{0.32/\\figscale}\n      \\node at (\\Ox+\\roff*\\wx, \\Oy+\\roff*\\wy) {$O$};\n    \\fi\n  \\fi\n  % 中点四边形（虚线，顺次连接 E-F-G-H，恒为平行四边形）\n  \\ifnum\\showmidseg>0\n    \\draw[dashed] (E) -- (F) -- (G) -- (H) -- cycle;\n  \\fi\n  % 中点处画实心小圆点（绝对半径 1.6pt，不随坐标缩放，明确标出边上有个点）\n  \\ifnum\\showe>0\n    \\fill (E) circle [radius=1.6pt];\n  \\fi\n  \\ifnum\\showf>0\n    \\fill (F) circle [radius=1.6pt];\n  \\fi\n  \\ifnum\\showg>0\n    \\fill (G) circle [radius=1.6pt];\n  \\fi\n  \\ifnum\\showh>0\n    \\fill (H) circle [radius=1.6pt];\n  \\fi\n  % 顶点标签（顶点逆时针，标签放外侧）\n  \\node[below left=3pt] at (A) {$A$};\n  \\node[below=3pt] at (B) {$B$};\n  \\node[above right=3pt] at (C) {$C$};\n  \\node[above=3pt] at (D) {$D$};\n  % 中点标签：根据对应 bool 显示\n  \\ifnum\\showe>0\n    \\node[below=3pt] at (E) {$E$};\n  \\fi\n  \\ifnum\\showf>0\n    \\node[right=3pt] at (F) {$F$};\n  \\fi\n  \\ifnum\\showg>0\n    \\node[above=3pt] at (G) {$G$};\n  \\fi\n  \\ifnum\\showh>0\n    \\node[left=3pt] at (H) {$H$};\n  \\fi\n\\end{tikzpicture}"
+}
