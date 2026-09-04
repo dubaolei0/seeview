@@ -1,6 +1,6 @@
 {
   "id": "circle-tangent",
-  "name": "圆的切线",
+  "name": "圆的切线（单切线与双切线）",
   "category": "平面几何-圆",
   "parent": "circle",
   "tags": [
@@ -10,10 +10,14 @@
     "切线长",
     "切线长定理",
     "切线的性质",
-    "切线的判定"
+    "切线的判定",
+    "双切线",
+    "圆外点",
+    "切点弦",
+    "夹角"
   ],
-  "desc": "圆的切线问题：切线 l 过切点 T 且垂直于切点半径 OT（性质/判定），切线长定理（圆外一点 P 到圆的切线长 PT）。T 由位置角 anglea 决定，可勾选切点半径与直角记号、切线 l、圆外点 P 与切线长 PT，覆盖切线与半径垂直、切线长相等等考点。",
-  "whenNotToUse": "含弦/扇形/弓形等圆内元素用 circle-sector；含垂径定理用 circle-perp-chord；切线与其他图形复合（如切线+内接三角形）、双切线夹角问题建议用自由 TikZ 补画。",
+  "desc": "圆的切线问题：切线过切点 A 且垂直于切点半径 OA（性质/判定），可加圆外点 P 与切线长 PA，也可加第二条切线 PB 构成双切线（切线长定理）。A 由位置角 anglea 决定，P 由 OP 距离 opdist 决定（切线长 = 根号(OP^2-r^2)），第二切点 B 自动由 OA⊥PA 解出。可勾选切点半径与直角记号、连心线 OP、切线长等长记号、切点弦 AB、两切线夹角 ∠APB、圆心角 ∠AOB，覆盖切线⊥半径、PA=PB、OP 平分夹角、∠APB 与 ∠AOB 互补等考点。",
+  "whenNotToUse": "含弦/扇形/弓形等圆内元素用 circle-sector；含垂径定理用 circle-perp-chord；弦切角问题用 chord-tangent-angle；切割线定理、割线定理（圆幂）用 circle-power-point；三角形内切圆用 incircle。",
   "params": [
     {
       "name": "radius",
@@ -27,20 +31,20 @@
     {
       "name": "anglea",
       "type": "number",
-      "min": 5,
-      "max": 175,
+      "min": 0,
+      "max": 355,
       "options": null,
-      "default": "30",
-      "desc": "切点 T 的位置角（度，从正 x 轴逆时针）"
+      "default": "60",
+      "desc": "第一切点 A 的位置角（度，0 为正右方，逆时针为正）；控制整幅图的朝向"
     },
     {
-      "name": "showradius",
-      "type": "bool",
-      "min": null,
-      "max": null,
+      "name": "opdist",
+      "type": "number",
+      "min": 1.2,
+      "max": 20,
       "options": null,
-      "default": "true",
-      "desc": "是否画切点半径 OT 并标直角记号（OT⊥切线 l）"
+      "default": "5",
+      "desc": "圆外点 P 到圆心 O 的距离 OP（须明显大于半径；越接近半径两切点越靠近）。仅在画出 P 或第二条切线时影响图形"
     },
     {
       "name": "showtangent",
@@ -49,7 +53,7 @@
       "max": null,
       "options": null,
       "default": "true",
-      "desc": "是否画切线 l（过切点 T 垂直于 OT）"
+      "desc": "是否画第一条切线（未画圆外点 P 时画成过切点 A 的整条直线 l，画了 P 时画成线段 PA）"
     },
     {
       "name": "showpoint",
@@ -58,10 +62,82 @@
       "max": null,
       "options": null,
       "default": "false",
-      "desc": "是否标圆外点 P 与切线长 PT"
+      "desc": "是否标出圆外点 P 与切线长 PA（打开第二条切线或连心线时自动标出 P，无需再开此项）"
     },
     {
-      "name": "labelt",
+      "name": "showsecond",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画第二条切线 PB（切点 B，构成双切线；切线长定理 PA=PB）"
+    },
+    {
+      "name": "showradius",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画切点半径 OA（含第二切线时同时画 OB）并标直角记号（切线⊥切点半径）"
+    },
+    {
+      "name": "showline",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画连心线 OP（OP 平分两切线夹角，且垂直平分切点弦 AB）；会自动标出 P"
+    },
+    {
+      "name": "showequalmark",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否在两条切线上标等长记号（切线长定理 PA=PB）；需同时打开第二条切线"
+    },
+    {
+      "name": "showchord",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画切点弦 AB；需同时打开第二条切线"
+    },
+    {
+      "name": "showangle",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画两切线夹角 ∠APB 的角弧；需同时打开第二条切线"
+    },
+    {
+      "name": "showcentralangle",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画圆心角 ∠AOB 的角弧（与 ∠APB 互补）；需同时打开第二条切线"
+    },
+    {
+      "name": "showcenter",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画出圆心 O 并标注"
+    },
+    {
+      "name": "labelta",
       "type": "string",
       "min": null,
       "max": null,
@@ -93,8 +169,44 @@
         "Y",
         "Z"
       ],
-      "default": "T",
-      "desc": "切点字母（须与题干一致，默认 T）"
+      "default": "A",
+      "desc": "第一切点字母（须与题干一致，默认 A；单切线题常用 T）"
+    },
+    {
+      "name": "labeltb",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z"
+      ],
+      "default": "B",
+      "desc": "第二切点字母（须与题干一致，默认 B）"
     },
     {
       "name": "labelp",
@@ -131,17 +243,10 @@
       ],
       "default": "P",
       "desc": "圆外点字母（须与题干一致，默认 P）"
-    },
-    {
-      "name": "ptlen",
-      "type": "number",
-      "min": 0.5,
-      "max": 8,
-      "options": null,
-      "default": "2.5",
-      "desc": "切线长 PT（P 沿切线方向到切点 T 的距离，需 showpoint 打开；切线会自动延长到覆盖 P）"
     }
   ],
-  "constraints": [],
-  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{30} \\def\\showradius{1} \\def\\showtangent{1} \\def\\showpoint{0} \\def\\labelt{T} \\def\\labelp{P} \\def\\ptlen{2.5}\n% 视觉归一化：把圆直径缩放到 6cm，保证图形视觉大小稳定。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\pgfmathsetmacro{\\Tx}{\\radius*cos(\\anglea)}\n\\pgfmathsetmacro{\\Ty}{\\radius*sin(\\anglea)}\n\\pgfmathsetmacro{\\tdx}{cos(\\anglea+90)}\n\\pgfmathsetmacro{\\tdy}{sin(\\anglea+90)}\n% 切线半长：按半径成比例（等价于 3.3/figscale），保证视觉长度恒定；打开外点 P 时延长到覆盖 P\n\\pgfmathsetmacro{\\tlen}{max(\\radius*1.1, \\showpoint*\\ptlen*1.1)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (T) at (\\Tx,\\Ty);\n  % 圆\n  \\draw[thick] (O) circle [radius=\\radius];\n  % 切线 l：过切点 T 沿垂直于 OT 的方向向两侧延伸\n  \\ifnum\\showtangent>0\n    \\draw[thick] ({\\Tx + \\tlen*\\tdx},{\\Ty + \\tlen*\\tdy}) -- ({\\Tx - \\tlen*\\tdx},{\\Ty - \\tlen*\\tdy});\n    \\node[left=2pt] at ({\\Tx - 0.82*\\tlen*\\tdx},{\\Ty - 0.82*\\tlen*\\tdy}) {$l$};\n  \\fi\n  % 切点半径 OT + 直角记号（OT 与切线垂直）\n  \\ifnum\\showradius>0\n    \\draw[thick] (O) -- (T);\n    \\pgfmathsetmacro{\\rs}{min(0.28/\\figscale, \\radius*0.16)}\n    \\pgfmathsetmacro{\\qax}{\\Tx - \\rs*cos(\\anglea)}\n    \\pgfmathsetmacro{\\qay}{\\Ty - \\rs*sin(\\anglea)}\n    \\pgfmathsetmacro{\\qbx}{\\Tx + \\rs*\\tdx}\n    \\pgfmathsetmacro{\\qby}{\\Ty + \\rs*\\tdy}\n    \\pgfmathsetmacro{\\qcx}{\\qax + \\rs*\\tdx}\n    \\pgfmathsetmacro{\\qcy}{\\qay + \\rs*\\tdy}\n    \\draw[thick] (\\qax,\\qay) -- (\\qcx,\\qcy) -- (\\qbx,\\qby);\n  \\fi\n  % 切点 T（恒标注，与是否画半径无关）\n  \\fill (T) circle [radius=\\dotr pt];\n  \\node at ({1.15*\\Tx},{1.15*\\Ty}) {$\\labelt$};\n  % 外点 P 与切线长 PT（沿切线方向）\n  \\ifnum\\showpoint>0\n    \\pgfmathsetmacro{\\Px}{\\Tx + \\ptlen*\\tdx}\n    \\pgfmathsetmacro{\\Py}{\\Ty + \\ptlen*\\tdy}\n    \\coordinate (P) at (\\Px,\\Py);\n    \\draw[thick] (T) -- (P);\n    \\fill (P) circle [radius=\\dotr pt];\n    \\node[above right=3pt] at (P) {$\\labelp$};\n  \\fi\n  % 圆心 O\n  \\fill (O) circle [radius=\\dotr pt];\n  \\node[below left=3pt] at (O) {$O$};\n\\end{tikzpicture}"
+  "constraints": [
+    "opdist > radius * 1.1"
+  ],
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{60} \\def\\opdist{5} \\def\\showtangent{1} \\def\\showpoint{0} \\def\\showsecond{0} \\def\\showradius{1} \\def\\showline{0} \\def\\showequalmark{0} \\def\\showchord{0} \\def\\showangle{0} \\def\\showcentralangle{0} \\def\\showcenter{1} \\def\\labelta{A} \\def\\labeltb{B} \\def\\labelp{P}\n% 第二条切线与连心线都必然经过 P，故只要画它们就一定要画出 P\n\\pgfmathsetmacro{\\pshown}{max(\\showpoint,\\showsecond,\\showline)}\n% 切点位置：由 OA⊥PA 得 ∠AOP = arccos(radius/opdist)；切线长 PA = sqrt(OP^2 - r^2)\n\\pgfmathsetmacro{\\tha}{acos(\\radius/\\opdist)}\n\\pgfmathsetmacro{\\tlen}{sqrt(\\opdist*\\opdist - \\radius*\\radius)}\n% 第二切点 B 与 A 关于连心线 OP 对称；OP 方向为 anglea - tha\n\\pgfmathsetmacro{\\angleb}{\\anglea - 2*\\tha}\n\\pgfmathsetmacro{\\axang}{\\anglea - \\tha}\n% 视觉归一化：画出 P 时最宽跨度为圆最远端到 P，否则只有圆与切线，按直径归一\n\\pgfmathsetmacro{\\extent}{\\pshown > 0 ? (\\radius + \\opdist) : 2.4*\\radius}\n\\pgfmathsetmacro{\\figscale}{6 / \\extent}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\pgfmathsetmacro{\\loff}{0.34/\\figscale}\n\\pgfmathsetmacro{\\Ax}{\\radius*cos(\\anglea)}\n\\pgfmathsetmacro{\\Ay}{\\radius*sin(\\anglea)}\n\\pgfmathsetmacro{\\Bx}{\\radius*cos(\\angleb)}\n\\pgfmathsetmacro{\\By}{\\radius*sin(\\angleb)}\n% A 指向 P 的单位向量：OA⊥AP 且 P 在 A 的顺时针侧，故方向恒为 anglea-90（B 侧同理为 angleb+90）\n\\pgfmathsetmacro{\\tax}{cos(\\anglea-90)}\n\\pgfmathsetmacro{\\tay}{sin(\\anglea-90)}\n\\pgfmathsetmacro{\\tbx}{cos(\\angleb+90)}\n\\pgfmathsetmacro{\\tby}{sin(\\angleb+90)}\n\\pgfmathsetmacro{\\Px}{\\Ax + \\tlen*\\tax}\n\\pgfmathsetmacro{\\Py}{\\Ay + \\tlen*\\tay}\n% 切线段越过切点的少量出头量；无 P 时切线画成直线，半长按半径成比例\n\\pgfmathsetmacro{\\ovs}{0.15*\\radius}\n\\pgfmathsetmacro{\\llen}{1.1*\\radius}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (A) at (\\Ax,\\Ay);\n  \\coordinate (B) at (\\Bx,\\By);\n  \\coordinate (P) at (\\Px,\\Py);\n  \\draw[thick] (O) circle [radius=\\radius];\n  % 连心线 OP\n  \\ifnum\\showline>0\n    \\draw[thick] (O) -- (P);\n  \\fi\n  % 切点弦 AB（先画，避免压住切线）\n  \\ifnum\\showsecond>0\n    \\ifnum\\showchord>0\n      \\draw[thick] (A) -- (B);\n    \\fi\n  \\fi\n  % 第一条切线：有 P 时画线段 PA，无 P 时画过 A 的整条直线 l\n  \\ifnum\\showtangent>0\n    \\ifdim\\pshown pt>0pt\n      \\draw[thick] (P) -- ({\\Ax - \\ovs*\\tax},{\\Ay - \\ovs*\\tay});\n    \\else\n      \\draw[thick] ({\\Ax + \\llen*\\tax},{\\Ay + \\llen*\\tay}) -- ({\\Ax - \\llen*\\tax},{\\Ay - \\llen*\\tay});\n      \\node at ({\\Ax - 0.9*\\llen*\\tax + 0.14*\\radius*cos(\\anglea)},{\\Ay - 0.9*\\llen*\\tay + 0.14*\\radius*sin(\\anglea)}) {$l$};\n    \\fi\n  \\fi\n  % 第二条切线 PB\n  \\ifnum\\showsecond>0\n    \\draw[thick] (P) -- ({\\Bx - \\ovs*\\tbx},{\\By - \\ovs*\\tby});\n  \\fi\n  % 切点半径 + 直角记号（切线⊥切点半径）\n  \\ifnum\\showradius>0\n    \\draw[thick] (O) -- (A);\n    \\pgfmathsetmacro{\\rms}{min(0.26/\\figscale, \\radius*0.16, \\tlen*0.16)}\n    \\draw[thick] ({\\Ax - \\rms*cos(\\anglea)},{\\Ay - \\rms*sin(\\anglea)}) -- ({\\Ax - \\rms*cos(\\anglea) + \\rms*\\tax},{\\Ay - \\rms*sin(\\anglea) + \\rms*\\tay}) -- ({\\Ax + \\rms*\\tax},{\\Ay + \\rms*\\tay});\n    \\ifnum\\showsecond>0\n      \\draw[thick] (O) -- (B);\n      \\draw[thick] ({\\Bx - \\rms*cos(\\angleb)},{\\By - \\rms*sin(\\angleb)}) -- ({\\Bx - \\rms*cos(\\angleb) + \\rms*\\tbx},{\\By - \\rms*sin(\\angleb) + \\rms*\\tby}) -- ({\\Bx + \\rms*\\tbx},{\\By + \\rms*\\tby});\n    \\fi\n  \\fi\n  \\ifnum\\showsecond>0\n    % 切线长等长记号 PA=PB\n    \\ifnum\\showequalmark>0\n      \\pgfmathsetmacro{\\tk}{min(0.16/\\figscale, \\tlen*0.1)}\n      \\pgfmathsetmacro{\\mpax}{\\Ax + 0.5*\\tlen*\\tax}\n      \\pgfmathsetmacro{\\mpay}{\\Ay + 0.5*\\tlen*\\tay}\n      \\draw[thick] ({\\mpax - \\tk*\\tay},{\\mpay + \\tk*\\tax}) -- ({\\mpax + \\tk*\\tay},{\\mpay - \\tk*\\tax});\n      \\pgfmathsetmacro{\\mpbx}{\\Bx + 0.5*\\tlen*\\tbx}\n      \\pgfmathsetmacro{\\mpby}{\\By + 0.5*\\tlen*\\tby}\n      \\draw[thick] ({\\mpbx - \\tk*\\tby},{\\mpby + \\tk*\\tbx}) -- ({\\mpbx + \\tk*\\tby},{\\mpby - \\tk*\\tbx});\n    \\fi\n    % 两切线夹角 ∠APB 的角弧：从 P 指向 A 的方向扫到 P 指向 B 的方向（取 360 内的短向）\n    \\ifnum\\showangle>0\n      \\pgfmathsetmacro{\\sangp}{\\anglea + 90}\n      \\pgfmathsetmacro{\\erawp}{\\angleb - 90}\n      \\pgfmathsetmacro{\\edifp}{\\erawp - \\sangp}\n      \\pgfmathsetmacro{\\eangp}{\\sangp + \\edifp - 360*round(\\edifp/360)}\n      \\pgfmathsetmacro{\\arcp}{min(0.5/\\figscale, \\tlen*0.28)}\n      \\draw[thick] ({\\Px + \\arcp*cos(\\sangp)},{\\Py + \\arcp*sin(\\sangp)}) arc[start angle=\\sangp, end angle=\\eangp, radius=\\arcp];\n    \\fi\n    % 圆心角 ∠AOB 的角弧（朝 P 一侧，圆心角 = 2*tha < 180 故可直接从 anglea 扫到 angleb）\n    \\ifnum\\showcentralangle>0\n      \\pgfmathsetmacro{\\arco}{min(0.5/\\figscale, \\radius*0.3)}\n      \\draw[thick] ({\\arco*cos(\\anglea)},{\\arco*sin(\\anglea)}) arc[start angle=\\anglea, end angle=\\angleb, radius=\\arco];\n    \\fi\n  \\fi\n  % 切点与外点\n  \\fill (A) circle [radius=\\dotr pt];\n  \\node at ({1.16*\\Ax},{1.16*\\Ay}) {$\\labelta$};\n  \\ifnum\\showsecond>0\n    \\fill (B) circle [radius=\\dotr pt];\n    \\node at ({1.16*\\Bx},{1.16*\\By}) {$\\labeltb$};\n  \\fi\n  \\ifdim\\pshown pt>0pt\n    \\fill (P) circle [radius=\\dotr pt];\n    \\node at ({\\Px + \\loff*cos(\\axang)},{\\Py + \\loff*sin(\\axang)}) {$\\labelp$};\n  \\fi\n  % 圆心 O：标注放在背离 P 的一侧，避免压住 OP 与两条切点半径\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=\\dotr pt];\n    \\node at ({0.17*\\radius*cos(\\axang+180)},{0.17*\\radius*sin(\\axang+180)}) {$O$};\n  \\fi\n\\end{tikzpicture}"
 }
