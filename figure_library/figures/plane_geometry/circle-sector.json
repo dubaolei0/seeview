@@ -2,7 +2,7 @@
   "id": "circle-sector",
   "name": "弦·弧·扇形·弓形",
   "category": "平面几何-圆",
-  "parent" : "circle",
+  "parent": "circle",
   "tags": [
     "圆",
     "弦",
@@ -42,7 +42,7 @@
       "max": null,
       "options": null,
       "default": "true",
-      "desc": "是否标注圆心 O 与中心角角弧"
+      "desc": "是否标注圆心 O"
     },
     {
       "name": "showradius",
@@ -52,6 +52,24 @@
       "options": null,
       "default": "true",
       "desc": "是否画两条半径 OA、OB"
+    },
+    {
+      "name": "showangle",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画圆心角 ∠AOB 的角弧记号（需同时画出两条半径）"
+    },
+    {
+      "name": "showlabels",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否显示 A、B、O 字母标签（关闭后只留图形，用于需要自行标注的题型）"
     },
     {
       "name": "showchord",
@@ -82,6 +100,5 @@
     }
   ],
   "constraints": [],
-  "coordScale": 0.7,
-  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{60} \\def\\showcenter{1} \\def\\showradius{1} \\def\\showchord{0} \\def\\showsector{0} \\def\\showsegment{0}\n% 视觉归一化：把圆直径缩放到 6（单位由 coordScale 决定）。\n% A、B 关于正 x 轴对称，中心角 anglea 平分在 x 轴两侧，图形居中稳定。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n\\pgfmathsetmacro{\\halfa}{\\anglea/2}\n\\pgfmathsetmacro{\\Ax}{\\radius*cos(\\halfa)}\n\\pgfmathsetmacro{\\Ay}{-\\radius*sin(\\halfa)}\n\\pgfmathsetmacro{\\Bx}{\\radius*cos(\\halfa)}\n\\pgfmathsetmacro{\\By}{\\radius*sin(\\halfa)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (A) at (\\Ax,\\Ay);\n  \\coordinate (B) at (\\Bx,\\By);\n  % 扇形 AOB 填充（两条半径 + 弧围成）\n  \\ifnum\\showsector>0\n    \\fill[green!12] (O) -- (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius] -- cycle;\n  \\fi\n  % 弓形填充（弦 AB 与弧 AB 围成，先画避免覆盖弦）\n  \\ifnum\\showsegment>0\n    \\fill[green!12] (A) -- (B) arc[start angle=\\halfa, end angle=-\\halfa, radius=\\radius] -- cycle;\n  \\fi\n  % 两条半径\n  \\ifnum\\showradius>0\n    \\draw[thick] (O) -- (A);\n    \\draw[thick] (O) -- (B);\n  \\fi\n  % 弦 AB\n  \\ifnum\\showchord>0\n    \\draw[thick] (A) -- (B);\n  \\fi\n  % 弧 AB（小弧，恒画作为扇形/弓形边界）\n  \\draw[thick] (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius];\n  % 端点与圆心\n  \\fill (A) circle [radius=1.6pt];\n  \\fill (B) circle [radius=1.6pt];\n  \\node[below=3pt] at (A) {$A$};\n  \\node[above=3pt] at (B) {$B$};\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=1.6pt];\n    \\node[below left=3pt] at (O) {$O$};\n  \\fi\n  % 圆心角角弧（两半径之间，需半径存在）\n  \\ifnum\\showcenter>0\n    \\ifnum\\showradius>0\n      \\pgfmathsetmacro{\\arcr}{min(0.45, \\radius*0.18)}\n      \\draw[thick] ({\\arcr*cos(\\halfa)},{\\arcr*sin(\\halfa)}) arc[start angle=\\halfa, end angle=-\\halfa, radius=\\arcr];\n    \\fi\n  \\fi\n\\end{tikzpicture}"
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{60} \\def\\showcenter{1} \\def\\showradius{1} \\def\\showangle{1} \\def\\showlabels{1} \\def\\showchord{0} \\def\\showsector{0} \\def\\showsegment{0}\n% 视觉归一化：把圆直径缩放到 6cm，保证图形视觉大小稳定。\n% A、B 关于正 x 轴对称，中心角 anglea 平分在 x 轴两侧，图形居中稳定。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\pgfmathsetmacro{\\halfa}{\\anglea/2}\n\\pgfmathsetmacro{\\Ax}{\\radius*cos(\\halfa)}\n\\pgfmathsetmacro{\\Ay}{-\\radius*sin(\\halfa)}\n\\pgfmathsetmacro{\\Bx}{\\radius*cos(\\halfa)}\n\\pgfmathsetmacro{\\By}{\\radius*sin(\\halfa)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (A) at (\\Ax,\\Ay);\n  \\coordinate (B) at (\\Bx,\\By);\n  % 扇形 AOB 填充（两条半径 + 弧围成）\n  \\ifnum\\showsector>0\n    \\fill[green!12] (O) -- (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius] -- cycle;\n  \\fi\n  % 弓形填充（弦 AB 与弧 AB 围成，先画避免覆盖弦）\n  \\ifnum\\showsegment>0\n    \\fill[green!12] (A) -- (B) arc[start angle=\\halfa, end angle=-\\halfa, radius=\\radius] -- cycle;\n  \\fi\n  % 两条半径\n  \\ifnum\\showradius>0\n    \\draw[thick] (O) -- (A);\n    \\draw[thick] (O) -- (B);\n  \\fi\n  % 弦 AB\n  \\ifnum\\showchord>0\n    \\draw[thick] (A) -- (B);\n  \\fi\n  % 弧 AB（小弧，恒画作为扇形/弓形边界）\n  \\draw[thick] (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius];\n  % 端点与圆心\n  \\fill (A) circle [radius=\\dotr pt];\n  \\fill (B) circle [radius=\\dotr pt];\n  \\ifnum\\showlabels>0\n    \\node[below=3pt] at (A) {$A$};\n    \\node[above=3pt] at (B) {$B$};\n  \\fi\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=\\dotr pt];\n    \\ifnum\\showlabels>0\n      \\node[below left=3pt] at (O) {$O$};\n    \\fi\n  \\fi\n  % 圆心角 ∠AOB 的角弧（需两条半径存在才有夹角可标）\n  \\ifnum\\showangle>0\n    \\ifnum\\showradius>0\n      \\pgfmathsetmacro{\\arcr}{min(0.45/\\figscale, \\radius*0.3)}\n      \\draw[thick] ({\\arcr*cos(\\halfa)},{\\arcr*sin(\\halfa)}) arc[start angle=\\halfa, end angle=-\\halfa, radius=\\arcr];\n    \\fi\n  \\fi\n\\end{tikzpicture}"
 }

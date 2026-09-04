@@ -1,0 +1,155 @@
+{
+  "id": "regular-polygon-circle",
+  "name": "正多边形与圆",
+  "category": "平面几何-圆",
+  "parent": "circle",
+  "tags": [
+    "圆",
+    "正多边形",
+    "中心角",
+    "边心距",
+    "外接圆",
+    "内切圆"
+  ],
+  "desc": "正 n 边形（3~12 边）及其外接圆与内切圆，可画中心角、边心距与顶点字母。适用于正多边形的中心角 360°/n、边心距、边长、周长与面积计算。",
+  "whenNotToUse": "不是正多边形时不要用：一般三角形用 general-triangle；圆内接四边形用 cyclic-quadrilateral；三角形内切圆用 incircle。",
+  "params": [
+    {
+      "name": "radius",
+      "type": "number",
+      "min": 1,
+      "max": 10,
+      "options": null,
+      "default": "3",
+      "desc": "外接圆半径（圆心到顶点的距离）"
+    },
+    {
+      "name": "nsides",
+      "type": "number",
+      "min": 3,
+      "max": 12,
+      "options": null,
+      "default": "6",
+      "desc": "正多边形的边数"
+    },
+    {
+      "name": "startangle",
+      "type": "number",
+      "min": 0,
+      "max": 360,
+      "options": null,
+      "default": "90",
+      "desc": "第一个顶点 A 的位置角（度，0 为正右方，逆时针为正），决定图形朝向"
+    },
+    {
+      "name": "showpolygon",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画正多边形"
+    },
+    {
+      "name": "showcircumcircle",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画外接圆（过各顶点）"
+    },
+    {
+      "name": "showincircle",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画内切圆（与各边相切，半径等于边心距）"
+    },
+    {
+      "name": "showapothem",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画边心距 OM（圆心到一边的垂线段，带直角记号）"
+    },
+    {
+      "name": "showradii",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画相邻两顶点的半径 OA、OB"
+    },
+    {
+      "name": "showcentralangle",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画中心角 ∠AOB 的角弧（等于 360°/n）"
+    },
+    {
+      "name": "showcenter",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画出中心 O 并标注"
+    },
+    {
+      "name": "showlabels",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否按逆时针依次标注顶点字母 A、B、C……"
+    },
+    {
+      "name": "labelm",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z"
+      ],
+      "default": "M",
+      "desc": "边心距垂足字母（须与题干一致，默认 M）"
+    }
+  ],
+  "constraints": [],
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\nsides{6} \\def\\startangle{90} \\def\\showpolygon{1} \\def\\showcircumcircle{1} \\def\\showincircle{0} \\def\\showapothem{0} \\def\\showradii{0} \\def\\showcentralangle{0} \\def\\showcenter{1} \\def\\showlabels{1} \\def\\labelm{M}\n% 视觉归一化：把外接圆直径缩放到 6cm，保证不同半径下图形视觉大小一致。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n% 边数取整供 \\foreach 与 \\ifnum 使用（注入值可能带小数点）\n\\pgfmathtruncatemacro{\\nsi}{\\nsides}\n\\pgfmathsetmacro{\\stepang}{360/\\nsi}\n% 边心距 = 外接圆半径 * cos(180/n)，同时也是内切圆半径\n\\pgfmathsetmacro{\\apoth}{\\radius*cos(180/\\nsi)}\n\\pgfmathsetmacro{\\angA}{\\startangle}\n\\pgfmathsetmacro{\\angB}{\\startangle + \\stepang}\n\\pgfmathsetmacro{\\Ax}{\\radius*cos(\\angA)}\n\\pgfmathsetmacro{\\Ay}{\\radius*sin(\\angA)}\n\\pgfmathsetmacro{\\Bx}{\\radius*cos(\\angB)}\n\\pgfmathsetmacro{\\By}{\\radius*sin(\\angB)}\n% 垂足 M 是边 AB 的中点，位于 A、B 位置角的角平分方向上\n\\pgfmathsetmacro{\\Mang}{\\startangle + \\stepang/2}\n\\pgfmathsetmacro{\\Mx}{\\apoth*cos(\\Mang)}\n\\pgfmathsetmacro{\\My}{\\apoth*sin(\\Mang)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\ifnum\\showcircumcircle>0\n    \\draw[thick] (0,0) circle [radius=\\radius];\n  \\fi\n  \\ifnum\\showincircle>0\n    \\draw[thick] (0,0) circle [radius=\\apoth];\n  \\fi\n  % 依次连接 n 个顶点；循环到 i=n 时正好回到起点，无需 cycle\n  \\ifnum\\showpolygon>0\n    \\draw[thick] ({\\Ax},{\\Ay}) \\foreach \\i in {1,...,\\nsi}{ -- ({\\radius*cos(\\startangle + \\i*\\stepang)},{\\radius*sin(\\startangle + \\i*\\stepang)}) };\n  \\fi\n  \\ifnum\\showradii>0\n    \\draw[thick] (0,0) -- ({\\Ax},{\\Ay});\n    \\draw[thick] (0,0) -- ({\\Bx},{\\By});\n  \\fi\n  % 中心角 ∠AOB = 360/n，沿逆时针从 A 扫到 B\n  \\ifnum\\showcentralangle>0\n    \\pgfmathsetmacro{\\carcr}{min(0.5/\\figscale, \\radius*0.32)}\n    \\draw[thick] ({\\carcr*cos(\\angA)},{\\carcr*sin(\\angA)}) arc[start angle=\\angA, end angle=\\angB, radius=\\carcr];\n  \\fi\n  % 边心距 OM 与垂足处的直角记号（OM⊥AB）\n  \\ifnum\\showapothem>0\n    \\draw[thick] (0,0) -- ({\\Mx},{\\My});\n    \\pgfmathsetmacro{\\halfside}{\\radius*sin(180/\\nsi)}\n    \\pgfmathsetmacro{\\rmsz}{min(0.26/\\figscale, \\apoth*0.2, \\halfside*0.4)}\n    \\pgfmathsetmacro{\\rox}{-cos(\\Mang)}\n    \\pgfmathsetmacro{\\roy}{-sin(\\Mang)}\n    \\pgfmathsetmacro{\\rsx}{cos(\\Mang+90)}\n    \\pgfmathsetmacro{\\rsy}{sin(\\Mang+90)}\n    \\draw[thick] ({\\Mx + \\rmsz*\\rox},{\\My + \\rmsz*\\roy}) -- ({\\Mx + \\rmsz*\\rox + \\rmsz*\\rsx},{\\My + \\rmsz*\\roy + \\rmsz*\\rsy}) -- ({\\Mx + \\rmsz*\\rsx},{\\My + \\rmsz*\\rsy});\n    \\fill ({\\Mx},{\\My}) circle [radius=\\dotr pt];\n    \\node at ({(\\apoth + 0.17*\\radius)*cos(\\Mang)},{(\\apoth + 0.17*\\radius)*sin(\\Mang)}) {$\\labelm$};\n  \\fi\n  % 顶点字母：最多支持 12 边，按索引取字母，超出边数的跳过\n  \\ifnum\\showlabels>0\n    \\foreach \\i/\\lb in {0/A,1/B,2/C,3/D,4/E,5/F,6/G,7/H,8/I,9/J,10/K,11/L}{\n      \\ifnum\\i<\\nsi\\relax\n        \\pgfmathsetmacro{\\vang}{\\startangle + \\i*\\stepang}\n        \\fill ({\\radius*cos(\\vang)},{\\radius*sin(\\vang)}) circle [radius=\\dotr pt];\n        \\node at ({1.14*\\radius*cos(\\vang)},{1.14*\\radius*sin(\\vang)}) {$\\lb$};\n      \\fi\n    }\n  \\fi\n  \\ifnum\\showcenter>0\n    \\fill (0,0) circle [radius=\\dotr pt];\n    \\node[below right] at (0,0) {$O$};\n  \\fi\n\\end{tikzpicture}"
+}
