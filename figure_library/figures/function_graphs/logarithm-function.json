@@ -1,0 +1,91 @@
+{
+  "id": "logarithm-function",
+  "name": "对数函数 y=logₐx",
+  "category": "函数图像-指对幂函数",
+  "tags": [
+    "对数函数",
+    "对数函数图像",
+    "底数",
+    "单调性",
+    "恒过定点",
+    "反函数",
+    "渐近线",
+    "函数图像",
+    "高考"
+  ],
+  "desc": "对数函数 y=log_a x（a>0 且 a≠1）的图像：定义域 (0,+∞)，恒过定点 (1,0)，以 y 轴为渐近线；a>1 时单调递增，0<a<1 时单调递减。可同图叠画其反函数指数函数 y=a^x（虚线）与对称轴 y=x，直观展示反函数图像关于 y=x 对称；可标定定点与曲线上一点 P。覆盖底数对图像的影响、单调性、定义域值域、对数方程与不等式、比大小等高考考点；常用底数 2、10、0.5 可直接传参。",
+  "whenNotToUse": "指数函数单独作图用 exponential-function；幂函数 y=x^α 对比用 power-function-compare；对数函数与二次函数/直线交点、导数大题混合场景建议自由 TikZ。",
+  "params": [
+    {
+      "name": "base",
+      "type": "number",
+      "min": 0.2,
+      "max": 4,
+      "options": null,
+      "default": "2",
+      "desc": "底数 a（a>0 且 a≠1）：a>1 递增，0<a<1 递减；常用 2、10、0.5"
+    },
+    {
+      "name": "showinverse",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否叠画反函数 y=a^x（虚线）与对称轴 y=x（两函数图像关于 y=x 对称）"
+    },
+    {
+      "name": "showfixed",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注恒过定点 (1,0)"
+    },
+    {
+      "name": "showpoint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画曲线上一点 P（纵坐标由 log_a x 自动算出）"
+    },
+    {
+      "name": "px",
+      "type": "number",
+      "min": 0.3,
+      "max": 8,
+      "options": null,
+      "default": "2",
+      "desc": "点 P 的横坐标（定义域 x>0）"
+    },
+    {
+      "name": "labelp",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "P",
+        "Q",
+        "M",
+        "N"
+      ],
+      "default": "P",
+      "desc": "曲线上点的字母（须与题干一致）"
+    }
+  ],
+  "constraints": [
+    "(base-1)*(base-1) > 0.01"
+  ],
+  "template": "% 参数由系统自动注入：\\def\\base{2} \\def\\showinverse{0} \\def\\showfixed{1} \\def\\showpoint{0} \\def\\px{2} \\def\\labelp{P}\n% 点 P 纵坐标 log_a(px)=ln(px)/ln(a)（pgfmath 的 ln 为自然对数）\n\\pgfmathsetmacro{\\py}{ln(\\px)/ln(\\base)}\n% y 视图对称，纳入点 P\n\\pgfmathsetmacro{\\v}{max(2.5, abs(\\py)+0.8)}\n\\pgfmathtruncatemacro{\\ytop}{ceil(\\v)}\n\\pgfmathtruncatemacro{\\ybottom}{-\\ytop}\n% 曲线与上下边框交点的 x 坐标\n\\pgfmathsetmacro{\\xatop}{pow(\\base,\\ytop+0.3)}\n\\pgfmathsetmacro{\\xabot}{pow(\\base,\\ybottom-0.3)}\n\\pgfmathsetmacro{\\xhiraw}{max(\\xatop,\\xabot)}\n\\pgfmathsetmacro{\\xloraw}{min(\\xatop,\\xabot)}\n% 视图以特征点为准，对数增长缓慢，曲线从画框右侧自然走出\n\\pgfmathsetmacro{\\xfeat}{max(4.0, \\px+1.0)}\n\\pgfmathtruncatemacro{\\xright}{ceil(\\xfeat)+1}\n\\pgfmathtruncatemacro{\\xleft}{-2}\n\\pgfmathsetmacro{\\dlo}{max(\\xloraw,0.01)}\n\\pgfmathsetmacro{\\dhi}{min(\\xhiraw,\\xright)}\n\\pgfmathsetmacro{\\xrange}{\\xright-\\xleft}\n\\pgfmathsetmacro{\\yrange}{\\ytop-\\ybottom}\n\\pgfmathsetmacro{\\figscale}{6.5/max(\\xrange,\\yrange)}\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % ===== 坐标系（y 轴即渐近线）=====\n  \\draw[->, thick] (\\xleft-0.5,0) -- (\\xright+0.6,0) node[right] {$x$};\n  \\draw[->, thick] (0,\\ybottom-0.5) -- (0,\\ytop+0.6) node[above] {$y$};\n  \\node[below left, font=\\tiny] at (0,0) {$O$};\n  \\foreach \\x in {\\xleft,...,\\xright} {\n    \\ifnum\\x=0\\else\n      \\draw (\\x,0.12/\\figscale) -- (\\x,-0.12/\\figscale);\n      \\node[below, font=\\tiny, inner sep=1pt] at (\\x,0) {$\\x$};\n    \\fi\n  }\n  \\foreach \\y in {\\ybottom,...,\\ytop} {\n    \\ifnum\\y=0\\else\n      \\draw (0.12/\\figscale,\\y) -- (-0.12/\\figscale,\\y);\n      \\node[left, font=\\tiny, inner sep=1pt] at (0,\\y) {$\\y$};\n    \\fi\n  }\n  % ===== 反函数：y=a^x 虚线 + 对称轴 y=x =====\n  \\ifnum\\showinverse>0\n    \\pgfmathsetmacro{\\xe}{ln(\\ytop+0.3)/ln(\\base)}\n    \\ifdim\\base pt>1pt\n      \\pgfmathsetmacro{\\elo}{\\xleft}\n      \\pgfmathsetmacro{\\ehi}{min(\\xright,\\xe)}\n    \\else\n      \\pgfmathsetmacro{\\elo}{max(\\xleft,\\xe)}\n      \\pgfmathsetmacro{\\ehi}{\\xright}\n    \\fi\n    \\draw[dashed, gray, thick, domain=\\elo:\\ehi, samples=80, smooth] plot (\\x, {pow(\\base,\\x)});\n    \\pgfmathsetmacro{\\dt}{min(\\xright,\\ytop)}\n    \\draw[dashed, gray!60] (-2,-2) -- (\\dt,\\dt);\n    \\node[above left, font=\\tiny, gray] at (\\dt-0.3,\\dt-0.6) {$y=x$};\n  \\fi\n  % ===== 主曲线 y=log_a x =====\n  \\draw[thick, domain=\\dlo:\\dhi, samples=120, smooth] plot (\\x, {ln(\\x)/ln(\\base)});\n  \\ifdim\\base pt>1pt\n    \\node[above right, font=\\tiny] at (\\dhi-0.3,\\ytop-0.6) {$y=\\log_a x$};\n  \\else\n    \\node[above right, font=\\tiny] at (\\dlo+0.2,\\ytop-0.6) {$y=\\log_a x$};\n  \\fi\n  % ===== 定点 (1,0) =====\n  \\ifnum\\showfixed>0\n    \\fill (1,0) circle [radius=\\dotr pt];\n    \\node[above right, font=\\tiny] at (1,0) {$(1,0)$};\n  \\fi\n  % ===== 曲线上点 P =====\n  \\ifnum\\showpoint>0\n    \\fill (\\px,\\py) circle [radius=\\dotr pt];\n    \\node[above right, font=\\tiny] at (\\px,\\py) {$\\labelp$};\n  \\fi\n\\end{tikzpicture}"
+}

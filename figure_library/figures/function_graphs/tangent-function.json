@@ -1,0 +1,48 @@
+{
+  "id": "tangent-function",
+  "name": "正切函数 y=tanx",
+  "category": "函数图像-三角函数",
+  "tags": [
+    "正切函数",
+    "正切函数图像",
+    "渐近线",
+    "周期",
+    "单调区间",
+    "定义域",
+    "函数图像",
+    "高考"
+  ],
+  "desc": "正切函数 y=tan x 的图像：定义域 x≠π/2+kπ，以 x=π/2+kπ 为竖直渐近线（虚线），零点为 (kπ,0)，周期 T=π；在每个区间 (-π/2+kπ, π/2+kπ) 内单调递增，在每一个周期内曲线由 -∞ 升到 +∞。本模板显示三个分支，可开关渐近线、零点标注与周期 T=π 的跨度箭头；横轴按 π/2 刻度标注。覆盖定义域、单调区间、三角不等式 tan x 取值范围、周期性等高考考点。",
+  "whenNotToUse": "正弦/余弦型 y=Asin(ωx+φ)+k 用 trig-sine-wave；y=cot x 等其余三角函数、正切与直线交点或含参讨论建议自由 TikZ。",
+  "params": [
+    {
+      "name": "showasym",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画渐近线 x=π/2+kπ（竖直虚线）"
+    },
+    {
+      "name": "showzeros",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注零点 (-π,0)、(π,0)"
+    },
+    {
+      "name": "showperiod",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否用双箭头标注一个周期 T=π"
+    }
+  ],
+  "constraints": [],
+  "template": "% 参数由系统自动注入：\\def\\showasym{1} \\def\\showzeros{1} \\def\\showperiod{1}\n% 固定视图：x 约 [-3π/2,3π/2] 显示三个分支，y 约 [-3,3]\n\\pgfmathsetmacro{\\xright}{3*pi/2+0.6}\n\\pgfmathsetmacro{\\xleft}{-\\xright}\n\\pgfmathtruncatemacro{\\ytop}{3}\n\\pgfmathtruncatemacro{\\ybottom}{-3}\n% 分支端点：tan 值到达视图上边处截断（atan 以度为单位返回，rad 转弧度）\n\\pgfmathsetmacro{\\edge}{rad(atan(\\ytop+0.3))}\n\\pgfmathsetmacro{\\xrange}{\\xright-\\xleft}\n\\pgfmathsetmacro{\\yrange}{\\ytop-\\ybottom}\n\\pgfmathsetmacro{\\figscale}{6.5/max(\\xrange,\\yrange)}\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % ===== 坐标系 =====\n  \\draw[->, thick] (\\xleft-0.6,0) -- (\\xright+0.8,0) node[right] {$x$};\n  \\draw[->, thick] (0,\\ybottom-0.5) -- (0,\\ytop+0.6) node[above] {$y$};\n  \\node[below left, font=\\tiny] at (0,0) {$O$};\n  % x 轴刻度：π/2 整数倍\n  \\foreach \\i in {-3,-2,...,3} {\n    \\ifnum\\i=0\\else\n      \\pgfmathsetmacro{\\tx}{\\i*pi/2}\n      \\draw (\\tx,0.12/\\figscale) -- (\\tx,-0.12/\\figscale);\n      \\node[below, font=\\tiny, inner sep=1pt] at (\\tx,0)\n        {\\ifnum\\i=1 $\\frac{\\pi}{2}$\\else\\ifnum\\i=-1 $-\\frac{\\pi}{2}$\\else\\ifnum\\i=2 $\\pi$\\else\\ifnum\\i=-2 $-\\pi$\\else\\ifnum\\i=3 $\\frac{3\\pi}{2}$\\else$-\\frac{3\\pi}{2}$\\fi\\fi\\fi\\fi\\fi};\n    \\fi\n  }\n  \\foreach \\y in {\\ybottom,...,\\ytop} {\n    \\ifnum\\y=0\\else\n      \\draw (0.12/\\figscale,\\y) -- (-0.12/\\figscale,\\y);\n      \\node[left, font=\\tiny, inner sep=1pt] at (0,\\y) {$\\y$};\n    \\fi\n  }\n  % ===== 渐近线 x=±π/2、±3π/2 =====\n  \\ifnum\\showasym>0\n    \\draw[dashed, gray] (pi/2,\\ybottom-0.4) -- (pi/2,\\ytop+0.4);\n    \\draw[dashed, gray] (-pi/2,\\ybottom-0.4) -- (-pi/2,\\ytop+0.4);\n    \\draw[dashed, gray] (3*pi/2,\\ybottom-0.4) -- (3*pi/2,\\ytop+0.4);\n    \\draw[dashed, gray] (-3*pi/2,\\ybottom-0.4) -- (-3*pi/2,\\ytop+0.4);\n  \\fi\n  % ===== 三个分支 y=tan x =====\n  \\draw[thick, domain=-\\edge:\\edge, samples=80, smooth] plot (\\x, {tan(deg(\\x))});\n  \\draw[thick, domain={pi/2+\\edge}:{3*pi/2-\\edge}, samples=80, smooth] plot (\\x, {tan(deg(\\x))});\n  \\draw[thick, domain={-3*pi/2+\\edge}:{-pi/2-\\edge}, samples=80, smooth] plot (\\x, {tan(deg(\\x))});\n  \\node[font=\\tiny, anchor=north east, gray!50!black] at (\\xright-0.2,\\ytop-0.2) {$y=\\tan x$};\n  % ===== 零点 =====\n  \\ifnum\\showzeros>0\n    \\fill (pi,0) circle [radius=\\dotr pt];\n    \\fill (-pi,0) circle [radius=\\dotr pt];\n  \\fi\n  % ===== 周期 T=π =====\n  \\ifnum\\showperiod>0\n    \\pgfmathsetmacro{\\yar}{\\ybottom+0.5}\n    \\draw[<->, thick] (-pi/2,\\yar) -- (pi/2,\\yar);\n    \\draw (-pi/2,\\yar-0.12) -- (-pi/2,\\yar+0.12);\n    \\draw (pi/2,\\yar-0.12) -- (pi/2,\\yar+0.12);\n    \\node[below, font=\\tiny] at (0,\\yar) {$T=\\pi$};\n  \\fi\n\\end{tikzpicture}"
+}

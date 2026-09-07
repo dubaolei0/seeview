@@ -1,0 +1,39 @@
+{
+  "id": "piecewise-function",
+  "name": "分段与绝对值函数",
+  "category": "函数图像-特殊函数",
+  "tags": [
+    "分段函数",
+    "绝对值函数",
+    "翻折变换",
+    "阶梯函数",
+    "函数图像",
+    "空心点",
+    "中考",
+    "高考"
+  ],
+  "desc": "四类高频特殊函数图像，用 kind 切换：1 为绝对值函数 y=|x|（V 形，顶点原点，翻折变换的基础）；2 为二次翻折 y=|x²-c|（把 x 轴下方部分向上翻折，含两个零点与顶点，参数 c 可调）；3 为阶梯分段函数（三段常值，端点实心/空心点标注，对应分段计费、取整思想）；4 为两段折线分段函数（y=2x+1（x≤1）与 y=-x+4（x>1），连接点实心）。覆盖绝对值图像翻折、分段求值、分段单调性与最值、端点取舍等中高考考点。",
+  "whenNotToUse": "完整二次函数用 quadratic-function（含顶点式、对称轴、与轴交点）；一般一次函数用 linear-function；分段抛物线、带动点或含参讨论等复杂场景建议自由 TikZ。",
+  "params": [
+    {
+      "name": "kind",
+      "type": "number",
+      "min": 1,
+      "max": 4,
+      "options": null,
+      "default": "1",
+      "desc": "图形类型：1=y=|x| 绝对值V形；2=y=|x²-c| 二次翻折；3=阶梯分段（含空心点）；4=两段折线分段"
+    },
+    {
+      "name": "c",
+      "type": "number",
+      "min": 0.5,
+      "max": 9,
+      "options": null,
+      "default": "4",
+      "desc": "仅类型 2 使用：y=|x²-c| 中的常数 c（零点为 ±√c）"
+    }
+  ],
+  "constraints": [],
+  "template": "% 参数由系统自动注入：\\def\\kind{1} \\def\\c{4}\n% ===== 视图随类型变化（坐标系前先算好范围）=====\n\\ifnum\\kind=1\n  \\pgfmathtruncatemacro{\\xleft}{-4}\n  \\pgfmathtruncatemacro{\\xright}{4}\n  \\pgfmathtruncatemacro{\\ybottom}{-2}\n  \\pgfmathtruncatemacro{\\ytop}{4}\n\\else\\ifnum\\kind=2\n  \\pgfmathsetmacro{\\sq}{sqrt(\\c)}\n  \\pgfmathtruncatemacro{\\xleft}{-ceil(\\sq+2.2)}\n  \\pgfmathtruncatemacro{\\xright}{-\\xleft}\n  \\pgfmathtruncatemacro{\\ybottom}{-2}\n  \\pgfmathtruncatemacro{\\ytop}{ceil(\\c+1.5)}\n  \\pgfmathsetmacro{\\xexit}{sqrt(\\c+\\ytop+0.3)}\n  \\pgfmathsetmacro{\\dhi}{min(\\xright,\\xexit)}\n\\else\\ifnum\\kind=3\n  \\pgfmathtruncatemacro{\\xleft}{-4}\n  \\pgfmathtruncatemacro{\\xright}{5}\n  \\pgfmathtruncatemacro{\\ybottom}{-2}\n  \\pgfmathtruncatemacro{\\ytop}{4}\n\\else\n  \\pgfmathtruncatemacro{\\xleft}{-3}\n  \\pgfmathtruncatemacro{\\xright}{4}\n  \\pgfmathtruncatemacro{\\ybottom}{-3}\n  \\pgfmathtruncatemacro{\\ytop}{4}\n\\fi\\fi\\fi\n\\pgfmathsetmacro{\\figscale}{6.5/max(\\xright-\\xleft,\\ytop-\\ybottom)}\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % ===== 坐标系 =====\n  \\draw[->, thick] (\\xleft-0.5,0) -- (\\xright+0.6,0) node[right] {$x$};\n  \\draw[->, thick] (0,\\ybottom-0.5) -- (0,\\ytop+0.6) node[above] {$y$};\n  \\node[below left, font=\\tiny] at (0,0) {$O$};\n  \\foreach \\x in {\\xleft,...,\\xright} {\n    \\ifnum\\x=0\\else\n      \\draw (\\x,0.12/\\figscale) -- (\\x,-0.12/\\figscale);\n      \\node[below, font=\\tiny, inner sep=1pt] at (\\x,0) {$\\x$};\n    \\fi\n  }\n  \\foreach \\y in {\\ybottom,...,\\ytop} {\n    \\ifnum\\y=0\\else\n      \\draw (0.12/\\figscale,\\y) -- (-0.12/\\figscale,\\y);\n      \\node[left, font=\\tiny, inner sep=1pt] at (0,\\y) {$\\y$};\n    \\fi\n  }\n  % ===== 类型 1：y=|x| =====\n  \\ifnum\\kind=1\n    \\draw[thick] (\\xleft,-\\xleft) -- (0,0) -- (\\xright,\\xright);\n    \\node[font=\\tiny, anchor=east] at (\\xright-0.4,\\ytop-0.5) {$y=|x|$};\n    \\fill (0,0) circle [radius=\\dotr pt];\n  \\else\\ifnum\\kind=2\n    % ===== 类型 2：y=|x²-c|，x 轴下方翻折 =====\n    \\draw[thick, domain=-\\dhi:-\\sq, samples=60, smooth] plot (\\x, {\\x*\\x-\\c});\n    \\draw[thick, domain=\\sq:\\dhi, samples=60, smooth] plot (\\x, {\\x*\\x-\\c});\n    \\draw[thick, domain=-\\sq:\\sq, samples=80, smooth] plot (\\x, {\\c-\\x*\\x});\n    \\fill (-\\sq,0) circle [radius=\\dotr pt];\n    \\fill (\\sq,0) circle [radius=\\dotr pt];\n    \\fill (0,\\c) circle [radius=\\dotr pt];\n    \\node[above right, font=\\tiny] at (0,\\c) {$(0,c)$};\n    \\node[below, font=\\tiny] at (\\sq,0) {$(\\sqrt c,0)$};\n    \\node[below, font=\\tiny] at (-\\sq,0) {$(-\\sqrt c,0)$};\n    \\node[font=\\tiny, anchor=east] at (\\dhi-0.3,\\ytop-0.5) {$y=|x^2-c|$};\n  \\else\\ifnum\\kind=3\n    % ===== 类型 3：阶梯分段（端点实心/空心）=====\n    \\draw[thick] (\\xleft,-1) -- (0,-1);\n    \\draw[thick] (0,1) -- (2,1);\n    \\draw[thick] (2,3) -- (\\xright,3);\n    \\fill (0,1) circle [radius=\\dotr pt];\n    \\fill (2,3) circle [radius=\\dotr pt];\n    \\draw[thick, fill=white] (0,-1) circle [radius=\\dotr pt];\n    \\draw[thick, fill=white] (2,1) circle [radius=\\dotr pt];\n  \\else\n    % ===== 类型 4：两段折线 y=2x+1 (x≤1)，y=-x+4 (x>1) =====\n    \\draw[thick] (-2,-3) -- (1,3);\n    \\pgfmathsetmacro{\\yer}{-\\xright+4}\n    \\draw[thick] (1,3) -- (\\xright,\\yer);\n    \\fill (1,3) circle [radius=\\dotr pt];\n    \\node[above right, font=\\tiny] at (1,3) {$(1,3)$};\n  \\fi\\fi\\fi\n\\end{tikzpicture}"
+}

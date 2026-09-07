@@ -1,0 +1,91 @@
+{
+  "id": "exponential-function",
+  "name": "指数函数 y=aˣ",
+  "category": "函数图像-指对幂函数",
+  "tags": [
+    "指数函数",
+    "指数函数图像",
+    "底数",
+    "单调性",
+    "恒过定点",
+    "渐近线",
+    "图像变换",
+    "函数图像",
+    "高考"
+  ],
+  "desc": "指数函数 y=a^x（a>0 且 a≠1）的图像：a>1 时单调递增、左低右高，0<a<1 时单调递减、左高右低；恒过定点 (0,1)，以 x 轴为渐近线，值域 (0,+∞)。可同图对比 y=(1/a)^x（虚线，两曲线关于 y 轴对称），可标定定点 (0,1) 与曲线上一点 P。覆盖底数对图像的影响、单调性、定点与渐近线、图像平移翻折、比大小、指数方程不等式等高考考点；常用底数 2、3、0.5 可直接传参。",
+  "whenNotToUse": "对数函数用 logarithm-function（可在同一张图里画反函数 y=a^x 与 y=x）；幂函数 y=x^α 的多曲线对比用 power-function-compare；指数函数与直线/对数函数交点个数讨论等复合场景建议自由 TikZ。",
+  "params": [
+    {
+      "name": "base",
+      "type": "number",
+      "min": 0.2,
+      "max": 4,
+      "options": null,
+      "default": "2",
+      "desc": "底数 a（a>0 且 a≠1）：a>1 递增，0<a<1 递减；常用 2、3、0.5"
+    },
+    {
+      "name": "showcompare",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否同图对比 y=(1/a)^x（虚线，两曲线关于 y 轴对称）"
+    },
+    {
+      "name": "showfixed",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注恒过定点 (0,1)"
+    },
+    {
+      "name": "showpoint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画曲线上一点 P（纵坐标由 a^x 自动算出）"
+    },
+    {
+      "name": "px",
+      "type": "number",
+      "min": -4,
+      "max": 4,
+      "options": null,
+      "default": "1.5",
+      "desc": "点 P 的横坐标"
+    },
+    {
+      "name": "labelp",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "P",
+        "Q",
+        "M",
+        "N"
+      ],
+      "default": "P",
+      "desc": "曲线上点的字母（须与题干一致）"
+    }
+  ],
+  "constraints": [
+    "(base-1)*(base-1) > 0.01"
+  ],
+  "template": "% 参数由系统自动注入：\\def\\base{2} \\def\\showcompare{0} \\def\\showfixed{1} \\def\\showpoint{0} \\def\\px{1.5} \\def\\labelp{P}\n% 点 P 纵坐标 a^px；x 视图对称纳入点 P\n\\pgfmathsetmacro{\\py}{pow(\\base,\\px)}\n\\pgfmathsetmacro{\\v}{max(3.0, abs(\\px)+0.8)}\n\\pgfmathtruncatemacro{\\xleft}{-floor(\\v)}\n\\pgfmathtruncatemacro{\\xright}{ceil(\\v)}\n% y 视图：以定点 (0,1) 与点 P 为特征，曲线过高处封顶 8 个单位\n\\pgfmathsetmacro{\\ytopfeat}{max(1,\\py)}\n\\pgfmathsetmacro{\\yedgeL}{pow(\\base,\\xleft)}\n\\pgfmathsetmacro{\\yedgeR}{pow(\\base,\\xright)}\n\\pgfmathsetmacro{\\ytop}{min(max(\\yedgeL,\\yedgeR),\\ytopfeat+8.0)+0.8}\n\\pgfmathtruncatemacro{\\ytop}{ceil(\\ytop)}\n\\pgfmathtruncatemacro{\\ybottom}{-1}\n% 曲线绘制域：y 到达视图上边时截断（ln 为自然对数）\n\\pgfmathsetmacro{\\xexit}{ln(\\ytop+0.3)/ln(\\base)}\n\\ifdim\\base pt>1pt\n  \\pgfmathsetmacro{\\dlo}{\\xleft}\n  \\pgfmathsetmacro{\\dhi}{min(\\xright,\\xexit)}\n\\else\n  \\pgfmathsetmacro{\\dlo}{max(\\xleft,\\xexit)}\n  \\pgfmathsetmacro{\\dhi}{\\xright}\n\\fi\n\\pgfmathsetmacro{\\xrange}{\\xright-\\xleft}\n\\pgfmathsetmacro{\\yrange}{\\ytop-\\ybottom}\n\\pgfmathsetmacro{\\figscale}{6.5/max(\\xrange,\\yrange)}\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % ===== 坐标系 =====\n  \\draw[->, thick] (\\xleft-0.5,0) -- (\\xright+0.6,0) node[right] {$x$};\n  \\draw[->, thick] (0,\\ybottom-0.5) -- (0,\\ytop+0.6) node[above] {$y$};\n  \\node[below left, font=\\tiny] at (0,0) {$O$};\n  \\foreach \\x in {\\xleft,...,\\xright} {\n    \\ifnum\\x=0\\else\n      \\draw (\\x,0.12/\\figscale) -- (\\x,-0.12/\\figscale);\n      \\node[below, font=\\tiny, inner sep=1pt] at (\\x,0) {$\\x$};\n    \\fi\n  }\n  \\foreach \\y in {\\ybottom,...,\\ytop} {\n    \\ifnum\\y=0\\else\n      \\draw (0.12/\\figscale,\\y) -- (-0.12/\\figscale,\\y);\n      \\node[left, font=\\tiny, inner sep=1pt] at (0,\\y) {$\\y$};\n    \\fi\n  }\n  % ===== 对比曲线 y=(1/a)^x（关于 y 轴对称，虚线）=====\n  \\ifnum\\showcompare>0\n    \\ifdim\\base pt>1pt\n      \\pgfmathsetmacro{\\clo}{max(\\xleft,-\\xexit)}\n      \\pgfmathsetmacro{\\chi}{\\xright}\n      \\draw[dashed, gray, thick, domain=\\clo:\\chi, samples=80, smooth] plot (\\x, {pow(\\base,-\\x)});\n      \\node[above left, font=\\tiny, gray] at (\\clo+0.2,\\ytop-0.4) {$y=(\\frac{1}{a})^x$};\n    \\else\n      \\pgfmathsetmacro{\\clo}{\\xleft}\n      \\pgfmathsetmacro{\\chi}{min(\\xright,-\\xexit)}\n      \\draw[dashed, gray, thick, domain=\\clo:\\chi, samples=80, smooth] plot (\\x, {pow(\\base,-\\x)});\n      \\node[above right, font=\\tiny, gray] at (\\chi-0.2,\\ytop-0.4) {$y=(\\frac{1}{a})^x$};\n    \\fi\n  \\fi\n  % ===== 主曲线 y=a^x =====\n  \\draw[thick, domain=\\dlo:\\dhi, samples=100, smooth] plot (\\x, {pow(\\base,\\x)});\n  \\ifdim\\base pt>1pt\n    \\node[above right, font=\\tiny] at (\\dhi-0.2,\\ytop-0.9) {$y=a^x$};\n  \\else\n    \\node[above left, font=\\tiny] at (\\dlo+0.2,\\ytop-0.9) {$y=a^x$};\n  \\fi\n  % ===== 定点 (0,1) =====\n  \\ifnum\\showfixed>0\n    \\fill (0,1) circle [radius=\\dotr pt];\n    \\node[above right, font=\\tiny] at (0,1) {$(0,1)$};\n  \\fi\n  % ===== 曲线上点 P =====\n  \\ifnum\\showpoint>0\n    \\fill (\\px,\\py) circle [radius=\\dotr pt];\n    \\node[above right, font=\\tiny] at (\\px,\\py) {$\\labelp$};\n  \\fi\n\\end{tikzpicture}"
+}

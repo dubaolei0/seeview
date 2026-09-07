@@ -1,0 +1,130 @@
+{
+  "id": "quadratic-function",
+  "name": "二次函数 y=a(x-h)²+k（顶点式）",
+  "category": "函数图像-初中函数",
+  "tags": [
+    "二次函数",
+    "抛物线",
+    "顶点式",
+    "对称轴",
+    "顶点坐标",
+    "最值",
+    "开口方向",
+    "与x轴交点",
+    "判别式",
+    "图像平移",
+    "待定系数法",
+    "中考",
+    "函数图像"
+  ],
+  "desc": "二次函数图像问题：由顶点式 y=a(x-h)^2+k 定抛物线，a 定开口方向与大小（a>0 向上、a<0 向下，|a| 越大开口越窄），(h,k) 为顶点坐标即最值点。可标顶点 V、对称轴 x=h（虚线，h=0 时与 y 轴重合自动跳过）、与 x 轴交点 x1/x2（判别式 -k/a<0 无实根时自动不画）、与 y 轴交点 C、抛物线上一点 P。覆盖图像性质（开口/对称轴/顶点/最值）、待定系数法求解析式、图像平移（改 h、k 即左加右减、上加下减）、系数符号判断、与一元二次方程及不等式的关系、实际最值等中考考点。交点式 y=a(x-x1)(x-x2) 请先换算 h=(x1+x2)/2、k=-a*((x2-x1)/2)^2。",
+  "whenNotToUse": "圆锥曲线视角的抛物线（焦点、准线、焦半径、开口向左/向右）用 parabola 模板；反比例函数双曲线用 inverse-proportional；一次函数直线用 linear-function；二次函数压轴大题的动点/存在性问题（等腰或直角三角形、平行四边形、面积最值等复合图形）建议用自由 TikZ 配坐标网格。",
+  "params": [
+    {
+      "name": "a",
+      "type": "number",
+      "min": -2.5,
+      "max": 2.5,
+      "options": null,
+      "default": "1",
+      "desc": "二次项系数：a>0 开口向上，a<0 开口向下，|a| 越大开口越窄（不能为 0）"
+    },
+    {
+      "name": "h",
+      "type": "number",
+      "min": -5,
+      "max": 5,
+      "options": null,
+      "default": "0",
+      "desc": "顶点横坐标（顶点式 y=a(x-h)^2+k，对称轴为 x=h）"
+    },
+    {
+      "name": "k",
+      "type": "number",
+      "min": -5,
+      "max": 5,
+      "options": null,
+      "default": "0",
+      "desc": "顶点纵坐标（即函数最值：a>0 时为最小值，a<0 时为最大值）"
+    },
+    {
+      "name": "showvertex",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注顶点 V"
+    },
+    {
+      "name": "showaxis",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画对称轴 x=h（虚线；h=0 时与 y 轴重合自动跳过）"
+    },
+    {
+      "name": "showroots",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注与 x 轴交点 x1、x2（判别式小于 0 无实根时自动不画）"
+    },
+    {
+      "name": "showyint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否标注与 y 轴交点 C"
+    },
+    {
+      "name": "showpoint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画抛物线上一点 P（纵坐标由解析式自动算出）"
+    },
+    {
+      "name": "px",
+      "type": "number",
+      "min": -6,
+      "max": 6,
+      "options": null,
+      "default": "1.5",
+      "desc": "抛物线上点 P 的横坐标"
+    },
+    {
+      "name": "labelp",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "A",
+        "B",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "P",
+        "Q",
+        "M",
+        "N"
+      ],
+      "default": "P",
+      "desc": "曲线上点的字母（须与题干一致；C 已固定留给 y 轴交点）"
+    }
+  ],
+  "constraints": [
+    "a*a > 0.04"
+  ],
+  "template": "% 参数由系统自动注入：\\def\\a{1} \\def\\h{0} \\def\\k{0} \\def\\showvertex{1} \\def\\showaxis{1} \\def\\showroots{1} \\def\\showyint{0} \\def\\showpoint{0} \\def\\px{1.5} \\def\\labelp{P}\n% 顶点式 y = a(x-h)^2 + k，顶点 (h,k)；disc=-k/a>=0 时有实根\n\\pgfmathsetmacro{\\disc}{-\\k/\\a}\n\\pgfmathsetmacro{\\rd}{sqrt(max(0,\\disc))}\n% x 视图范围：纳入原点、顶点、点 P、实根，顶点两侧保证最小展宽\n\\pgfmathsetmacro{\\xlo}{min(0,\\h,\\px)-0.8}\n\\pgfmathsetmacro{\\xhi}{max(0,\\h,\\px)+0.8}\n\\pgfmathsetmacro{\\xlo}{min(\\xlo,\\h-2.2)}\n\\pgfmathsetmacro{\\xhi}{max(\\xhi,\\h+2.2)}\n\\ifdim\\rd pt>0.05pt\n  \\pgfmathsetmacro{\\xlo}{min(\\xlo,\\h-\\rd-0.6)}\n  \\pgfmathsetmacro{\\xhi}{max(\\xhi,\\h+\\rd+0.6)}\n\\fi\n\\pgfmathtruncatemacro{\\xleft}{floor(\\xlo)}\n\\pgfmathtruncatemacro{\\xright}{ceil(\\xhi)}\n% 点 P 与 y 轴交点 C 的纵坐标，以及特征点上下界\n\\pgfmathsetmacro{\\py}{\\a*(\\px-\\h)*(\\px-\\h)+\\k}\n\\pgfmathsetmacro{\\yc}{\\a*\\h*\\h+\\k}\n\\pgfmathsetmacro{\\ytopfeat}{max(0,\\k,\\py,\\yc)}\n\\pgfmathsetmacro{\\ybotfeat}{min(0,\\k,\\py,\\yc)}\n% y 视图以特征点为准；曲线边缘过高/过低时封顶 8 个单位（曲线在边框处截断）\n\\pgfmathsetmacro{\\yedgeL}{\\a*(\\xleft-\\h)*(\\xleft-\\h)+\\k}\n\\pgfmathsetmacro{\\yedgeR}{\\a*(\\xright-\\h)*(\\xright-\\h)+\\k}\n\\ifdim\\a pt>0pt\n  \\pgfmathsetmacro{\\yedgehi}{min(max(\\yedgeL,\\yedgeR),\\ytopfeat+8.0)}\n  \\pgfmathsetmacro{\\ytop}{\\yedgehi+0.8}\n  \\pgfmathsetmacro{\\ybottom}{\\ybotfeat-0.8}\n\\else\n  \\pgfmathsetmacro{\\yedgelo}{max(min(\\yedgeL,\\yedgeR),\\ybotfeat-8.0)}\n  \\pgfmathsetmacro{\\ybottom}{\\yedgelo-0.8}\n  \\pgfmathsetmacro{\\ytop}{\\ytopfeat+0.8}\n\\fi\n\\pgfmathtruncatemacro{\\ybottom}{floor(\\ybottom)}\n\\pgfmathtruncatemacro{\\ytop}{ceil(\\ytop)}\n% 曲线绘制域：截断到视图上下边之外一点，避免曲线端点撑大画布\n\\ifdim\\a pt>0pt\n  \\pgfmathsetmacro{\\dexit}{sqrt(max(0,(\\ytop+0.3-\\k)/\\a))}\n\\else\n  \\pgfmathsetmacro{\\dexit}{sqrt(max(0,(\\ybottom-0.3-\\k)/\\a))}\n\\fi\n\\pgfmathsetmacro{\\dlo}{max(\\xleft,\\h-\\dexit)}\n\\pgfmathsetmacro{\\dhi}{min(\\xright,\\h+\\dexit)}\n\\pgfmathsetmacro{\\xrange}{\\xright-\\xleft}\n\\pgfmathsetmacro{\\yrange}{\\ytop-\\ybottom}\n\\pgfmathsetmacro{\\figscale}{6.5/max(\\xrange,\\yrange)}\n% 装饰尺寸抵消 scale，保持视觉大小恒定\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  % ===== 坐标系 =====\n  \\draw[->, thick] (\\xleft-0.5,0) -- (\\xright+0.6,0) node[right] {$x$};\n  \\draw[->, thick] (0,\\ybottom-0.5) -- (0,\\ytop+0.6) node[above] {$y$};\n  \\node[below left, font=\\tiny] at (0,0) {$O$};\n  \\foreach \\x in {\\xleft,...,\\xright} {\n    \\ifnum\\x=0\\else\n      \\draw (\\x,0.12/\\figscale) -- (\\x,-0.12/\\figscale);\n      \\node[below, font=\\tiny, inner sep=1pt] at (\\x,0) {$\\x$};\n    \\fi\n  }\n  \\foreach \\y in {\\ybottom,...,\\ytop} {\n    \\ifnum\\y=0\\else\n      \\draw (0.12/\\figscale,\\y) -- (-0.12/\\figscale,\\y);\n      \\node[left, font=\\tiny, inner sep=1pt] at (0,\\y) {$\\y$};\n    \\fi\n  }\n  % ===== 对称轴 x=h（h≈0 时与 y 轴重合，跳过）=====\n  \\ifnum\\showaxis>0\n    \\pgfmathsetmacro{\\habsh}{abs(\\h)}\n    \\ifdim\\habsh pt>0.05pt\n      \\draw[dashed, gray] (\\h,\\ybottom) -- (\\h,\\ytop);\n      \\node[below, font=\\tiny, gray] at (\\h,\\ytop-0.15) {$x=\\h$};\n    \\fi\n  \\fi\n  % ===== 抛物线 =====\n  \\draw[thick, domain=\\dlo:\\dhi, samples=120, smooth] plot (\\x, {\\a*(\\x-\\h)*(\\x-\\h)+\\k});\n  % ===== 与 x 轴交点 =====\n  \\ifnum\\showroots>0\n    \\ifdim\\rd pt>0.05pt\n      \\fill (\\h-\\rd,0) circle [radius=\\dotr pt];\n      \\fill (\\h+\\rd,0) circle [radius=\\dotr pt];\n      \\node[below=1pt, font=\\tiny, inner sep=1pt] at (\\h-\\rd,0) {$x_1$};\n      \\node[below=1pt, font=\\tiny, inner sep=1pt] at (\\h+\\rd,0) {$x_2$};\n    \\fi\n  \\fi\n  % ===== 顶点 V =====\n  \\ifnum\\showvertex>0\n    \\fill (\\h,\\k) circle [radius=\\dotr pt];\n    \\ifdim\\a pt>0pt\n      \\node[above left, font=\\tiny] at (\\h,\\k) {$V$};\n    \\else\n      \\node[below left, font=\\tiny] at (\\h,\\k) {$V$};\n    \\fi\n  \\fi\n  % ===== 与 y 轴交点 C =====\n  \\ifnum\\showyint>0\n    \\pgfmathsetmacro{\\ycabs}{abs(\\yc)}\n    \\ifdim\\ycabs pt>0.05pt\n      \\fill (0,\\yc) circle [radius=\\dotr pt];\n      \\node[left, font=\\tiny] at (0,\\yc) {$C$};\n    \\fi\n  \\fi\n  % ===== 曲线上点 P =====\n  \\ifnum\\showpoint>0\n    \\fill (\\px,\\py) circle [radius=\\dotr pt];\n    \\node[above right, font=\\tiny] at (\\px,\\py) {$\\labelp$};\n  \\fi\n\\end{tikzpicture}"
+}

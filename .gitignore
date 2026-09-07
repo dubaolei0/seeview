@@ -50,3 +50,8 @@ figure_library/compile_test/
 question_output/
 .plans/
 .ssq-ai-dlc/
+
+### Trae 本地 skill 与编译产物（本地复用，不入版本库）###
+.trae/
+.tmp_compile_out/
+tools/**/__pycache__/
