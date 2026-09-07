@@ -3,7 +3,7 @@
   "name" : "通用三角形",
   "category" : "平面几何",
   "tags" : [ "三角形", "任意三角形", "等腰三角形", "等边三角形", "锐角三角形", "钝角三角形", "正弦定理", "余弦定理", "面积", "中线", "高线", "角平分线", "中点", "中位线" ],
-  "desc" : "任意平面三角形问题：正余弦定理、面积、中线/高/中位线、相似与全等。由两边长 AB、AC 及夹角∠A 决定形状，顶点自动标注；三个角均可标注直角记号（rightmarka/rightmarkb/rightmarkc）、可选∠A 角弧、辅助点 D/E/F（分别是 BC/AC/AB 边的中点）、三条中线（showmedianad/showmedianbe/showmediancf 分别从 A/B/C 出发到对边中点 D/E/F）、三条高线（showheighta/b/c 分别从 A/B/C 出发，垂足带直角记号并标字母，字母由 heightafoot/heightbfoot/heightcfoot 决定，默认 H/P/Q，须与题干一致）、三条角平分线（showbisectora/b/c 分别平分∠A/∠B/∠C，与对边的交点标字母，字母由 bisectorafoot/bisectorbfoot/bisectorcfoot 决定，默认 D/E/F，须与题干一致，不要与图中已用字母冲突）和中位线三角形。覆盖等腰、等边、锐角、钝角、直角等各类三角形。",
+  "desc" : "任意平面三角形问题：正余弦定理、面积、中线/高/中位线、相似与全等。由两边长 AB、AC 及夹角∠A 决定形状，顶点自动标注；三个角均可标注直角记号（rightmarka/rightmarkb/rightmarkc）、可选∠A 角弧、辅助点 D/E/F（分别是 BC/AC/AB 边的中点）、三条中线（showmedianad/showmedianbe/showmediancf 分别从 A/B/C 出发到对边中点 D/E/F）、三条高线（showheighta/b/c 分别从 A/B/C 出发，垂足带直角记号并标字母，字母由 heightafoot/heightbfoot/heightcfoot 决定，默认 H/P/Q，须与题干一致）、三条角平分线（showbisectora/b/c 分别平分∠A/∠B/∠C，与对边的交点标字母，字母由 bisectorafoot/bisectorbfoot/bisectorcfoot 决定，默认 D/E/F——注意这三个默认字母与中点 D/E/F 相同，同时开启中点与角平分线时必须修改其中一组的默认字母以避免冲突）和中位线三角形。覆盖等腰、等边、锐角、钝角、直角等各类三角形。",
   "whenNotToUse" : "含内切圆/外接圆、动点轨迹、复合图形时用自由 TikZ；直角在 B 点的标准直角三角形优先用 right-triangle 模板（直角在 A/C 可用本模板）；等腰三角形专题优先 isosceles-triangle 模板（带三线合一辅助线）。",
   "params" : [ {
     "name" : "ab",

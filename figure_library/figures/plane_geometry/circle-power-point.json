@@ -16,7 +16,7 @@
     "直线与圆的位置关系",
     "坐标法"
   ],
-  "desc": "过定点 P 的两条直线与圆相交的构形，P 的位置由 pdist（OP 距离）与 radius 的大小关系决定：pdist 小于半径时 P 在圆内，两条弦 AB、CD 交于 P；pdist 大于半径时 P 在圆外，可从 P 引切线 PT 与割线 PAB、PCD。可加相似三角形辅助线与角标注。适用于相交弦定理 PA·PB=PC·PD、切割线定理 PT²=PA·PB、割线定理 PA·PB=PC·PD 的计算与证明。 开启 showcoord 后可在直角坐标系中表示圆（圆心坐标(cx,cy)+半径，P 沿 +x 方向距圆心 pdist），覆盖圆幂定理的坐标法证明、过定点求切线长 |PT|=√(OP²-r²)、直线与圆相交交点坐标求解等解析几何考点。",
+  "desc": "过定点 P 的两条直线与圆相交的构形，P 的位置由 pdist（OP 距离）与 radius 的大小关系决定：pdist 小于半径时 P 在圆内，两条弦 AB、CD 交于 P；pdist 大于半径时 P 在圆外，可从 P 引切线 PT 与割线 PAB、PCD。可加相似三角形辅助线与角标注。适用于相交弦定理（P 在圆内，两条弦 AB、CD 交于 P，PA·PB=PC·PD）、切割线定理（P 在圆外，PT 是切线，PT²=PA·PB）、割线定理（P 在圆外，PAB、PCD 是两条割线，PA·PB=PC·PD）的计算与证明。 开启 showcoord 后可在直角坐标系中表示圆（圆心坐标(cx,cy)+半径，P 沿 +x 方向距圆心 pdist），覆盖圆幂定理的坐标法证明、过定点求切线长 |PT|=√(OP²-r²)、直线与圆相交交点坐标求解等解析几何考点。",
   "whenNotToUse": "只有一条弦、不涉及过一点的两线相交用 circle-perp-chord；从圆外一点只引切线而不含割线用 circle-tangent；切线与弦的夹角用 chord-tangent-angle；圆周角与圆心角关系用 circle-inscribed-triangle。",
   "params": [
     {
