@@ -14,10 +14,14 @@
     "圆心角",
     "弧长",
     "扇形面积",
-    "圆的基本性质"
+    "圆的基本性质",
+    "圆的方程",
+    "圆的标准方程",
+    "直线与圆的位置关系",
+    "坐标法"
   ],
-  "desc": "单个圆及其内部基本元素：圆心 O、半径、直径、弦 AB、弧 AB、圆心角 ∠AOB、扇形、弓形。A、B 关于水平轴对称分布在圆心角 anglea 两侧；anglea 为 0 时 A、B 重合，退化为「圆 + 单条半径 OA」，anglea 为 180 时弦 AB 即直径。showcircle 关闭则不画整圆轮廓，只留弧 AB，使扇形/弓形/弧单独成图；开启则得到「整圆内标出弦、弧、圆心角」的构形。可勾选两条半径、弦、扇形填充、弓形填充、圆心角角弧、圆心 O 与字母标签，覆盖圆的基本性质、半径与直径关系、弧长公式、扇形面积、弓形面积等考点。",
-  "whenNotToUse": "含切线用 circle-tangent，切线与弦的夹角用 chord-tangent-angle，垂径定理与圆的对称性用 circle-perp-chord，过一点的两条弦/割线（圆幂定理）用 circle-power-point，圆周角与圆心角关系、圆内接三角形用 circle-inscribed-triangle，圆内接四边形用 cyclic-quadrilateral，正多边形与圆用 regular-polygon-circle，三角形内切圆用 incircle，两圆位置关系用 two-circles；扇形是圆锥侧面展开图时用 cone-net；多圆复合、需标注弧长数值或复杂填充的图形用自由 TikZ。",
+  "desc": "单个圆及其内部基本元素：圆心 O、半径、直径、弦 AB、弧 AB、圆心角 ∠AOB、扇形、弓形。A、B 关于水平轴对称分布在圆心角 anglea 两侧；anglea 为 0 时 A、B 重合，退化为「圆 + 单条半径 OA」，anglea 为 180 时弦 AB 即直径。showcircle 关闭则不画整圆轮廓，只留弧 AB，使扇形/弓形/弧单独成图；开启则得到「整圆内标出弦、弧、圆心角」的构形。可勾选两条半径、弦、扇形填充、弓形填充、圆心角角弧、圆心 O 与字母标签，覆盖圆的基本性质、半径与直径关系、弧长公式、扇形面积、弓形面积等考点。开启 showcoord 后可在直角坐标系中表示圆（圆心坐标(cx,cy)+半径），覆盖圆的标准方程、直线与圆的位置关系、圆与圆的位置关系（坐标法）等解析几何考点。",
+  "whenNotToUse": "含切线用 circle-tangent，切线与弦的夹角用 chord-tangent-angle，垂径定理与圆的对称性用 circle-perp-chord，过一点的两条弦/割线（圆幂定理）用 circle-power-point，圆周角与圆心角关系、圆内接三角形用 circle-inscribed-triangle，圆内接四边形用 cyclic-quadrilateral，正多边形与圆用 regular-polygon-circle，三角形内切圆用 incircle，两圆位置关系用 two-circles；扇形是圆锥侧面展开图时用 cone-net；多圆复合、需标注弧长数值或复杂填充的图形用自由 TikZ；需同时画多条直线与圆的交点、弦长计算等复杂联立场景建议用自由 TikZ",
   "params": [
     {
       "name": "radius",
@@ -108,8 +112,35 @@
       "options": null,
       "default": "true",
       "desc": "是否显示 A、B、O 字母标签（关闭后只留图形，用于需要自行标注的题型）"
+    },
+    {
+      "name": "showcoord",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否显示直角坐标系（开启后圆心可用坐标定位，适合圆的方程、直线与圆位置关系等解析几何题型）"
+    },
+    {
+      "name": "cx",
+      "type": "number",
+      "min": -10,
+      "max": 10,
+      "options": null,
+      "default": "0",
+      "desc": "圆心的 x 坐标（仅 showcoord 开启时生效）"
+    },
+    {
+      "name": "cy",
+      "type": "number",
+      "min": -10,
+      "max": 10,
+      "options": null,
+      "default": "0",
+      "desc": "圆心的 y 坐标（仅 showcoord 开启时生效）"
     }
   ],
   "constraints": [],
-  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{60} \\def\\showcircle{1} \\def\\showradius{1} \\def\\showchord{0} \\def\\showsector{0} \\def\\showsegment{0} \\def\\showangle{0} \\def\\showcenter{1} \\def\\showlabels{1}\n% 视觉归一化：把圆直径缩放到 6cm，保证图形视觉大小稳定。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\pgfmathsetmacro{\\loff}{0.34/\\figscale}\n% A、B 关于正 x 轴对称，圆心角 anglea 平分在 x 轴两侧，图形居中稳定。\n% anglea=0 时 A、B 重合，退化为「圆 + 单条半径 OA」；anglea=180 时弦 AB 即直径。\n\\pgfmathsetmacro{\\hasb}{\\anglea > 0 ? 1 : 0}\n\\pgfmathsetmacro{\\halfa}{\\anglea/2}\n\\pgfmathsetmacro{\\Ax}{\\radius*cos(\\halfa)}\n\\pgfmathsetmacro{\\Ay}{-\\radius*sin(\\halfa)}\n\\pgfmathsetmacro{\\Bx}{\\radius*cos(\\halfa)}\n\\pgfmathsetmacro{\\By}{\\radius*sin(\\halfa)}\n% A、B 只在被某个元素引用时才点出来；整圆之外什么都不画时应是一个干净的圆。\n% 弦/扇形/弓形在 anglea=0 时本身不画，故乘 hasb，避免这些开关在退化情形下只点出一个点。\n\\pgfmathsetmacro{\\ptshow}{max(\\showradius, \\hasb*max(\\showchord,\\showsector,\\showsegment), 1 - \\showcircle)}\n% 字母沿径向朝外，再各自多推开 18 度，保证 anglea 很小时 A、B 的字母不挤在一起\n\\pgfmathsetmacro{\\dirla}{\\anglea > 0 ? -\\halfa - 18 : 0}\n\\pgfmathsetmacro{\\dirlb}{\\halfa + 18}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (A) at (\\Ax,\\Ay);\n  \\coordinate (B) at (\\Bx,\\By);\n  % 填充先画，避免盖住后面的线\n  \\ifdim\\hasb pt>0pt\n    \\ifnum\\showsector>0\n      \\fill[green!12] (O) -- (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius] -- cycle;\n    \\fi\n    \\ifnum\\showsegment>0\n      \\fill[green!12] (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius] -- cycle;\n    \\fi\n  \\fi\n  % 整圆轮廓；关闭时只画弧 AB，图形退化为扇形/弓形/弧单独成图\n  \\ifnum\\showcircle>0\n    \\draw[thick] (O) circle [radius=\\radius];\n  \\else\n    \\ifdim\\hasb pt>0pt\n      \\draw[thick] (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius];\n    \\fi\n  \\fi\n  % 半径：anglea=0 时 OA、OB 重合，只画一条\n  \\ifnum\\showradius>0\n    \\draw[thick] (O) -- (A);\n    \\ifdim\\hasb pt>0pt\n      \\draw[thick] (O) -- (B);\n    \\fi\n  \\fi\n  % 弦 AB（anglea=180 时即直径）\n  \\ifdim\\hasb pt>0pt\n    \\ifnum\\showchord>0\n      \\draw[thick] (A) -- (B);\n    \\fi\n  \\fi\n  % 圆心角 ∠AOB 的角弧（需两条半径存在才有夹角可标）\n  \\ifdim\\hasb pt>0pt\n    \\ifnum\\showangle>0\n      \\ifnum\\showradius>0\n        % 圆心角很小时固定半径的角弧会短到看不见，故按「弧长约 0.30cm」反推半径，上界不超过 0.55 倍圆半径\n        \\pgfmathsetmacro{\\arcneed}{(0.30/\\figscale)*57.2958/max(\\anglea,0.5)}\n        \\pgfmathsetmacro{\\arcr}{min(max(0.45/\\figscale, \\arcneed), \\radius*0.55)}\n        \\draw[thick] ({\\arcr*cos(\\halfa)},{\\arcr*sin(\\halfa)}) arc[start angle=\\halfa, end angle=-\\halfa, radius=\\arcr];\n      \\fi\n    \\fi\n  \\fi\n  % 端点\n  \\ifdim\\ptshow pt>0pt\n    \\fill (A) circle [radius=\\dotr pt];\n    \\ifnum\\showlabels>0\n      \\node at ({\\Ax + \\loff*cos(\\dirla)},{\\Ay + \\loff*sin(\\dirla)}) {$A$};\n    \\fi\n    \\ifdim\\hasb pt>0pt\n      \\fill (B) circle [radius=\\dotr pt];\n      \\ifnum\\showlabels>0\n        \\node at ({\\Bx + \\loff*cos(\\dirlb)},{\\By + \\loff*sin(\\dirlb)}) {$B$};\n      \\fi\n    \\fi\n  \\fi\n  % 圆心 O\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=\\dotr pt];\n    \\ifnum\\showlabels>0\n      \\node[below left=3pt] at (O) {$O$};\n    \\fi\n  \\fi\n\\end{tikzpicture}"
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglea{60} \\def\\showcircle{1} \\def\\showradius{1} \\def\\showchord{0} \\def\\showsector{0} \\def\\showsegment{0} \\def\\showangle{0} \\def\\showcenter{1} \\def\\showlabels{1} \\def\\showcoord{0} \\def\\cx{0} \\def\\cy{0}\n% 视觉归一化：区分坐标模式与裸图模式\n\\ifnum\\showcoord>0\n  \\pgfmathtruncatemacro{\\xleft}{floor(\\cx - \\radius - 0.8)}\n  \\pgfmathtruncatemacro{\\xright}{ceil(\\cx + \\radius + 0.8)}\n  \\pgfmathtruncatemacro{\\ybottom}{floor(\\cy - \\radius - 0.8)}\n  \\pgfmathtruncatemacro{\\ytop}{ceil(\\cy + \\radius + 0.8)}\n  \\pgfmathsetmacro{\\xrange}{\\xright - \\xleft}\n  \\pgfmathsetmacro{\\yrange}{\\ytop - \\ybottom}\n  \\pgfmathsetmacro{\\figscale}{6.0 / max(\\xrange, \\yrange)}\n\\else\n  \\pgfmathsetmacro{\\figscale}{3 / \\radius}\n\\fi\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\pgfmathsetmacro{\\loff}{0.34/\\figscale}\n% A、B 关于正 x 轴对称，圆心角 anglea 平分在 x 轴两侧，图形居中稳定。\n% anglea=0 时 A、B 重合，退化为「圆 + 单条半径 OA」；anglea=180 时弦 AB 即直径。\n\\pgfmathsetmacro{\\hasb}{\\anglea > 0 ? 1 : 0}\n\\pgfmathsetmacro{\\halfa}{\\anglea/2}\n\\pgfmathsetmacro{\\Ax}{\\cx + \\radius*cos(\\halfa)}\n\\pgfmathsetmacro{\\Ay}{\\cy - \\radius*sin(\\halfa)}\n\\pgfmathsetmacro{\\Bx}{\\cx + \\radius*cos(\\halfa)}\n\\pgfmathsetmacro{\\By}{\\cy + \\radius*sin(\\halfa)}\n% A、B 只在被某个元素引用时才点出来；整圆之外什么都不画时应是一个干净的圆。\n% 弦/扇形/弓形在 anglea=0 时本身不画，故乘 hasb，避免这些开关在退化情形下只点出一个点。\n\\pgfmathsetmacro{\\ptshow}{max(\\showradius, \\hasb*max(\\showchord,\\showsector,\\showsegment), 1 - \\showcircle)}\n% 字母沿径向朝外，再各自多推开 18 度，保证 anglea 很小时 A、B 的字母不挤在一起\n\\pgfmathsetmacro{\\dirla}{\\anglea > 0 ? -\\halfa - 18 : 0}\n\\pgfmathsetmacro{\\dirlb}{\\halfa + 18}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n    % ===== 坐标系（showcoord=1 时绘制）=====\n  \\ifnum\\showcoord>0\n    \\draw[->, thick] (\\xleft-0.5, 0) -- (\\xright+0.5, 0) node[right] {$x$};\n    \\draw[->, thick] (0, \\ybottom-0.5) -- (0, \\ytop+0.5) node[above] {$y$};\n  \\fi\n  \\coordinate (O) at (\\cx,\\cy);\n  \\coordinate (A) at (\\Ax,\\Ay);\n  \\coordinate (B) at (\\Bx,\\By);\n  % 填充先画，避免盖住后面的线\n  \\ifdim\\hasb pt>0pt\n    \\ifnum\\showsector>0\n      \\fill[green!12] (O) -- (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius] -- cycle;\n    \\fi\n    \\ifnum\\showsegment>0\n      \\fill[green!12] (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius] -- cycle;\n    \\fi\n  \\fi\n  % 整圆轮廓；关闭时只画弧 AB，图形退化为扇形/弓形/弧单独成图\n  \\ifnum\\showcircle>0\n    \\draw[thick] (O) circle [radius=\\radius];\n  \\else\n    \\ifdim\\hasb pt>0pt\n      \\draw[thick] (A) arc[start angle=-\\halfa, end angle=\\halfa, radius=\\radius];\n    \\fi\n  \\fi\n  % 半径：anglea=0 时 OA、OB 重合，只画一条\n  \\ifnum\\showradius>0\n    \\draw[thick] (O) -- (A);\n    \\ifdim\\hasb pt>0pt\n      \\draw[thick] (O) -- (B);\n    \\fi\n  \\fi\n  % 弦 AB（anglea=180 时即直径）\n  \\ifdim\\hasb pt>0pt\n    \\ifnum\\showchord>0\n      \\draw[thick] (A) -- (B);\n    \\fi\n  \\fi\n  % 圆心角 ∠AOB 的角弧（需两条半径存在才有夹角可标）\n  \\ifdim\\hasb pt>0pt\n    \\ifnum\\showangle>0\n      \\ifnum\\showradius>0\n        % 圆心角很小时固定半径的角弧会短到看不见，故按「弧长约 0.30cm」反推半径，上界不超过 0.55 倍圆半径\n        \\pgfmathsetmacro{\\arcneed}{(0.30/\\figscale)*57.2958/max(\\anglea,0.5)}\n        \\pgfmathsetmacro{\\arcr}{min(max(0.45/\\figscale, \\arcneed), \\radius*0.55)}\n        \\draw[thick] ({\\cx+\\arcr*cos(\\halfa)},{\\cy+\\arcr*sin(\\halfa)}) arc[start angle=\\halfa, end angle=-\\halfa, radius=\\arcr];\n      \\fi\n    \\fi\n  \\fi\n  % 端点\n  \\ifdim\\ptshow pt>0pt\n    \\fill (A) circle [radius=\\dotr pt];\n    \\ifnum\\showlabels>0\n      \\node at ({\\Ax + \\loff*cos(\\dirla)},{\\Ay + \\loff*sin(\\dirla)}) {$A$};\n    \\fi\n    \\ifdim\\hasb pt>0pt\n      \\fill (B) circle [radius=\\dotr pt];\n      \\ifnum\\showlabels>0\n        \\node at ({\\Bx + \\loff*cos(\\dirlb)},{\\By + \\loff*sin(\\dirlb)}) {$B$};\n      \\fi\n    \\fi\n  \\fi\n  % 圆心 O\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=\\dotr pt];\n    \\ifnum\\showlabels>0\n      \\node[below left=3pt] at (O) {$O$};\n    \\fi\n  \\fi\n\\end{tikzpicture}"
 }

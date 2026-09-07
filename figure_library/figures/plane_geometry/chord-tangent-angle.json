@@ -8,9 +8,12 @@
     "切线",
     "弦切角",
     "圆周角",
-    "圆心角"
+    "圆心角",
+    "圆的方程",
+    "直线与圆的位置关系",
+    "坐标法"
   ],
-  "desc": "圆的切线与过切点的弦构成的弦切角，可同时画出同弧所对的圆周角与圆心角。适用于弦切角定理（弦切角等于它所夹弧所对的圆周角、等于所夹弧圆心角的一半）及相关角度计算、证明题。",
+  "desc": "圆的切线与过切点的弦构成的弦切角，可同时画出同弧所对的圆周角与圆心角。适用于弦切角定理（弦切角等于它所夹弧所对的圆周角、等于所夹弧圆心角的一半）及相关角度计算、证明题。开启 showcoord 后可在直角坐标系中表示圆（圆心坐标(cx,cy)+半径），覆盖切线方程、弦切角的坐标法证明等解析几何考点。",
   "whenNotToUse": "不涉及切线与弦夹角时不要用：只有切线与半径关系、或圆外一点的两条切线用 circle-tangent；纯圆周角/圆心角用 circle-inscribed-triangle。",
   "params": [
     {
@@ -210,10 +213,37 @@
       ],
       "default": "C",
       "desc": "圆周角顶点字母（须与题干一致，默认 C）"
+    },
+    {
+      "name": "showcoord",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否显示直角坐标系（开启后圆心可用坐标定位，适合切线方程、弦切角的坐标法证明等解析几何题型）"
+    },
+    {
+      "name": "cx",
+      "type": "number",
+      "min": -10,
+      "max": 10,
+      "options": null,
+      "default": "0",
+      "desc": "圆心的 x 坐标（仅 showcoord 开启时生效）"
+    },
+    {
+      "name": "cy",
+      "type": "number",
+      "min": -10,
+      "max": 10,
+      "options": null,
+      "default": "0",
+      "desc": "圆心的 y 坐标（仅 showcoord 开启时生效）"
     }
   ],
   "constraints": [
     "arcspan + angleoffset < 301"
   ],
-  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglet{270} \\def\\arcspan{120} \\def\\angleoffset{120} \\def\\showtangent{1} \\def\\showchord{1} \\def\\showangle{1} \\def\\showinscribedangle{0} \\def\\showcentralangle{0} \\def\\showcenter{1} \\def\\labelt{T} \\def\\labela{A} \\def\\labelc{C}\n% 视觉归一化：把直径缩放到 6cm，保证不同半径下图形视觉大小一致。\n\\pgfmathsetmacro{\\figscale}{3 / \\radius}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n% 角弧半径统一按「弧长约 0.30cm」反推：固定半径的角弧在小角度下弧长会退化到亚像素，\n% 本模板的弦切角与圆周角都等于 arcspan/2，小 arcspan 时必须放大半径才看得见。\n\\pgfmathsetmacro{\\arctarget}{0.30/\\figscale*57.2958}\n% 弦切角 = 同弧圆周角 = arcspan/2，两处角弧用同一个目标半径\n\\pgfmathsetmacro{\\halfspan}{\\arcspan/2}\n\\pgfmathsetmacro{\\needhalf}{\\arctarget/max(\\halfspan,0.5)}\n% 三个圆上点的位置角：T 为切点，A = T 沿逆时针转 arcspan，C 再沿逆时针转 angleoffset（落在另一段弧上）\n\\pgfmathsetmacro{\\angA}{\\anglet + \\arcspan}\n\\pgfmathsetmacro{\\angC}{\\anglet + \\arcspan + \\angleoffset}\n\\pgfmathsetmacro{\\Tx}{\\radius*cos(\\anglet)}\n\\pgfmathsetmacro{\\Ty}{\\radius*sin(\\anglet)}\n\\pgfmathsetmacro{\\Ax}{\\radius*cos(\\angA)}\n\\pgfmathsetmacro{\\Ay}{\\radius*sin(\\angA)}\n\\pgfmathsetmacro{\\Cx}{\\radius*cos(\\angC)}\n\\pgfmathsetmacro{\\Cy}{\\radius*sin(\\angC)}\n% 切线方向：垂直于半径 OT，取逆时针切向 anglet+90（该方向与弦 TA 夹出的角所夹弧正好是 T 逆时针到 A 的弧）\n\\pgfmathsetmacro{\\tdx}{cos(\\anglet+90)}\n\\pgfmathsetmacro{\\tdy}{sin(\\anglet+90)}\n% 以下角弧参数只依赖入参，全部提到 tikzpicture 之前，图里只剩 \\draw\n% 弦切角：顶点 T，起边为切线的逆时针方向，终边为弦 TA\n\\pgfmathsetmacro{\\lenchord}{sqrt((\\Ax-\\Tx)^2 + (\\Ay-\\Ty)^2)}\n\\pgfmathsetmacro{\\sangct}{\\anglet + 90}\n\\pgfmathsetmacro{\\erawct}{atan2(\\Ay-\\Ty,\\Ax-\\Tx)}\n\\pgfmathsetmacro{\\edifct}{\\erawct - \\sangct}\n\\pgfmathsetmacro{\\eangct}{\\sangct + \\edifct - 360*round(\\edifct/360)}\n% 半径先按目标弧长反推，再被两边长度限住：切线边画到 1.15*radius，弦边长 lenchord，\n% 取 0.55 倍是为了角弧不越过弦端点 A（那里有 A 的圆点和字母）\n\\pgfmathsetmacro{\\arcrct}{min(max(0.42/\\figscale, \\needhalf), \\radius*0.55, \\lenchord*0.55)}\n% 同弧圆周角 ∠TCA（与弦切角相等）\n\\pgfmathsetmacro{\\lencit}{sqrt((\\Tx-\\Cx)^2 + (\\Ty-\\Cy)^2)}\n\\pgfmathsetmacro{\\lencia}{sqrt((\\Ax-\\Cx)^2 + (\\Ay-\\Cy)^2)}\n\\pgfmathsetmacro{\\sangci}{atan2(\\Ty-\\Cy,\\Tx-\\Cx)}\n\\pgfmathsetmacro{\\erawci}{atan2(\\Ay-\\Cy,\\Ax-\\Cx)}\n\\pgfmathsetmacro{\\edifci}{\\erawci - \\sangci}\n\\pgfmathsetmacro{\\eangci}{\\sangci + \\edifci - 360*round(\\edifci/360)}\n\\pgfmathsetmacro{\\arcrci}{min(max(0.42/\\figscale, \\needhalf), \\lencit*0.55, \\lencia*0.55)}\n% 圆心角 ∠TOA：逆时针从 anglet 扫到 angA，与弦切角所夹弧一致（arcspan 可超过 180 度）\n\\pgfmathsetmacro{\\needspan}{\\arctarget/max(\\arcspan,0.5)}\n\\pgfmathsetmacro{\\carcr}{min(max(0.5/\\figscale, \\needspan), \\radius*0.42)}\n% 圆心标注放在背离弧 TA 的一侧，避免压住圆心角的两条半径 OT、OA\n\\pgfmathsetmacro{\\obis}{\\anglet + \\halfspan + 180}\n% 弦切角的两条边是切线与弦 TA，两者都画出来才有角可标\n\\pgfmathsetmacro{\\ctshow}{\\showtangent*\\showchord}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\draw[thick] (0,0) circle [radius=\\radius];\n  \\ifnum\\showtangent>0\n    \\pgfmathsetmacro{\\tlen}{\\radius*1.15}\n    \\draw[thick] ({\\Tx - \\tlen*\\tdx},{\\Ty - \\tlen*\\tdy}) -- ({\\Tx + \\tlen*\\tdx},{\\Ty + \\tlen*\\tdy});\n  \\fi\n  \\ifnum\\showchord>0\n    \\draw[thick] (\\Tx,\\Ty) -- (\\Ax,\\Ay);\n  \\fi\n  \\ifnum\\showcentralangle>0\n    \\draw[thick] (0,0) -- (\\Tx,\\Ty);\n    \\draw[thick] (0,0) -- (\\Ax,\\Ay);\n    \\draw[thick] ({\\carcr*cos(\\anglet)},{\\carcr*sin(\\anglet)}) arc[start angle=\\anglet, end angle=\\angA, radius=\\carcr];\n  \\fi\n  \\ifnum\\showangle>0\n    \\ifdim\\ctshow pt>0pt\n      \\draw[thick] ({\\Tx + \\arcrct*cos(\\sangct)},{\\Ty + \\arcrct*sin(\\sangct)}) arc[start angle=\\sangct, end angle=\\eangct, radius=\\arcrct];\n    \\fi\n  \\fi\n  \\ifnum\\showinscribedangle>0\n    \\draw[thick] (\\Cx,\\Cy) -- (\\Tx,\\Ty);\n    \\draw[thick] (\\Cx,\\Cy) -- (\\Ax,\\Ay);\n    \\draw[thick] ({\\Cx + \\arcrci*cos(\\sangci)},{\\Cy + \\arcrci*sin(\\sangci)}) arc[start angle=\\sangci, end angle=\\eangci, radius=\\arcrci];\n    \\fill (\\Cx,\\Cy) circle [radius=\\dotr pt];\n    \\node at ({1.16*\\Cx},{1.16*\\Cy}) {$\\labelc$};\n  \\fi\n  \\ifnum\\showcenter>0\n    \\fill (0,0) circle [radius=\\dotr pt];\n    \\node at ({0.19*\\radius*cos(\\obis)},{0.19*\\radius*sin(\\obis)}) {$O$};\n  \\fi\n  \\fill (\\Tx,\\Ty) circle [radius=\\dotr pt];\n  \\node at ({1.16*\\Tx},{1.16*\\Ty}) {$\\labelt$};\n  \\fill (\\Ax,\\Ay) circle [radius=\\dotr pt];\n  \\node at ({1.16*\\Ax},{1.16*\\Ay}) {$\\labela$};\n\\end{tikzpicture}"
+  "template": "% 参数由系统自动注入：\\def\\radius{3} \\def\\anglet{270} \\def\\arcspan{120} \\def\\angleoffset{120} \\def\\showtangent{1} \\def\\showchord{1} \\def\\showangle{1} \\def\\showinscribedangle{0} \\def\\showcentralangle{0} \\def\\showcenter{1} \\def\\labelt{T} \\def\\labela{A} \\def\\labelc{C} \\def\\showcoord{0} \\def\\cx{0} \\def\\cy{0}\n% 视觉归一化：区分坐标模式与裸图模式\n\\ifnum\\showcoord>0\n  \\pgfmathtruncatemacro{\\xleft}{floor(\\cx - \\radius - 0.8)}\n  \\pgfmathtruncatemacro{\\xright}{ceil(\\cx + \\radius + 0.8)}\n  \\pgfmathtruncatemacro{\\ybottom}{floor(\\cy - \\radius - 0.8)}\n  \\pgfmathtruncatemacro{\\ytop}{ceil(\\cy + \\radius + 0.8)}\n  \\pgfmathsetmacro{\\xrange}{\\xright - \\xleft}\n  \\pgfmathsetmacro{\\yrange}{\\ytop - \\ybottom}\n  \\pgfmathsetmacro{\\figscale}{6.0 / max(\\xrange, \\yrange)}\n\\else\n  \\pgfmathsetmacro{\\figscale}{3 / \\radius}\n\\fi\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n% 角弧半径统一按「弧长约 0.30cm」反推：固定半径的角弧在小角度下弧长会退化到亚像素，\n% 本模板的弦切角与圆周角都等于 arcspan/2，小 arcspan 时必须放大半径才看得见。\n\\pgfmathsetmacro{\\arctarget}{0.30/\\figscale*57.2958}\n% 弦切角 = 同弧圆周角 = arcspan/2，两处角弧用同一个目标半径\n\\pgfmathsetmacro{\\halfspan}{\\arcspan/2}\n\\pgfmathsetmacro{\\needhalf}{\\arctarget/max(\\halfspan,0.5)}\n% 三个圆上点的位置角：T 为切点，A = T 沿逆时针转 arcspan，C 再沿逆时针转 angleoffset（落在另一段弧上）\n\\pgfmathsetmacro{\\angA}{\\anglet + \\arcspan}\n\\pgfmathsetmacro{\\angC}{\\anglet + \\arcspan + \\angleoffset}\n\\pgfmathsetmacro{\\Tx}{\\radius*cos(\\anglet)}\n\\pgfmathsetmacro{\\Ty}{\\radius*sin(\\anglet)}\n\\pgfmathsetmacro{\\Ax}{\\radius*cos(\\angA)}\n\\pgfmathsetmacro{\\Ay}{\\radius*sin(\\angA)}\n\\pgfmathsetmacro{\\Cx}{\\radius*cos(\\angC)}\n\\pgfmathsetmacro{\\Cy}{\\radius*sin(\\angC)}\n% 切线方向：垂直于半径 OT，取逆时针切向 anglet+90（该方向与弦 TA 夹出的角所夹弧正好是 T 逆时针到 A 的弧）\n\\pgfmathsetmacro{\\tdx}{cos(\\anglet+90)}\n\\pgfmathsetmacro{\\tdy}{sin(\\anglet+90)}\n% 以下角弧参数只依赖入参，全部提到 tikzpicture 之前，图里只剩 \\draw\n% 弦切角：顶点 T，起边为切线的逆时针方向，终边为弦 TA\n\\pgfmathsetmacro{\\lenchord}{sqrt((\\Ax-\\Tx)^2 + (\\Ay-\\Ty)^2)}\n\\pgfmathsetmacro{\\sangct}{\\anglet + 90}\n\\pgfmathsetmacro{\\erawct}{atan2(\\Ay-\\Ty,\\Ax-\\Tx)}\n\\pgfmathsetmacro{\\edifct}{\\erawct - \\sangct}\n\\pgfmathsetmacro{\\eangct}{\\sangct + \\edifct - 360*round(\\edifct/360)}\n% 半径先按目标弧长反推，再被两边长度限住：切线边画到 1.15*radius，弦边长 lenchord，\n% 取 0.55 倍是为了角弧不越过弦端点 A（那里有 A 的圆点和字母）\n\\pgfmathsetmacro{\\arcrct}{min(max(0.42/\\figscale, \\needhalf), \\radius*0.55, \\lenchord*0.55)}\n% 同弧圆周角 ∠TCA（与弦切角相等）\n\\pgfmathsetmacro{\\lencit}{sqrt((\\Tx-\\Cx)^2 + (\\Ty-\\Cy)^2)}\n\\pgfmathsetmacro{\\lencia}{sqrt((\\Ax-\\Cx)^2 + (\\Ay-\\Cy)^2)}\n\\pgfmathsetmacro{\\sangci}{atan2(\\Ty-\\Cy,\\Tx-\\Cx)}\n\\pgfmathsetmacro{\\erawci}{atan2(\\Ay-\\Cy,\\Ax-\\Cx)}\n\\pgfmathsetmacro{\\edifci}{\\erawci - \\sangci}\n\\pgfmathsetmacro{\\eangci}{\\sangci + \\edifci - 360*round(\\edifci/360)}\n\\pgfmathsetmacro{\\arcrci}{min(max(0.42/\\figscale, \\needhalf), \\lencit*0.55, \\lencia*0.55)}\n% 圆心角 ∠TOA：逆时针从 anglet 扫到 angA，与弦切角所夹弧一致（arcspan 可超过 180 度）\n\\pgfmathsetmacro{\\needspan}{\\arctarget/max(\\arcspan,0.5)}\n\\pgfmathsetmacro{\\carcr}{min(max(0.5/\\figscale, \\needspan), \\radius*0.42)}\n% 圆心标注放在背离弧 TA 的一侧，避免压住圆心角的两条半径 OT、OA\n\\pgfmathsetmacro{\\obis}{\\anglet + \\halfspan + 180}\n% 弦切角的两条边是切线与弦 TA，两者都画出来才有角可标\n\\pgfmathsetmacro{\\ctshow}{\\showtangent*\\showchord}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n    % ===== 坐标系（showcoord=1 时绘制）=====\n  \\ifnum\\showcoord>0\n    \\draw[->, thick] (\\xleft-0.5, 0) -- (\\xright+0.5, 0) node[right] {$x$};\n    \\draw[->, thick] (0, \\ybottom-0.5) -- (0, \\ytop+0.5) node[above] {$y$};\n  \\fi\n  \\fill ({\\cx+\\Tx},{\\cy+\\Ty}) circle [radius=\\dotr pt];\n  \\node at ({\\cx+1.16*\\Tx},{\\cy+1.16*\\Ty}) {$\\labelt$};\n  \\fill ({\\cx+\\Ax},{\\cy+\\Ay}) circle [radius=\\dotr pt];\n  \\node at ({\\cx+1.16*\\Ax},{\\cy+1.16*\\Ay}) {$\\labela$};\n\\end{tikzpicture}"
 }
