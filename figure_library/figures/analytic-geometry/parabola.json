@@ -1,0 +1,130 @@
+{
+  "id": "parabola",
+  "name": "抛物线（焦点·准线）",
+  "category": "解析几何-圆锥曲线",
+  "tags": [
+    "抛物线",
+    "焦点",
+    "准线",
+    "顶点",
+    "对称轴",
+    "焦准距",
+    "抛物线定义",
+    "标准方程",
+    "焦半径"
+  ],
+  "desc": "抛物线的基本要素问题：焦点、准线、顶点、对称轴、焦准距。由焦准距 focusparam（p）决定开口大小（标准方程 y²=2px，焦点 F(p/2,0)，准线 x=-p/2），默认开口向右，可勾选开口向上（标准方程 x²=2py，焦点 F(0,p/2)，准线 y=-p/2）；可标顶点 O、画对称轴、画焦点 F、画准线 l、画焦准距线段，以及画出抛物线上一点 P 并连焦点 F 与到准线的垂足（抛物线定义 PF=点到准线距离）。覆盖抛物线定义、标准方程、焦点与准线坐标、焦半径、过焦点弦等考点。",
+  "whenNotToUse": "椭圆（PF1+PF2=2a 为定和、无准线）用 ellipse 模板；双曲线（PF1-PF2=2a 为定差、有渐近线）用 hyperbola 模板；含直线与抛物线位置关系、联立方程求交点、焦点弦、切线等问题建议用自由 TikZ 配坐标网格；开口向左/向下（x²=-2py 等）的抛物线建议用自由 TikZ。",
+  "params": [
+    {
+      "name": "focusparam",
+      "type": "number",
+      "min": 0.4,
+      "max": 4,
+      "options": null,
+      "default": "1.2",
+      "desc": "焦准距 p（焦点到准线距离的一半），决定开口大小；焦点距顶点 p/2"
+    },
+    {
+      "name": "orientation",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "right",
+        "up"
+      ],
+      "default": "right",
+      "desc": "开口方向：right=开口向右（y²=2px），up=开口向上（x²=2py）"
+    },
+    {
+      "name": "showvertex",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注顶点 O"
+    },
+    {
+      "name": "showaxis",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画对称轴（虚线，过顶点沿开口方向）"
+    },
+    {
+      "name": "showfocus",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标出焦点 F（在对称轴上，距顶点 p/2）"
+    },
+    {
+      "name": "showdirectrix",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画准线 l（与对称轴垂直，在顶点另一侧，距顶点 p/2）"
+    },
+    {
+      "name": "showpoint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画出抛物线上一点 P，连焦点 F 与到准线的垂足 M（PF=PM，抛物线定义）"
+    },
+    {
+      "name": "pointy",
+      "type": "number",
+      "min": 0.4,
+      "max": 4,
+      "options": null,
+      "default": "1.8",
+      "desc": "抛物线上点 P 的纵坐标 y（开口向右时用）；开口向上时用 pointx（横坐标）"
+    },
+    {
+      "name": "pointx",
+      "type": "number",
+      "min": 0.4,
+      "max": 4,
+      "options": null,
+      "default": "1.5",
+      "desc": "抛物线上点 P 的横坐标 x（开口向上时用）；开口向右时用 pointy（纵坐标）"
+    },
+    {
+      "name": "labelp",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "P",
+        "Q",
+        "M",
+        "N"
+      ],
+      "default": "P",
+      "desc": "抛物线上点的字母（须与题干一致，默认 P）"
+    }
+  ],
+  "constraints": [
+    "focusparam > 0.3"
+  ],
+  "template": "% 参数由系统自动注入：\\def\\focusparam{1.2} \\def\\orientation{right} \\def\\showvertex{1} \\def\\showaxis{1} \\def\\showfocus{1} \\def\\showdirectrix{1} \\def\\showpoint{0} \\def\\pointy{1.8} \\def\\pointx{1.5} \\def\\labelp{P}\n% 焦点到顶点距离 = p/2\n\\pgfmathsetmacro{\\halfp}{\\focusparam/2}\n% 开口向右：y^2 = 2px，点 P 的 x = y^2/(2p)；准线 x = -p/2，对称轴为 x 轴\n\\pgfmathsetmacro{\\Px}{\\pointy*\\pointy/(2*\\focusparam)}\n\\pgfmathsetmacro{\\Pxm}{-\\halfp}\n% 开口向上：x^2 = 2py，点 P 的 y = x^2/(2p)；准线 y = -p/2，对称轴为 y 轴\n\\pgfmathsetmacro{\\Py}{\\pointx*\\pointx/(2*\\focusparam)}\n\\pgfmathsetmacro{\\Pym}{-\\halfp}\n% 视图范围：向右的 x 视图，取点横坐标与焦点的较大值再留余量\n\\pgfmathsetmacro{\\vright}{max(1.3*\\Px, 1.2*\\halfp, 2.5) + 0.8}\n\\pgfmathsetmacro{\\vup}{max(1.3*\\pointy, 1.2*\\halfp, 2.0) + 0.8}\n% 视觉归一化\n\\pgfmathsetmacro{\\figscale}{6 / max(\\vright + \\halfp + 0.8, 2.0)}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\pgfmathsetmacro{\\loff}{0.34/\\figscale}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\ifnum\\strcmp{\\orientation}{right}=0\n    % 开口向右 y^2=2px：焦点 F(p/2,0)，准线 x=-p/2\n    \\coordinate (V) at (0,0);\n    \\coordinate (F) at (\\halfp,0);\n    % 对称轴（x 轴）\n    \\ifnum\\showaxis>0\n      \\draw[dashed, gray] (-\\halfp-0.3,0) -- (\\vright,0);\n    \\fi\n    % 抛物线曲线：x = y^2/(2p)，纵坐标从 -vup 到 vup\n    \\draw[thick, domain=-\\vup:\\vup, samples=80, smooth] plot ({\\x*\\x/(2*\\focusparam)},{\\x});\n    % 抛物线上点 P 连焦点与准线垂足 M\n    \\ifnum\\showpoint>0\n      \\draw[thick] (F) -- (\\Px,\\pointy) -- (\\Pxm,\\pointy);\n      \\fill (\\Px,\\pointy) circle [radius=\\dotr pt];\n      \\fill (\\Pxm,\\pointy) circle [radius=\\dotr pt];\n      \\node at ({1.12*\\Px},{1.12*\\pointy}) {$\\labelp$};\n      \\node[left=2pt] at (\\Pxm,\\pointy) {$M$};\n    \\fi\n    % 焦点 F\n    \\ifnum\\showfocus>0\n      \\fill (F) circle [radius=\\dotr pt];\n      \\node[above right=2pt] at (F) {$F$};\n    \\fi\n    % 准线 l：x = -p/2\n    \\ifnum\\showdirectrix>0\n      \\draw[thick] (\\Pxm,-\\vup) -- (\\Pxm,\\vup);\n      \\node[left=2pt] at (\\Pxm,\\vup) {$l$};\n    \\fi\n  \\else\n    % 开口向上 x^2=2py：焦点 F(0,p/2)，准线 y=-p/2\n    \\coordinate (V) at (0,0);\n    \\coordinate (F) at (0,\\halfp);\n    % 对称轴（y 轴）\n    \\ifnum\\showaxis>0\n      \\draw[dashed, gray] (0,-\\halfp-0.3) -- (0,\\vup);\n    \\fi\n    % 抛物线曲线：y = x^2/(2p)，横坐标从 -vright 到 vright\n    \\draw[thick, domain=-\\vright:\\vright, samples=80, smooth] plot ({\\x},{\\x*\\x/(2*\\focusparam)});\n    % 抛物线上点 P 连焦点与准线垂足 M\n    \\ifnum\\showpoint>0\n      \\draw[thick] (F) -- (\\pointx,\\Py) -- (\\pointx,\\Pym);\n      \\fill (\\pointx,\\Py) circle [radius=\\dotr pt];\n      \\fill (\\pointx,\\Pym) circle [radius=\\dotr pt];\n      \\node at ({1.12*\\pointx},{1.12*\\Py}) {$\\labelp$};\n      \\node[below=2pt] at (\\pointx,\\Pym) {$M$};\n    \\fi\n    % 焦点 F\n    \\ifnum\\showfocus>0\n      \\fill (F) circle [radius=\\dotr pt];\n      \\node[right=2pt] at (F) {$F$};\n    \\fi\n    % 准线 l：y = -p/2\n    \\ifnum\\showdirectrix>0\n      \\draw[thick] (-\\vright,\\Pym) -- (\\vright,\\Pym);\n      \\node[right=2pt] at (-\\vright,\\Pym) {$l$};\n    \\fi\n  \\fi\n  % 顶点 O\n  \\ifnum\\showvertex>0\n    \\fill (V) circle [radius=\\dotr pt];\n    \\node[below left=2pt] at (V) {$O$};\n  \\fi\n\\end{tikzpicture}"
+}

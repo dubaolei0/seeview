@@ -1,0 +1,118 @@
+{
+  "id": "ellipse",
+  "name": "椭圆（焦点·长短轴·顶点）",
+  "category": "解析几何-圆锥曲线",
+  "tags": [
+    "椭圆",
+    "焦点",
+    "长轴",
+    "短轴",
+    "顶点",
+    "离心率",
+    "椭圆定义",
+    "标准方程",
+    "焦点三角形"
+  ],
+  "desc": "椭圆的基本要素问题：焦点、长轴、短轴、顶点、离心率。由半长轴 semimajor 与半短轴 semiminor 决定形状（焦点距 c=sqrt(a²-b²)，c>0 时焦点在长轴上）；以中心 O 居中，可勾选标注中心、画长轴与短轴、标两焦点 F1/F2、标四个顶点，以及画出椭圆上一点 P 并连两焦点（椭圆定义 PF1+PF2=2a）。覆盖椭圆定义、标准方程、a/b/c 关系、离心率 e=c/a、焦点与顶点坐标等考点。",
+  "whenNotToUse": "双曲线（焦点差为定值、有渐近线）用 hyperbola 模板；抛物线（焦点到准线距离相等、有准线）用 parabola 模板；圆是椭圆的特例（a=b）用 circle 模板即可；含直线与椭圆位置关系、弦中点、联立方程求交点等问题建议用自由 TikZ 配坐标网格。",
+  "params": [
+    {
+      "name": "semimajor",
+      "type": "number",
+      "min": 1.5,
+      "max": 10,
+      "options": null,
+      "default": "3.5",
+      "desc": "半长轴 a（横轴半径），须大于半短轴"
+    },
+    {
+      "name": "semiminor",
+      "type": "number",
+      "min": 0.8,
+      "max": 10,
+      "options": null,
+      "default": "2.2",
+      "desc": "半短轴 b（纵轴半径），须小于半长轴"
+    },
+    {
+      "name": "showcenter",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注中心 O"
+    },
+    {
+      "name": "showaxes",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画长轴与短轴（虚线辅助线）"
+    },
+    {
+      "name": "showfoci",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标出两焦点 F1/F2"
+    },
+    {
+      "name": "showvertices",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标出四个顶点 A1/A2/B1/B2（长轴端点与短轴端点）"
+    },
+    {
+      "name": "showpoint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画出椭圆上一点 P 并连两焦点（PF1+PF2=2a）"
+    },
+    {
+      "name": "pointangle",
+      "type": "number",
+      "min": 0,
+      "max": 355,
+      "options": null,
+      "default": "55",
+      "desc": "椭圆上点 P 的位置角（度，0 为正右方，逆时针为正）；仅 showpoint 打开时生效"
+    },
+    {
+      "name": "labelp",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "P",
+        "Q",
+        "M",
+        "N"
+      ],
+      "default": "P",
+      "desc": "椭圆上点的字母（须与题干一致，默认 P）"
+    }
+  ],
+  "constraints": [
+    "semiminor < semimajor"
+  ],
+  "template": "% 参数由系统自动注入：\\def\\semimajor{3.5} \\def\\semiminor{2.2} \\def\\showcenter{1} \\def\\showaxes{1} \\def\\showfoci{1} \\def\\showvertices{1} \\def\\showpoint{0} \\def\\pointangle{55} \\def\\labelp{P}\n% 焦点距 c = sqrt(a^2 - b^2)，须 a>b 故 c>0\n\\pgfmathsetmacro{\\focal}{sqrt(\\semimajor*\\semimajor - \\semiminor*\\semiminor)}\n% 椭圆上点 P 在椭圆方程上：给定角度 theta，半径 r = a*b / sqrt((b*cosθ)^2 + (a*sinθ)^2)\n\\pgfmathsetmacro{\\pc}{cos(\\pointangle)}\n\\pgfmathsetmacro{\\ps}{sin(\\pointangle)}\n\\pgfmathsetmacro{\\den}{sqrt((\\semiminor*\\pc)*(\\semiminor*\\pc) + (\\semimajor*\\ps)*(\\semimajor*\\ps))}\n\\pgfmathsetmacro{\\rpx}{\\semimajor*\\semiminor*\\pc/\\den}\n\\pgfmathsetmacro{\\rpy}{\\semimajor*\\semiminor*\\ps/\\den}\n% 视觉归一化：长轴横向缩放到 6cm，保证图形视觉大小稳定。\n\\pgfmathsetmacro{\\figscale}{6 / (2*\\semimajor)}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\pgfmathsetmacro{\\loff}{0.34/\\figscale}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (F1) at (-\\focal,0);\n  \\coordinate (F2) at (\\focal,0);\n  % 长轴/短轴辅助线（先画，垫在椭圆下方）\n  \\ifnum\\showaxes>0\n    \\draw[dashed, gray] (-\\semimajor,0) -- (\\semimajor,0);\n    \\draw[dashed, gray] (0,-\\semiminor) -- (0,\\semiminor);\n  \\fi\n  % 椭圆曲线\n  \\draw[thick] (O) ellipse [x radius=\\semimajor, y radius=\\semiminor];\n  % 椭圆上点 P 连两焦点（椭圆定义 PF1+PF2=2a）\n  \\ifnum\\showpoint>0\n    \\draw[thick] (F1) -- (\\rpx,\\rpy) -- (F2);\n    \\fill (\\rpx,\\rpy) circle [radius=\\dotr pt];\n    \\node at ({1.16*\\rpx},{1.16*\\rpy}) {$\\labelp$};\n  \\fi\n  % 焦点 F1/F2\n  \\ifnum\\showfoci>0\n    \\fill (F1) circle [radius=\\dotr pt];\n    \\fill (F2) circle [radius=\\dotr pt];\n    \\node[below left=3pt] at (F1) {$F_1$};\n    \\node[below right=3pt] at (F2) {$F_2$};\n  \\fi\n  % 四个顶点 A1/A2/B1/B2\n  \\ifnum\\showvertices>0\n    \\fill (-\\semimajor,0) circle [radius=\\dotr pt];\n    \\fill (\\semimajor,0) circle [radius=\\dotr pt];\n    \\fill (0,-\\semiminor) circle [radius=\\dotr pt];\n    \\fill (0,\\semiminor) circle [radius=\\dotr pt];\n    \\node[above left=2pt] at (-\\semimajor,0) {$A_1$};\n    \\node[above right=2pt] at (\\semimajor,0) {$A_2$};\n    \\node[below=2pt] at (0,-\\semiminor) {$B_1$};\n    \\node[above=2pt] at (0,\\semiminor) {$B_2$};\n  \\fi\n  % 中心 O\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=\\dotr pt];\n    \\node[below right=2pt] at (O) {$O$};\n  \\fi\n\\end{tikzpicture}"
+}

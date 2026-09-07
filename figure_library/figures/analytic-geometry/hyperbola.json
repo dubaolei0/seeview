@@ -1,0 +1,128 @@
+{
+  "id": "hyperbola",
+  "name": "双曲线（焦点·渐近线）",
+  "category": "解析几何-圆锥曲线",
+  "tags": [
+    "双曲线",
+    "焦点",
+    "渐近线",
+    "实轴",
+    "虚轴",
+    "顶点",
+    "离心率",
+    "双曲线定义",
+    "标准方程",
+    "焦点三角形"
+  ],
+  "desc": "双曲线的基本要素问题：焦点、渐近线、实轴、虚轴、顶点、离心率。由实半轴 semimajor（a）与虚半轴 semiminor（b）决定形状（焦点距 c=sqrt(a²+b²)，渐近线 y=±b/a·x）；以中心 O 居中，可勾选标注中心、画实轴与虚轴辅助线、画渐近线、标两焦点 F1/F2、标两个顶点 A1/A2，以及画出双曲线上一点 P 并连两焦点（双曲线定义 |PF1-PF2|=2a）。覆盖双曲线定义、标准方程、a/b/c 关系、渐近线、离心率 e=c/a>1、焦点与顶点坐标等考点。",
+  "whenNotToUse": "椭圆（PF1+PF2=2a 为定和、无渐近线）用 ellipse 模板；抛物线（焦点到准线距离相等、有准线）用 parabola 模板；含直线与双曲线位置关系、联立方程求交点、焦半径等问题建议用自由 TikZ 配坐标网格；共轭双曲线或需同时画两分支不同渐近线时用自由 TikZ。",
+  "params": [
+    {
+      "name": "semimajor",
+      "type": "number",
+      "min": 1.2,
+      "max": 8,
+      "options": null,
+      "default": "2.4",
+      "desc": "实半轴 a（横轴方向），决定双曲线开口张开的顶点位置"
+    },
+    {
+      "name": "semiminor",
+      "type": "number",
+      "min": 0.5,
+      "max": 8,
+      "options": null,
+      "default": "2.0",
+      "desc": "虚半轴 b，决定渐近线斜率 b/a"
+    },
+    {
+      "name": "showcenter",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标注中心 O"
+    },
+    {
+      "name": "showaxes",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画实轴与虚轴辅助线（虚线）"
+    },
+    {
+      "name": "showasymptotes",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否画两条渐近线 y=±b/a·x"
+    },
+    {
+      "name": "showfoci",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标出两焦点 F1/F2"
+    },
+    {
+      "name": "showvertices",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标出两个顶点 A1/A2（实轴端点）"
+    },
+    {
+      "name": "showpoint",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否画出双曲线上一点 P 并连两焦点（|PF1-PF2|=2a）"
+    },
+    {
+      "name": "pointx",
+      "type": "number",
+      "min": 1.2,
+      "max": 6,
+      "options": null,
+      "default": "3.2",
+      "desc": "双曲线上点 P 的横坐标（须大于实半轴 a，P 在右支上）；仅 showpoint 打开时生效"
+    },
+    {
+      "name": "labelp",
+      "type": "string",
+      "min": null,
+      "max": null,
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "P",
+        "Q",
+        "M",
+        "N"
+      ],
+      "default": "P",
+      "desc": "双曲线上点的字母（须与题干一致，默认 P）"
+    }
+  ],
+  "constraints": [
+    "pointx > semimajor"
+  ],
+  "template": "% 参数由系统自动注入：\\def\\semimajor{2.4} \\def\\semiminor{2.0} \\def\\showcenter{1} \\def\\showaxes{1} \\def\\showasymptotes{1} \\def\\showfoci{1} \\def\\showvertices{1} \\def\\showpoint{0} \\def\\pointx{3.2} \\def\\labelp{P}\n% 焦点距 c = sqrt(a^2 + b^2)\n\\pgfmathsetmacro{\\focal}{sqrt(\\semimajor*\\semimajor + \\semiminor*\\semiminor)}\n% 双曲线上点 P：由 x 求 y（右支，取正）：x^2/a^2 - y^2/b^2 = 1\n\\pgfmathsetmacro{\\rpy}{\\semiminor*sqrt(\\pointx*\\pointx/(\\semimajor*\\semimajor) - 1)}\n% 视觉归一化：横轴方向视图宽度固定为 10（含两侧分支与渐近线），保证视觉大小稳定。\n\\pgfmathsetmacro{\\vieww}{max(1.4*\\pointx, 1.4*\\focal)}\n\\pgfmathsetmacro{\\figscale}{6 / \\vieww}\n% 装饰尺寸：scale= 会同时缩放坐标和 pt 单位长度，故绝对尺寸除以 figscale 抵消，保证视觉大小恒定。\n\\pgfmathsetmacro{\\dotr}{1.6/\\figscale}\n\\pgfmathsetmacro{\\loff}{0.34/\\figscale}\n% 双曲线绘图范围：x 从 a 附近到视图边界\n\\pgfmathsetmacro{\\xmax}{\\vieww/2}\n% 渐近线延伸到视图边界的端点 y\n\\pgfmathsetmacro{\\asymy}{\\semiminor/\\semimajor * \\xmax}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n  \\coordinate (O) at (0,0);\n  \\coordinate (F1) at (-\\focal,0);\n  \\coordinate (F2) at (\\focal,0);\n  % 实轴/虚轴辅助线\n  \\ifnum\\showaxes>0\n    \\draw[dashed, gray] (-\\xmax,0) -- (\\xmax,0);\n    \\draw[dashed, gray] (0,-\\asymy) -- (0,\\asymy);\n  \\fi\n  % 渐近线 y=±(b/a)x\n  \\ifnum\\showasymptotes>0\n    \\draw[thick, gray!60] (-\\xmax,-\\asymy) -- (\\xmax,\\asymy);\n    \\draw[thick, gray!60] (-\\xmax,\\asymy) -- (\\xmax,-\\asymy);\n  \\fi\n  % 双曲线两条分支（右支 x>0，左支 x<0）；参数化 x=a·cosh(t), y=b·sinh(t)\n  \\draw[thick, domain=-1.45:1.45, samples=80, smooth] plot ({\\semimajor*cosh(\\x)},{\\semiminor*sinh(\\x)});\n  \\draw[thick, domain=-1.45:1.45, samples=80, smooth] plot ({-\\semimajor*cosh(\\x)},{\\semiminor*sinh(\\x)});\n  % 双曲线上点 P 连两焦点（双曲线定义 |PF1-PF2|=2a）\n  \\ifnum\\showpoint>0\n    \\draw[thick] (F1) -- (\\pointx,\\rpy) -- (F2);\n    \\fill (\\pointx,\\rpy) circle [radius=\\dotr pt];\n    \\node at ({1.16*\\pointx},{1.16*\\rpy}) {$\\labelp$};\n  \\fi\n  % 焦点 F1/F2\n  \\ifnum\\showfoci>0\n    \\fill (F1) circle [radius=\\dotr pt];\n    \\fill (F2) circle [radius=\\dotr pt];\n    \\node[below left=3pt] at (F1) {$F_1$};\n    \\node[below right=3pt] at (F2) {$F_2$};\n  \\fi\n  % 两个顶点 A1/A2（实轴端点）\n  \\ifnum\\showvertices>0\n    \\fill (-\\semimajor,0) circle [radius=\\dotr pt];\n    \\fill (\\semimajor,0) circle [radius=\\dotr pt];\n    \\node[above left=2pt] at (-\\semimajor,0) {$A_1$};\n    \\node[above right=2pt] at (\\semimajor,0) {$A_2$};\n  \\fi\n  % 中心 O\n  \\ifnum\\showcenter>0\n    \\fill (O) circle [radius=\\dotr pt];\n    \\node[below right=2pt] at (O) {$O$};\n  \\fi\n\\end{tikzpicture}"
+}
