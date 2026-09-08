@@ -1,0 +1,76 @@
+{
+  "id" : "quadrangular-pyramid-pa-perpendicular-base-2019-beijing",
+  "name" : "四棱锥 P-ABCD（PA垂直底面 + 梯形底面 + 棱上中点）",
+  "category" : "立体几何",
+  "parent" : null,
+  "tags" : [ "四棱锥", "棱锥", "空间几何体", "梯形底面", "直四棱锥", "线面垂直", "二面角", "棱上中点", "辅助线", "虚线" ],
+  "desc" : "绘制四棱锥 P-ABCD 的立体示意图。底面 ABCD 为梯形，满足 AD∥BC，且 AD⊥CD；顶点 P 位于 A 的正上方，PA⊥平面 ABCD。支持在棱 PD 上设置中点 E，并可根据题目需要在棱 PC 上设置动点 F，同时绘制相应空间辅助线。可见棱使用实线，被遮挡的底面棱和内部辅助线使用虚线。",
+  "whenNotToUse" : "不适用于底面为任意四边形且顶点投影不在 A 点的四棱锥；不适用于正四棱锥、正方形底面的特殊结构或需要严格按照其他透视方向绘制的题目。题干未涉及 E、F 或相应辅助线时，不应开启对应辅助结构，避免出现不参与所求或所证的冗余点线。",
+  "params" : [ {
+    "name" : "basea",
+    "type" : "number",
+    "min" : 1.0,
+    "max" : null,
+    "options" : null,
+    "default" : "4",
+    "desc" : "底面前边 AD 的视觉长度"
+  }, {
+    "name" : "baseb",
+    "type" : "number",
+    "min" : 1.0,
+    "max" : null,
+    "options" : null,
+    "default" : "3",
+    "desc" : "底面后边 BC 的视觉长度（直角腰 CD 在 C 处，需满足 BC ≤ AD）"
+  }, {
+    "name" : "depth",
+    "type" : "number",
+    "min" : 1.0,
+    "max" : null,
+    "options" : null,
+    "default" : "3",
+    "desc" : "底面从前向后的深度参数"
+  }, {
+    "name" : "height",
+    "type" : "number",
+    "min" : 1.0,
+    "max" : null,
+    "options" : null,
+    "default" : "4",
+    "desc" : "侧棱 PA 的高度参数"
+  }, {
+    "name" : "showverts",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "true",
+    "desc" : "是否显示顶点标签 P、A、B、C、D"
+  }, {
+    "name" : "showaux",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否显示棱 PD 中点 E、棱 PC 上点 F 及相关辅助线"
+  }, {
+    "name" : "fpar",
+    "type" : "number",
+    "min" : 0.0,
+    "max" : 1.0,
+    "options" : null,
+    "default" : "0.5",
+    "desc" : "点 F 在棱 PC 上的位置参数，0 对应 P，1 对应 C"
+  }, {
+    "name" : "showpoints",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "true",
+    "desc" : "当 showaux 为 true 时，是否显示辅助点 E、F 的实心点"
+  } ],
+  "constraints" : [ "baseb <= basea" ],
+  "template" : "% 参数由系统自动注入；四棱锥 P‑ABCD，PA⊥底面ABCD，底面为梯形\n% AD∥BC，AD⊥CD；E 为 PD 中点，F 为 PC 上可调点\n% 可见棱使用实线，遮挡棱及内部辅助线使用虚线\n% 视觉归一化：把最长外接边缩放到 6 个坐标单位，线宽与虚线样式不缩放\n% ==========================================================\n% 透视参数\n% ==========================================================\n% dx、dy：底面从前向后的斜二测偏移量\n\\pgfmathsetmacro{\\dx}{0.32 * \\depth}\n\\pgfmathsetmacro{\\dy}{0.26 * \\depth}\n% 视觉归一化\n\\pgfmathsetmacro{\\figscale}{6 / max(\\basea + \\dx, \\height + \\dy)}\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n    % ======================================================\n    % 底面 ABCD\n    %\n    % A、D 位于前侧\n    % B、C 位于后侧\n    % AD ∥ BC\n    % ======================================================\n    \\coordinate (A) at (0,0);\n    \\coordinate (D) at (\\basea,0);\n    % C 在 D 的正后方（沿深度斜轴）：CD 为直角腰，保证 AD⊥CD 的视觉直角\n    \\coordinate (C) at (\\basea+\\dx,\\dy);\n    % BC ∥ AD 且 BC=baseb：B 由 C 沿 DA 方向平移得到，AB 为斜腰\n    \\coordinate (B) at (\\basea+\\dx-\\baseb,\\dy);\n    % ======================================================\n    % 顶点 P\n    %\n    % P 位于 A 的正上方\n    % PA ⟂ 平面 ABCD\n    % ======================================================\n    \\coordinate (P) at (0,\\height);\n    % ======================================================\n    % 四棱锥可见棱\n    % ======================================================\n    % 侧棱 PA\n    \\draw[thick]\n        (P) -- (A);\n    % 侧棱 PD\n    \\draw[thick]\n        (P) -- (D);\n    % 侧棱 PC\n    \\draw[thick]\n        (P) -- (C);\n    % 底面前边 AD\n    \\draw[thick]\n        (A) -- (D);\n    % 底面右边 DC\n    \\draw[thick]\n        (D) -- (C);\n    % 底面后边 BC\n    \\draw[thick]\n        (B) -- (C);\n    % ======================================================\n    % 四棱锥隐藏棱\n    % ======================================================\n    % 侧棱 PB\n    \\draw[dashed,thick]\n        (P) -- (B);\n    % 底面左边 AB\n    \\draw[dashed,thick]\n        (A) -- (B);\n    % ======================================================\n    % 空间辅助结构\n    %\n    % showaux=1 时显示：\n    % E：PD 中点\n    % F：PC 上可调点\n    % ======================================================\n    \\ifnum\\showaux>0\n        % ==================================================\n        % E：PD 中点\n        % ==================================================\n        % P=(0,height)\n        % D=(basea,0)\n        \\pgfmathsetmacro{\\Ex}{0.5 * \\basea}\n        \\pgfmathsetmacro{\\Ey}{0.5 * \\height}\n        \\coordinate (E) at (\\Ex,\\Ey);\n        % ==================================================\n        % F：PC 上动点\n        %\n        % fpar=0 对应 P\n        % fpar=1 对应 C\n        % ==================================================\n        \\pgfmathsetmacro{\\Fx}{\\fpar * (\\basea + \\dx)}\n        \\pgfmathsetmacro{\\Fy}{\\height + \\fpar * (\\dy - \\height)}\n        \\coordinate (F) at (\\Fx,\\Fy);\n        % ==================================================\n        % 辅助线\n        %\n        % 以下线段可根据具体题目继续扩展或删减\n        % ==================================================\n        % E‑F\n        \\draw[dashed,thick]\n            (E) -- (F);\n        % B‑E\n        \\draw[dashed,thick]\n            (B) -- (E);\n        % A‑F\n        \\draw[dashed,thick]\n            (A) -- (F);\n    \\fi\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n    \\ifnum\\showverts>0\n        % P\n        \\node[above left=4pt]\n            at (P) {$P$};\n        % A\n        \\node[below left=4pt]\n            at (A) {$A$};\n        % D\n        \\node[below right=4pt]\n            at (D) {$D$};\n        % =========修复B标签：改为above left向外偏移，避免被几何体遮挡=========\n        \\node[below =6pt]\n            at (B) {$B$};\n        % C\n        \\node[right=4pt]\n            at (C) {$C$};\n    \\fi\n    % ======================================================\n    % 辅助点 E、F\n    % ======================================================\n    \\ifnum\\showaux>0\n        \\ifnum\\showpoints>0\n            % E 实心点，缩小圆点\n            \\fill\n                (E) circle [radius=0.8pt];\n            % F 实心点，缩小圆点\n            \\fill\n                (F) circle [radius=0.8pt];\n        \\fi\n        % E 标签\n        \\node[left=5pt]\n            at (E) {$E$};\n        % F 标签\n        \\node[right=5pt]\n            at (F) {$F$};\n    \\fi\n\\end{tikzpicture}"
+}
