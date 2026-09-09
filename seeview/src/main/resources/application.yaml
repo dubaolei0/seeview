@@ -38,9 +38,14 @@ question:
   # 视觉模型（生题时把材料图片懒加载转述为文字，按图片内容哈希缓存到
   # question_output/image_desc_cache；model-name 留空则禁用转述，回退"无法读取"提示）
   vision:
-    model-name: deepseek-v4-flash-vision-exp
-    api-key: sk-0807477a969a4213a24aaacd89e02724
-    base-url: https://api.deepseek.com
+#    model-name: deepseek-v4-flash-vision-exp
+#    api-key: sk-0807477a969a4213a24aaacd89e02724
+#    base-url: https://api.deepseek.com
+    model-name: qwen-vl-plus-latest
+    api-key: sk-15ec617f62464094abd7180ad7a1e20c
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+
+
     # 单张图片转述读超时（秒）；慢模型 + 重试 1 次时最坏等待约 2 倍
     timeout-seconds: 120
 
