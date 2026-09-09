@@ -64,7 +64,7 @@ public class FigureLibraryService {
                 FigureTemplate t = readTemplate(f);
                 if (t != null) {
                     out.add(new FigureTemplate.Catalog(t.id(), t.name(), t.category(), t.parent(),
-                            t.tags(), t.desc(), t.whenNotToUse(), t.params()));
+                            t.tags(), t.desc(), t.whenNotToUse(), t.params(), t.elements()));
                 }
             } catch (Exception e) {
                 log.warn("图库模板加载失败，跳过: {} -> {}", f, e.getMessage());

@@ -27,7 +27,9 @@ public record FigureTemplate(
         /** 参数约束表达式（如 "ab + bc < 20"），后端求值校验，违反拒绝渲染 */
         List<String> constraints,
         /** TikZ 代码骨架（\begin{tikzpicture}...\end{tikzpicture}） */
-        String template
+        String template,
+        /** 本模板能显示的图形元素清单（顶点/棱上点/辅助线/角等），供模型判断题干与图一致性；可选，缺省视为不校验 */
+        List<String> elements
 ) {
 
     /**
@@ -50,6 +52,6 @@ public record FigureTemplate(
     /** 目录条目：图库列表与提示词注入用，不含 template 大字段 */
     public record Catalog(String id, String name, String category, String parent,
                           List<String> tags, String desc, String whenNotToUse,
-                          List<Param> params) {
+                          List<Param> params, List<String> elements) {
     }
 }
