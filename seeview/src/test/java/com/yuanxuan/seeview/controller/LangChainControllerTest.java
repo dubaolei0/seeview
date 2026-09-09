@@ -170,6 +170,22 @@ class LangChainControllerTest {
     }
 
     @Test
+    void questionPromptRequiresStemLinesWithinTemplateElements() throws Exception {
+        LangChainController controller = new LangChainController();
+        Method method = LangChainController.class.getDeclaredMethod(
+                "questionSystemPrompt", QuestionGenerateRequest.class, String.class);
+        method.setAccessible(true);
+
+        String prompt = (String) method.invoke(controller, new QuestionGenerateRequest(
+                List.of("解答题"), "中等", 1, null, null, "立体几何题", null, "oblique-quadrangular-prism-basic"), "数学");
+
+        assertThat(prompt)
+                .contains("题干中提及的每一个图形点、连线、辅助线")
+                .contains("必须落在所选模板「可画元素」清单内")
+                .contains("清单未列出的点/线不得在题干中作为配图需要显示的元素出现");
+    }
+
+    @Test
     void questionPromptRequiresVisibleFigureLabelsInStem() throws Exception {
         LangChainController controller = new LangChainController();
         Method method = LangChainController.class.getDeclaredMethod(
