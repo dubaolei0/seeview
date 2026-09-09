@@ -1795,6 +1795,9 @@ public class LangChainController {
             if (c.whenNotToUse() != null && !c.whenNotToUse().isBlank()) {
                 sb.append("   不适用：").append(c.whenNotToUse()).append('\n');
             }
+            if (c.elements() != null && !c.elements().isEmpty()) {
+                sb.append("   可画元素：").append(String.join(", ", c.elements())).append('\n');
+            }
         }
         return sb.toString();
     }
