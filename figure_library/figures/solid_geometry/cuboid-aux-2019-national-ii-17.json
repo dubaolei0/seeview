@@ -5,7 +5,7 @@
   "parent" : null,
   "tags" : [ "长方体", "正方形底面", "棱上点", "空间几何", "辅助线", "虚线", "线面垂直", "二面角", "BE", "EC1" ],
   "desc" : "绘制长方体 ABCD-A1B1C1D1 的立体示意图，底面 ABCD 为正方形，点 E 位于指定棱上，并仅绘制 BE、EC1 两条空间辅助线（不绘制 AC1、BD1 等其他连线）。长方体的可见棱使用实线，遮挡棱使用虚线；根据题图显示 E、B、C1 之间的辅助线以及相关顶点标签。",
-  "whenNotToUse" : "正方体、棱柱、棱锥或其他非长方体结构；题干不包含长方体 ABCD-A1B1C1D1、棱上点 E 或 BE、EC1 等空间辅助结构时不适合使用本模板。",
+  "whenNotToUse" : "正方体、棱柱、棱锥或其他非长方体结构；题干不包含长方体 ABCD-A1B1C1D1、棱上点 E 或 BE、EC1 两条空间辅助结构时不适合使用本模板。",
   "params" : [ {
     "name" : "side",
     "type" : "number",
@@ -53,7 +53,7 @@
     "max" : null,
     "options" : null,
     "default" : "true",
-    "desc" : "是否显示 BE、EC1 等空间辅助线"
+    "desc" : "是否显示 BE、EC1 两条空间辅助线"
   } ],
   "constraints" : [ ],
   "elements" : [ "A", "B", "C", "D", "A1", "B1", "C1", "D1", "E", "BE", "EC1" ],
