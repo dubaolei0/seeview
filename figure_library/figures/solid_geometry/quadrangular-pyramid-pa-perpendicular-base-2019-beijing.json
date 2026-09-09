@@ -1,7 +1,7 @@
 {
   "id" : "quadrangular-pyramid-pa-perpendicular-base-2019-beijing",
   "name" : "四棱锥 P-ABCD（PA垂直底面 + 梯形底面 + 棱上中点）",
-  "category" : "立体几何",
+  "category" : "立体几何-四棱锥",
   "parent" : null,
   "tags" : [ "四棱锥", "棱锥", "空间几何体", "梯形底面", "直四棱锥", "线面垂直", "二面角", "棱上中点", "辅助线", "虚线" ],
   "desc" : "绘制四棱锥 P-ABCD 的立体示意图。底面 ABCD 为梯形，满足 AD∥BC，且 AD⊥CD；顶点 P 位于 A 的正上方，PA⊥平面 ABCD。支持在棱 PD 上设置中点 E，并可根据题目需要在棱 PC 上设置动点 F，同时绘制相应空间辅助线。可见棱使用实线，被遮挡的底面棱和内部辅助线使用虚线。",

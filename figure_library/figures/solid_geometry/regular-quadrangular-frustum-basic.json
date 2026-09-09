@@ -1,0 +1,76 @@
+{
+  "id" : "regular-quadrangular-frustum-basic",
+  "name" : "正四棱台基础立体几何图形模板",
+  "category" : "立体几何-正四棱台",
+  "parent" : null,
+  "tags" : [ "棱台", "四棱台", "正四棱台", "正棱台", "空间几何体", "立体几何", "线框图", "虚线", "顶点标签", "棱", "侧棱", "上底面", "下底面", "棱台高", "上下底面中心" ],
+  "desc" : "绘制正四棱台 ABCD-A_1B_1C_1D_1 的立体示意图。ABCD 为下底面正方形，A_1B_1C_1D_1 为上底面正方形，且上下底面平行；A_1、B_1、C_1、D_1 分别位于 AA_1、BB_1、CC_1、DD_1 上。上下底面中心分别为 O、O_1，O、O_1 位于同一条垂直于底面的中心线上，OO_1 为棱台的高。上下底面均以各自中心为坐标基准生成，因此 O、O_1 始终位于对应底面的几何中心。开启顶点标签时题干必须明确写明正四棱台 ABCD-A_1B_1C_1D_1。本基础模板不自动生成额外辅助点。",
+  "whenNotToUse" : "一般四棱台、斜四棱台、三棱台、五棱台、棱柱、棱锥、正方体、长方体等其他空间几何体。如果题目中的上下底面不是正方形，不能使用本模板。如果上底面相对于下底面发生水平偏移、上下底面中心不在同一条中心线上，不能使用本模板。如果题目存在复杂截面、多个动点或大量辅助线，应使用扩展棱台模板或自由 TikZ 模板。",
+  "params" : [ {
+    "name" : "bottom",
+    "type" : "number",
+    "min" : 1.0,
+    "max" : null,
+    "options" : null,
+    "default" : "3.0",
+    "desc" : "下底面正方形 ABCD 的边长"
+  }, {
+    "name" : "top",
+    "type" : "number",
+    "min" : 0.2,
+    "max" : null,
+    "options" : null,
+    "default" : "1.6",
+    "desc" : "上底面正方形 A_1B_1C_1D_1 的边长，必须小于 bottom"
+  }, {
+    "name" : "height",
+    "type" : "number",
+    "min" : 0.5,
+    "max" : null,
+    "options" : null,
+    "default" : "3.4",
+    "desc" : "正四棱台的高，即上下底面中心 O、O_1 的距离；默认值取较高视觉比例，避免上底前边 A_1B_1 与下底后边 CD 过近"
+  }, {
+    "name" : "showverts",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "true",
+    "desc" : "是否显示顶点标签 A、B、C、D、A_1、B_1、C_1、D_1；开启时题干必须明确写明正四棱台 ABCD-A_1B_1C_1D_1"
+  }, {
+    "name" : "showcenter",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否显示上下底面中心 O、O_1 以及棱台高 OO_1；只有题干或设问明确使用 O、O_1 或棱台高时才设为 true"
+  }, {
+    "name" : "showaux",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否显示上下底面对角线 AC、BD、A_1C_1、B_1D_1；只有题目明确需要这些辅助线时才设为 true"
+  }, {
+    "name" : "showpoints",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否显示题目额外定义的辅助点；本基础模板不自动创建辅助点，只有题干明确给出辅助点并且设问使用这些点时才设为 true"
+  }, {
+    "name" : "showhidden",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "true",
+    "desc" : "是否将被遮挡的棱绘制为虚线"
+  } ],
+  "constraints" : [ "bottom > 0", "top > 0", "height > 0", "bottom > top" ],
+  "template" : "% ==========================================================\n% 正四棱台 ABCD-A_1B_1C_1D_1\n% ==========================================================\n% 参数由系统自动注入：\n% bottom    下底面边长\n% top       上底面边长\n% height    棱台高\n% showverts 是否显示顶点标签\n% showcenter 是否显示 O、O_1 和 OO_1\n% showaux   是否显示底面对角线\n% showpoints 是否显示额外辅助点\n% showhidden 是否显示被遮挡棱的虚线\n% ==========================================================\n\n\\pgfmathsetmacro{\\b}{\\bottom}\n\\pgfmathsetmacro{\\t}{\\top}\n\\pgfmathsetmacro{\\h}{\\height}\n\n% ==========================================================\n% 一、定义上下底面中心\n% ==========================================================\n\n% 下底面中心 O\n\\pgfmathsetmacro{\\Ox}{0}\n\\pgfmathsetmacro{\\Oy}{0}\n\n% 上底面中心 O_1\n% O_1 位于 O 的正上方\n\\pgfmathsetmacro{\\OoneX}{\\Ox}\n\\pgfmathsetmacro{\\OoneY}{\\Oy + \\h}\n\n% ==========================================================\n% 二、下底面 ABCD\n% ==========================================================\n% 以 O 为中心生成下底面\n% u、v 表示正方形两组相邻边在二维透视图中的方向\n%\n% A = O - u - v\n% B = O + u - v\n% C = O + u + v\n% D = O - u + v\n%\n% 因此：\n% O = (A+B+C+D)/4\n% ==========================================================\n\n\\pgfmathsetmacro{\\uxb}{0.50 * \\b}\n\\pgfmathsetmacro{\\uyb}{0}\n\n\\pgfmathsetmacro{\\vxb}{0.38 * \\b}\n\\pgfmathsetmacro{\\vyb}{0.48 * \\b}\n\n% A\n\\pgfmathsetmacro{\\Ax}{\\Ox - \\uxb - \\vxb}\n\\pgfmathsetmacro{\\Ay}{\\Oy - \\uyb - \\vyb}\n\n% B\n\\pgfmathsetmacro{\\Bx}{\\Ox + \\uxb - \\vxb}\n\\pgfmathsetmacro{\\By}{\\Oy + \\uyb - \\vyb}\n\n% C\n\\pgfmathsetmacro{\\Cx}{\\Ox + \\uxb + \\vxb}\n\\pgfmathsetmacro{\\Cy}{\\Oy + \\uyb + \\vyb}\n\n% D\n\\pgfmathsetmacro{\\Dx}{\\Ox - \\uxb + \\vxb}\n\\pgfmathsetmacro{\\Dy}{\\Oy - \\uyb + \\vyb}\n\n% ==========================================================\n% 三、上底面 A_1B_1C_1D_1\n% ==========================================================\n% 以上底面中心 O_1 为中心生成上底面\n% 上底面与下底面采用相同的透视方向\n%\n% A_1 = O_1 - u_1 - v_1\n% B_1 = O_1 + u_1 - v_1\n% C_1 = O_1 + u_1 + v_1\n% D_1 = O_1 - u_1 + v_1\n%\n% 因此：\n% O_1 = (A_1+B_1+C_1+D_1)/4\n% ==========================================================\n\n\\pgfmathsetmacro{\\uxt}{0.50 * \\t}\n\\pgfmathsetmacro{\\uyt}{0}\n\n\\pgfmathsetmacro{\\vxt}{0.38 * \\t}\n\\pgfmathsetmacro{\\vyt}{0.48 * \\t}\n\n% A_1\n\\pgfmathsetmacro{\\AoneX}{\\OoneX - \\uxt - \\vxt}\n\\pgfmathsetmacro{\\AoneY}{\\OoneY - \\uyt - \\vyt}\n\n% B_1\n\\pgfmathsetmacro{\\BoneX}{\\OoneX + \\uxt - \\vxt}\n\\pgfmathsetmacro{\\BoneY}{\\OoneY + \\uyt - \\vyt}\n\n% C_1\n\\pgfmathsetmacro{\\ConeX}{\\OoneX + \\uxt + \\vxt}\n\\pgfmathsetmacro{\\ConeY}{\\OoneY + \\uyt + \\vyt}\n\n% D_1\n\\pgfmathsetmacro{\\DoneX}{\\OoneX - \\uxt + \\vxt}\n\\pgfmathsetmacro{\\DoneY}{\\OoneY - \\uyt + \\vyt}\n\n% ==========================================================\n% 四、计算图形边界\n% ==========================================================\n\n\\pgfmathsetmacro{\\xmin}{min(\\Ax,\\Bx,\\Cx,\\Dx,\\AoneX,\\BoneX,\\ConeX,\\DoneX)}\n\\pgfmathsetmacro{\\xmax}{max(\\Ax,\\Bx,\\Cx,\\Dx,\\AoneX,\\BoneX,\\ConeX,\\DoneX)}\n\\pgfmathsetmacro{\\ymin}{min(\\Ay,\\By,\\Cy,\\Dy,\\AoneY,\\BoneY,\\ConeY,\\DoneY)}\n\\pgfmathsetmacro{\\ymax}{max(\\Ay,\\By,\\Cy,\\Dy,\\AoneY,\\BoneY,\\ConeY,\\DoneY)}\n\n% ==========================================================\n% 五、自动缩放\n% ==========================================================\n\n\\pgfmathsetmacro{\\figwidth}{\\xmax - \\xmin}\n\\pgfmathsetmacro{\\figheight}{\\ymax - \\ymin}\n\\pgfmathsetmacro{\\figsize}{max(\\figwidth,\\figheight)}\n\\pgfmathsetmacro{\\figscale}{6 / \\figsize}\n\n% ==========================================================\n% 六、开始绘制\n% ==========================================================\n\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n\n% ==========================================================\n% 七、定义八个顶点\n% ==========================================================\n\n\\coordinate (A)  at (\\Ax,\\Ay);\n\\coordinate (B)  at (\\Bx,\\By);\n\\coordinate (C)  at (\\Cx,\\Cy);\n\\coordinate (D)  at (\\Dx,\\Dy);\n\n\\coordinate (A1) at (\\AoneX,\\AoneY);\n\\coordinate (B1) at (\\BoneX,\\BoneY);\n\\coordinate (C1) at (\\ConeX,\\ConeY);\n\\coordinate (D1) at (\\DoneX,\\DoneY);\n\n% ==========================================================\n% 八、下底面 ABCD\n% ==========================================================\n\n% 前方边 AB\n\\draw[thick] (A) -- (B);\n\n% 右侧边 BC\n\\draw[thick] (B) -- (C);\n\n% 后方边 CD\n\\draw[thick] (C) -- (D);\n\n% 左侧后方边 DA\n\\ifnum\\showhidden>0\n    \\draw[dashed,thick] (D) -- (A);\n\\else\n    \\draw[thick] (D) -- (A);\n\\fi\n\n% ==========================================================\n% 九、上底面 A_1B_1C_1D_1\n% ==========================================================\n\n% 前方边 A_1B_1\n\\draw[thick] (A1) -- (B1);\n\n% 右侧边 B_1C_1\n\\draw[thick] (B1) -- (C1);\n\n% 后方边 C_1D_1\n\\draw[thick] (C1) -- (D1);\n\n% 左侧边 D_1A_1\n\\draw[thick] (D1) -- (A1);\n\n% ==========================================================\n% 十、四条侧棱\n% ==========================================================\n\n% AA_1\n\\draw[thick] (A) -- (A1);\n\n% BB_1\n\\draw[thick] (B) -- (B1);\n\n% CC_1\n\\draw[thick] (C) -- (C1);\n\n% DD_1\n\\ifnum\\showhidden>0\n    \\draw[dashed,thick] (D) -- (D1);\n\\else\n    \\draw[thick] (D) -- (D1);\n\\fi\n\n% ==========================================================\n% 十一、上下底面中心 O、O_1 及棱台高 OO_1\n% ==========================================================\n\n\\ifnum\\showcenter>0\n\n    \\coordinate (O) at (\\Ox,\\Oy);\n    \\coordinate (O1) at (\\OoneX,\\OoneY);\n\n    % 棱台高\n    \\draw[dashed,thick] (O) -- (O1);\n\n    % 中心点\n    \\fill (O) circle [radius=0.5pt];\n    \\fill (O1) circle [radius=0.5pt];\n\n    % 中心标签\n    \\node[below=4pt] at (O) {$O$};\n    \\node[above=4pt] at (O1) {$O_1$};\n\n\\fi\n\n% ==========================================================\n% 十二、底面对角线辅助线\n% ==========================================================\n\n\\ifnum\\showaux>0\n\n    % 下底面两条对角线\n    \\draw[dashed,thick] (A) -- (C);\n    \\draw[dashed,thick] (B) -- (D);\n\n    % 上底面两条对角线\n    \\draw[dashed,thick] (A1) -- (C1);\n    \\draw[dashed,thick] (B1) -- (D1);\n\n\\fi\n\n% ==========================================================\n% 十三、顶点标签\n% ==========================================================\n\n\\ifnum\\showverts>0\n\n    % 下底面\n    \\node[below left=3pt] at (A) {$A$};\n    \\node[below right=3pt] at (B) {$B$};\n    \\node[right=4pt] at (C) {$C$};\n    \\node[left=6pt] at (D) {$D$};\n\n    % 上底面\n    \\node[above left=3pt] at (A1) {$A_1$};\n    \\node[right=3pt] at (B1) {$B_1$};\n    \\node[right=4pt] at (C1) {$C_1$};\n    \\node[left=4pt] at (D1) {$D_1$};\n\n\\fi\n\n% ==========================================================\n% 十四、额外辅助点\n% ==========================================================\n\n\\ifnum\\showpoints>0\n    % 本基础模板不自动创建未定义的辅助点。\n    % 具体题目的辅助点由题目专用模板注入。\n\\fi\n\n\\end{tikzpicture}\n"
+}

@@ -1,7 +1,7 @@
 {
   "id" : "triangular-pyramid-basic",
   "name" : "三棱锥基础立体几何图形模板",
-  "category" : "立体几何",
+  "category" : "立体几何-三棱锥",
   "parent" : null,
   "tags" : [ "三棱锥", "空间几何体", "立体几何", "线框图", "虚线", "顶点标签", "棱", "棱上动点", "辅助线" ],
   "desc" : "绘制三棱锥 P-ABC 的立体示意图，ABC 为底面三角形，P 为顶点；含棱 PB 上点 D、棱 PA 上点 E、底边 AC 上点 F，O 为直线 EF 与底边 BC 的交点。实线：侧棱、AB、AC、AD、EF；虚线：BC、BF、PO、DO、AO。适配线面平行、截面交线类高考题。",
