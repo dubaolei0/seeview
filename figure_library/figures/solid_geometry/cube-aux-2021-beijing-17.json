@@ -1,36 +1,54 @@
 {
-  "id" : "cube-aux-2021-beijing-17",
-  "name" : "正方体棱中点与平面交点及空间辅助线 2021年北京卷第17题",
-  "category" : "立体几何-正方体/长方体",
-  "parent" : null,
-  "tags" : [ "正方体", "棱中点", "空间几何", "平面交点", "辅助线", "虚线", "A1D1", "B1C1", "CDE", "E", "F", "M", "二面角" ],
-  "desc" : "绘制一个标准正方体 ABCD-A1B1C1D1 的立体示意图，E 为棱 A1D1 的中点，F 为棱 B1C1 与平面 CDE 的交点，M 为棱 A1B1 上一点。图中绘制平面 CDE 内的辅助线 ED、EF、FC，以及空间辅助线 MF、MC，并按照空间遮挡关系使用实线和虚线表示。",
-  "whenNotToUse" : "长方体、棱柱、棱台或非正方体结构；题干没有 E、F、M 等对应点，或不包含 A1D1、B1C1、平面 CDE 等结构的图形不适合使用本模板。",
-  "params" : [ {
-    "name" : "side",
-    "type" : "number",
-    "min" : 1.0,
-    "max" : null,
-    "options" : null,
-    "default" : "4",
-    "desc" : "正方体棱长"
-  }, {
-    "name" : "showverts",
-    "type" : "bool",
-    "min" : null,
-    "max" : null,
-    "options" : null,
-    "default" : "true",
-    "desc" : "是否显示顶点标签 A、B、C、D、A1、B1、C1、D1"
-  }, {
-    "name" : "showmidpts",
-    "type" : "bool",
-    "min" : null,
-    "max" : null,
-    "options" : null,
-    "default" : "true",
-    "desc" : "是否显示图中辅助点 E、F、M"
-  } ],
-  "constraints" : [ ],
-  "template" : "% 参数由系统自动注入；正方体：前后两个正方形错位，遮挡棱用虚线\n% 图形包含棱上点 E、F、M，以及平面 CDE 和空间辅助线\n% 视觉归一化：把最长外接边缩放到 6 个坐标单位，线宽与虚线样式不缩放\n% ==========================================================\n% 正方体透视参数\n% ==========================================================\n\\pgfmathsetmacro{\\dx}{0.42 * \\side}\n\\pgfmathsetmacro{\\dy}{0.30 * \\side}\n\\pgfmathsetmacro{\\figscale}{6 / max(\\side + \\dx, \\side + \\dy)}\n% ==========================================================\n% 图中点的位置参数\n% ==========================================================\n% E 为 A1D1 上的点，epar=0 在 A1，epar=1 在 D1\n\\pgfmathsetmacro{\\epar}{0.50}\n% F 为 B1C1 上的点，fpar=0 在 B1，fpar=1 在 C1\n\\pgfmathsetmacro{\\fpar}{0.50}\n% M 位于 A1B1 上，mpar=0 在 A1，mpar=1 在 B1\n\\pgfmathsetmacro{\\mpar}{0.62}\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n    % ======================================================\n    % 正方体八个顶点\n    % 前方正方形：A-A1-B1-B\n    % 后方正方形：D-D1-C1-C\n    % ======================================================\n    \\coordinate (A)  at (0,0);\n    \\coordinate (B)  at (\\side,0);\n    \\coordinate (A1) at (0,\\side);\n    \\coordinate (B1) at (\\side,\\side);\n    \\coordinate (D)  at (\\dx,\\dy);\n    \\coordinate (C)  at (\\side+\\dx,\\dy);\n    \\coordinate (D1) at (\\dx,\\side+\\dy);\n    \\coordinate (C1) at (\\side+\\dx,\\side+\\dy);\n\n    % ======================================================\n    % E：A1D1 上的点【修正：沿 A1→D1 方向按比例计算，x 只加 dx 偏移】\n    % ======================================================\n    \\pgfmathsetmacro{\\Ex}{0 + \\epar * \\dx}\n    \\pgfmathsetmacro{\\Ey}{\\side + \\epar * \\dy}\n    \\coordinate (E) at (\\Ex,\\Ey);\n\n    % ======================================================\n    % F：B1C1 上的点\n    % ======================================================\n    \\pgfmathsetmacro{\\Fx}{\\side + \\fpar * \\dx}\n    \\pgfmathsetmacro{\\Fy}{\\side + \\fpar * \\dy}\n    \\coordinate (F) at (\\Fx,\\Fy);\n\n    % ======================================================\n    % M：A1B1 上的点\n    % ======================================================\n    \\pgfmathsetmacro{\\Mx}{\\mpar * \\side}\n    \\pgfmathsetmacro{\\My}{\\side}\n    \\coordinate (M) at (\\Mx,\\My);\n\n    % ======================================================\n    % 正方体可见棱（实线）\n    % ======================================================\n    % 前面正方形 A-A1-B1-B\n    \\draw[thick] (A) -- (A1) -- (B1) -- (B) -- cycle;\n    % 右立面棱：BC、CC1、B1C1\n    \\draw[thick] (B) -- (C);\n    \\draw[thick] (C) -- (C1);\n    \\draw[thick] (B1) -- (C1);\n    % 上顶面棱：A1D1、D1C1\n    \\draw[thick] (A1) -- (D1);\n    \\draw[thick] (D1) -- (C1);\n\n    % ======================================================\n    % 正方体隐藏棱（虚线）\n    % ======================================================\n    \\draw[dashed] (A) -- (D);\n    \\draw[dashed] (D) -- (D1);\n    \\draw[dashed] (D) -- (C);\n\n    % ======================================================\n    % 截面与辅助线\n    % ======================================================\n    % ED 虚线、EF 实线、FC 实线\n    \\draw[dashed,thick] (E) -- (D);\n    \\draw[thick] (E) -- (F);\n    \\draw[thick] (F) -- (C);\n    % MF 实线、MC 虚线\n    \\draw[thick] (M) -- (F);\n    \\draw[dashed,thick] (M) -- (C);\n\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n    \\ifnum\\showverts>0\n        \\node[below left=4pt]  at (A) {$A$};\n        \\node[below right=4pt] at (B) {$B$};\n        \\node[right=6pt]       at (C) {$C$};\n        \\node[below left=6pt]  at (D) {$D$};\n        \\node[above left=5pt]  at (A1) {$A_1$};\n        \\node[below right=5pt] at (B1) {$B_1$};\n        \\node[above right=5pt] at (C1) {$C_1$};\n        \\node[above left=5pt]  at (D1) {$D_1$};\n    \\fi\n\n    % ======================================================\n    % E、F、M 点标记与标签\n    % ======================================================\n    \\ifnum\\showmidpts>0\n        \\fill (E) circle [radius=1.6pt];\n        \\fill (F) circle [radius=1.6pt];\n        \\fill (M) circle [radius=1.6pt];\n    \\fi\n\n    \\node[above left=5pt]  at (E) {$E$};\n    \\node[right=4pt] at (F) {$F$};\n    \\node[below=5pt]       at (M) {$M$};\n\\end{tikzpicture}\n"
+  "id": "cube-aux-2021-beijing-17",
+  "name": "正方体棱中点与平面交点及空间辅助线 2021年北京卷第17题",
+  "category": "立体几何-正方体/长方体",
+  "parent": null,
+  "tags": [
+    "正方体",
+    "棱中点",
+    "空间几何",
+    "平面交点",
+    "辅助线",
+    "虚线",
+    "A1D1",
+    "B1C1",
+    "CDE",
+    "E",
+    "F",
+    "M",
+    "二面角"
+  ],
+  "desc": "绘制一个标准正方体 ABCD-A1B1C1D1 的立体示意图，E 为棱 A1D1 的中点，F 为棱 B1C1 与平面 CDE 的交点，M 为棱 A1B1 上一点。图中绘制平面 CDE 内的辅助线 ED、EF、FC，以及空间辅助线 MF、MC，并按照空间遮挡关系使用实线和虚线表示。",
+  "whenNotToUse": "长方体、棱柱、棱台或非正方体结构；题干没有 E、F、M 等对应点，或不包含 A1D1、B1C1、平面 CDE 等结构的图形不适合使用本模板。",
+  "params": [
+    {
+      "name": "side",
+      "type": "number",
+      "min": 1.0,
+      "max": null,
+      "options": null,
+      "default": "4",
+      "desc": "正方体棱长"
+    },
+    {
+      "name": "showverts",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否显示顶点标签 A、B、C、D、A1、B1、C1、D1"
+    },
+    {
+      "name": "showmidpts",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否显示图中辅助点 E、F、M"
+    }
+  ],
+  "constraints": [],
+  "template": "% 参数由系统自动注入；正方体：前后两个正方形错位，遮挡棱用虚线\n% 图形包含棱上点 E、F、M，以及平面 CDE 和空间辅助线\n% 视觉归一化：把最长外接边缩放到 6 个坐标单位，线宽与虚线样式不缩放\n% ==========================================================\n% 正方体透视参数\n% ==========================================================\n\\pgfmathsetmacro{\\dx}{0.42 * \\side}\n\\pgfmathsetmacro{\\dy}{0.30 * \\side}\n\\pgfmathsetmacro{\\figscale}{6 / max(\\side + \\dx, \\side + \\dy)}\n% ==========================================================\n% 图中点的位置参数\n% ==========================================================\n% E 为 A1D1 上的点，epar=0 在 A1，epar=1 在 D1\n\\pgfmathsetmacro{\\epar}{0.50}\n% F 为 B1C1 上的点，fpar=0 在 B1，fpar=1 在 C1\n\\pgfmathsetmacro{\\fpar}{0.50}\n% M 位于 A1B1 上，mpar=0 在 A1，mpar=1 在 B1\n\\pgfmathsetmacro{\\mpar}{0.62}\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n    % ======================================================\n    % 正方体八个顶点\n    % 前方正方形：A-A1-B1-B\n    % 后方正方形：D-D1-C1-C\n    % ======================================================\n    \\coordinate (A)  at (0,0);\n    \\coordinate (B)  at (\\side,0);\n    \\coordinate (A1) at (0,\\side);\n    \\coordinate (B1) at (\\side,\\side);\n    \\coordinate (D)  at (\\dx,\\dy);\n    \\coordinate (C)  at (\\side+\\dx,\\dy);\n    \\coordinate (D1) at (\\dx,\\side+\\dy);\n    \\coordinate (C1) at (\\side+\\dx,\\side+\\dy);\n\n    % ======================================================\n    % E：A1D1 上的点【修正：沿 A1→D1 方向按比例计算，x 只加 dx 偏移】\n    % ======================================================\n    \\pgfmathsetmacro{\\Ex}{0 + \\epar * \\dx}\n    \\pgfmathsetmacro{\\Ey}{\\side + \\epar * \\dy}\n    \\coordinate (E) at (\\Ex,\\Ey);\n\n    % ======================================================\n    % F：B1C1 上的点\n    % ======================================================\n    \\pgfmathsetmacro{\\Fx}{\\side + \\fpar * \\dx}\n    \\pgfmathsetmacro{\\Fy}{\\side + \\fpar * \\dy}\n    \\coordinate (F) at (\\Fx,\\Fy);\n\n    % ======================================================\n    % M：A1B1 上的点\n    % ======================================================\n    \\pgfmathsetmacro{\\Mx}{\\mpar * \\side}\n    \\pgfmathsetmacro{\\My}{\\side}\n    \\coordinate (M) at (\\Mx,\\My);\n\n    % ======================================================\n    % 正方体可见棱（实线）\n    % ======================================================\n    % 前面正方形 A-A1-B1-B\n    \\draw[thick] (A) -- (A1) -- (B1) -- (B) -- cycle;\n    % 右立面棱：BC、CC1、B1C1\n    \\draw[thick] (B) -- (C);\n    \\draw[thick] (C) -- (C1);\n    \\draw[thick] (B1) -- (C1);\n    % 上顶面棱：A1D1、D1C1\n    \\draw[thick] (A1) -- (D1);\n    \\draw[thick] (D1) -- (C1);\n\n    % ======================================================\n    % 正方体隐藏棱（虚线）\n    % ======================================================\n    \\draw[dashed] (A) -- (D);\n    \\draw[dashed] (D) -- (D1);\n    \\draw[dashed] (D) -- (C);\n\n    % ======================================================\n    % 截面与辅助线\n    % ======================================================\n    % ED 虚线、EF 实线、FC 实线\n    \\draw[dashed,thick] (E) -- (D);\n    \\draw[thick] (E) -- (F);\n    \\draw[thick] (F) -- (C);\n    % MF 实线、MC 虚线\n    \\draw[thick] (M) -- (F);\n    \\draw[dashed,thick] (M) -- (C);\n\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n    \\ifnum\\showverts>0\n        \\node[below left=4pt]  at (A) {$A$};\n        \\node[below right=4pt] at (B) {$B$};\n        \\node[right=6pt]       at (C) {$C$};\n        \\node[below left=6pt]  at (D) {$D$};\n        \\node[above left=5pt]  at (A1) {$A_1$};\n        \\node[below right=5pt] at (B1) {$B_1$};\n        \\node[above right=5pt] at (C1) {$C_1$};\n        \\node[above left=5pt]  at (D1) {$D_1$};\n    \\fi\n\n    % ======================================================\n    % E、F、M 点标记与标签\n    % ======================================================\n    \\ifnum\\showmidpts>0\n        \\node[circle, fill=black, inner sep=1.2pt] at (E) {};\n        \\node[circle, fill=black, inner sep=1.2pt] at (F) {};\n        \\node[circle, fill=black, inner sep=1.2pt] at (M) {};\n    \\fi\n\n    \\node[above left=5pt]  at (E) {$E$};\n    \\node[right=4pt] at (F) {$F$};\n    \\node[below=5pt]       at (M) {$M$};\n\\end{tikzpicture}\n"
 }
