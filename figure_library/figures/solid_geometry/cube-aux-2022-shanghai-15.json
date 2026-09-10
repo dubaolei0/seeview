@@ -1,48 +1,37 @@
 {
-  "id": "cube-aux-2022-shanghai-15",
-  "name": "正方体棱中点与空间辅助线 2022年上海卷 第15题",
-  "category": "立体几何-正方体/长方体",
-  "parent": null,
-  "tags": [
-    "正方体",
-    "棱中点",
-    "空间几何",
-    "辅助线",
-    "虚线",
-    "A1S",
-    "B1D"
-  ],
-  "desc": "绘制一个标准正方体 ABCD-A1B1C1D1 的立体示意图，P、Q、R、S 分别为棱 AB、BC、BB1、CD 的中点，并绘制空间辅助线 A1S 和 B1D。正方体被遮挡的棱使用虚线表示。",
-  "whenNotToUse": "长方体、棱柱、棱台或非正方体结构；题干没有棱中点 P、Q、R、S，或不包含 A1S、B1D 辅助线的图形不适合用本模板。",
-  "params": [
-    {
-      "name": "side",
-      "type": "number",
-      "min": 1.0,
-      "max": null,
-      "options": null,
-      "default": "4",
-      "desc": "正方体棱长"
-    },
-    {
-      "name": "showverts",
-      "type": "bool",
-      "min": null,
-      "max": null,
-      "options": null,
-      "default": "true",
-      "desc": "是否显示顶点标签 A、B、C、D、A1、B1、C1、D1"
-    },
-    {
-      "name": "showmidpts",
-      "type": "bool",
-      "min": null,
-      "max": null,
-      "options": null,
-      "default": "true",
-      "desc": "是否显示棱中点 P、Q、R、S"
-    }
-  ],
-  "constraints": [],
-  "template": "% 参数由系统自动注入；正方体：前后两个正方形错位，遮挡棱用虚线\n% 图形包含棱上中点 P、Q、R、S，以及空间辅助线 A1S、B1D\n% 视觉归一化：把最长外接边缩放到 6 个坐标单位，线宽与虚线样式不缩放\n\n% ==========================================================\n% 正方体透视参数\n% ==========================================================\n\n\\pgfmathsetmacro{\\dx}{0.42 * \\side}\n\\pgfmathsetmacro{\\dy}{0.34 * \\side}\n\n\\pgfmathsetmacro{\\figscale}{6 / max(\\side + \\dx, \\side + \\dy)}\n\n\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n\n    % ======================================================\n    % 正方体八个顶点\n    % ======================================================\n\n    \\coordinate (A)  at (0,0);\n    \\coordinate (B)  at (\\side,0);\n    \\coordinate (A1) at (0,\\side);\n    \\coordinate (B1) at (\\side,\\side);\n\n    \\coordinate (D)  at (\\dx,\\dy);\n    \\coordinate (C)  at (\\side+\\dx,\\dy);\n    \\coordinate (D1) at (\\dx,\\side+\\dy);\n    \\coordinate (C1) at (\\side+\\dx,\\side+\\dy);\n\n\n    % ======================================================\n    % 四个棱中点\n    % P：AB 中点\n    % Q：BC 中点\n    % R：BB1 中点\n    % S：CD 中点\n    % ======================================================\n\n    % P 位于 AB\n    \\pgfmathsetmacro{\\Px}{0.5 * \\side}\n    \\pgfmathsetmacro{\\Py}{0}\n    \\coordinate (P) at (\\Px,\\Py);\n\n    % Q 位于 BC\n    \\pgfmathsetmacro{\\Qx}{\\side + 0.5 * \\dx}\n    \\pgfmathsetmacro{\\Qy}{0.5 * \\dy}\n    \\coordinate (Q) at (\\Qx,\\Qy);\n\n    % R 位于 BB1\n    \\pgfmathsetmacro{\\Rx}{\\side}\n    \\pgfmathsetmacro{\\Ry}{0.5 * \\side}\n    \\coordinate (R) at (\\Rx,\\Ry);\n\n    % S 位于 CD\n    \\pgfmathsetmacro{\\Sx}{0.5 * \\side + \\dx}\n    \\pgfmathsetmacro{\\Sy}{\\dy}\n    \\coordinate (S) at (\\Sx,\\Sy);\n\n\n    % ======================================================\n    % 正方体可见棱\n    % ======================================================\n\n    % 前表面 A-A1-B1-B\n    \\draw[thick]\n        (A) -- (A1) -- (B1) -- (B) -- cycle;\n\n    % A1-D1\n    \\draw[thick]\n        (A1) -- (D1);\n\n    % D1-C1\n    \\draw[thick]\n        (D1) -- (C1);\n\n    % C1-C\n    \\draw[thick]\n        (C1) -- (C);\n\n    % B-C\n    \\draw[thick]\n        (B) -- (C);\n\n    % ======================================================\n    % 新增：B1-C1 实线\n    % ======================================================\n    \\draw[thick]\n        (B1) -- (C1);\n\n\n    % ======================================================\n    % 正方体隐藏棱\n    % ======================================================\n\n    % A-D\n    \\draw[dashed]\n        (A) -- (D);\n\n    % D-D1\n    \\draw[dashed]\n        (D) -- (D1);\n\n    % D-C\n    \\draw[dashed]\n        (D) -- (C);\n\n\n    % ======================================================\n    % 空间辅助线\n    % ======================================================\n\n    % A1-S\n    \\draw[dashed,thick]\n        (A1) -- (S);\n\n    % B1-D\n    \\draw[dashed,thick]\n        (B1) -- (D);\n\n\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n\n    \\ifnum\\showverts>0\n\n        % A\n        \\node[below left=4pt]\n            at (A) {$A$};\n\n        % A1\n        \\node[left=7pt]\n            at (A1) {$A_1$};\n\n        % B\n        \\node[below left=5pt]\n            at (B) {$B$};\n\n        % B1\n        \\node[right=5pt]\n            at (B1) {$B_1$};\n\n        % C\n        \\node[below right=4pt]\n            at (C) {$C$};\n\n        % C1\n        \\node[above right=3pt]\n            at (C1) {$C_1$};\n\n        % D\n        \\node[below=6pt]\n            at (D) {$D$};\n\n        % D1\n        \\node[above left=4pt]\n            at (D1) {$D_1$};\n\n    \\fi\n\n\n    % ======================================================\n    % 中点 P、Q、R、S\n    % ======================================================\n\n    \\ifnum\\showmidpts>0\n\n        \\node[circle, fill=black, inner sep=1.2pt] at (P) {};\n\n        \\node[circle, fill=black, inner sep=1.2pt] at (Q) {};\n\n        \\node[circle, fill=black, inner sep=1.2pt] at (R) {};\n\n        \\node[circle, fill=black, inner sep=1.2pt] at (S) {};\n\n    \\fi\n\n\n    % ======================================================\n    % 中点标签\n    % ======================================================\n\n    % P\n    \\node[below=6pt]\n        at (P) {$P$};\n\n    % Q\n    \\node[below right=5pt]\n        at (Q) {$Q$};\n\n    % R\n    \\node[right=5pt]\n        at (R) {$R$};\n\n    % S\n    \\node[below left=5pt]\n        at (S) {$S$};\n\n\n\\end{tikzpicture}"
+  "id" : "cube-aux-2022-shanghai-15",
+  "name" : "正方体-2022年上海卷 第15题",
+  "category" : "立体几何-正方体/长方体",
+  "parent" : null,
+  "tags" : [ "正方体", "棱中点", "空间几何", "辅助线", "虚线", "A1S", "B1D" ],
+  "desc" : "绘制一个标准正方体 ABCD-A1B1C1D1 的立体示意图，P、Q、R、S 分别为棱 AB、BC、BB1、CD 的中点，并绘制空间辅助线 A1S 和 B1D。正方体被遮挡的棱使用虚线表示。",
+  "whenNotToUse" : "长方体、棱柱、棱台或非正方体结构；题干没有棱中点 P、Q、R、S，或不包含 A1S、B1D 辅助线的图形不适合用本模板。",
+  "params" : [ {
+    "name" : "side",
+    "type" : "number",
+    "min" : 1.0,
+    "max" : null,
+    "options" : null,
+    "default" : "4",
+    "desc" : "正方体棱长"
+  }, {
+    "name" : "showverts",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "true",
+    "desc" : "是否显示顶点标签 A、B、C、D、A1、B1、C1、D1"
+  }, {
+    "name" : "showmidpts",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "true",
+    "desc" : "是否显示棱中点 P、Q、R、S"
+  } ],
+  "constraints" : [ ],
+  "template" : "% 参数由系统自动注入；正方体：前后两个正方形错位，遮挡棱用虚线\n% 图形包含棱上中点 P、Q、R、S，以及空间辅助线 A1S、B1D\n% 视觉归一化：把最长外接边缩放到 6 个坐标单位，线宽与虚线样式不缩放\n\n% ==========================================================\n% 正方体透视参数\n% ==========================================================\n\n\\pgfmathsetmacro{\\dx}{0.42 * \\side}\n\\pgfmathsetmacro{\\dy}{0.34 * \\side}\n\n\\pgfmathsetmacro{\\figscale}{6 / max(\\side + \\dx, \\side + \\dy)}\n\n\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n\n    % ======================================================\n    % 正方体八个顶点\n    % ======================================================\n\n    \\coordinate (A)  at (0,0);\n    \\coordinate (B)  at (\\side,0);\n    \\coordinate (A1) at (0,\\side);\n    \\coordinate (B1) at (\\side,\\side);\n\n    \\coordinate (D)  at (\\dx,\\dy);\n    \\coordinate (C)  at (\\side+\\dx,\\dy);\n    \\coordinate (D1) at (\\dx,\\side+\\dy);\n    \\coordinate (C1) at (\\side+\\dx,\\side+\\dy);\n\n\n    % ======================================================\n    % 四个棱中点\n    % P：AB 中点\n    % Q：BC 中点\n    % R：BB1 中点\n    % S：CD 中点\n    % ======================================================\n\n    % P 位于 AB\n    \\pgfmathsetmacro{\\Px}{0.5 * \\side}\n    \\pgfmathsetmacro{\\Py}{0}\n    \\coordinate (P) at (\\Px,\\Py);\n\n    % Q 位于 BC\n    \\pgfmathsetmacro{\\Qx}{\\side + 0.5 * \\dx}\n    \\pgfmathsetmacro{\\Qy}{0.5 * \\dy}\n    \\coordinate (Q) at (\\Qx,\\Qy);\n\n    % R 位于 BB1\n    \\pgfmathsetmacro{\\Rx}{\\side}\n    \\pgfmathsetmacro{\\Ry}{0.5 * \\side}\n    \\coordinate (R) at (\\Rx,\\Ry);\n\n    % S 位于 CD\n    \\pgfmathsetmacro{\\Sx}{0.5 * \\side + \\dx}\n    \\pgfmathsetmacro{\\Sy}{\\dy}\n    \\coordinate (S) at (\\Sx,\\Sy);\n\n\n    % ======================================================\n    % 正方体可见棱\n    % ======================================================\n\n    % 前表面 A-A1-B1-B\n    \\draw[thick]\n        (A) -- (A1) -- (B1) -- (B) -- cycle;\n\n    % A1-D1\n    \\draw[thick]\n        (A1) -- (D1);\n\n    % D1-C1\n    \\draw[thick]\n        (D1) -- (C1);\n\n    % C1-C\n    \\draw[thick]\n        (C1) -- (C);\n\n    % B-C\n    \\draw[thick]\n        (B) -- (C);\n\n    % ======================================================\n    % 新增：B1-C1 实线\n    % ======================================================\n    \\draw[thick]\n        (B1) -- (C1);\n\n\n    % ======================================================\n    % 正方体隐藏棱\n    % ======================================================\n\n    % A-D\n    \\draw[dashed]\n        (A) -- (D);\n\n    % D-D1\n    \\draw[dashed]\n        (D) -- (D1);\n\n    % D-C\n    \\draw[dashed]\n        (D) -- (C);\n\n\n    % ======================================================\n    % 空间辅助线\n    % ======================================================\n\n    % A1-S\n    \\draw[dashed,thick]\n        (A1) -- (S);\n\n    % B1-D\n    \\draw[dashed,thick]\n        (B1) -- (D);\n\n\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n\n    \\ifnum\\showverts>0\n\n        % A\n        \\node[below left=4pt]\n            at (A) {$A$};\n\n        % A1\n        \\node[left=7pt]\n            at (A1) {$A_1$};\n\n        % B\n        \\node[below left=5pt]\n            at (B) {$B$};\n\n        % B1\n        \\node[right=5pt]\n            at (B1) {$B_1$};\n\n        % C\n        \\node[below right=4pt]\n            at (C) {$C$};\n\n        % C1\n        \\node[above right=3pt]\n            at (C1) {$C_1$};\n\n        % D\n        \\node[below=6pt]\n            at (D) {$D$};\n\n        % D1\n        \\node[above left=4pt]\n            at (D1) {$D_1$};\n\n    \\fi\n\n\n    % ======================================================\n    % 中点 P、Q、R、S\n    % ======================================================\n\n    \\ifnum\\showmidpts>0\n\n        \\node[circle, fill=black, inner sep=1.2pt] at (P) {};\n\n        \\node[circle, fill=black, inner sep=1.2pt] at (Q) {};\n\n        \\node[circle, fill=black, inner sep=1.2pt] at (R) {};\n\n        \\node[circle, fill=black, inner sep=1.2pt] at (S) {};\n\n    \\fi\n\n\n    % ======================================================\n    % 中点标签\n    % ======================================================\n\n    % P\n    \\node[below=6pt]\n        at (P) {$P$};\n\n    % Q\n    \\node[below right=5pt]\n        at (Q) {$Q$};\n\n    % R\n    \\node[right=5pt]\n        at (R) {$R$};\n\n    % S\n    \\node[below left=5pt]\n        at (S) {$S$};\n\n\n\\end{tikzpicture}",
+  "elements" : null
 }

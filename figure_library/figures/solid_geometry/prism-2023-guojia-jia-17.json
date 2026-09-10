@@ -1,52 +1,37 @@
 {
-  "id": "prism-2023-guojia-jia-17",
-  "name": "三棱柱-2023全国甲卷 第17题（斜三棱柱，A₁C⊥底面ABC，∠ACB=90°）",
-  "category": "立体几何-棱柱",
-  "parent": null,
-  "tags": [
-    "三棱柱",
-    "斜棱柱",
-    "空间几何体",
-    "线框图",
-    "虚线",
-    "面面垂直",
-    "棱锥",
-    "顶点标签",
-    "辅助点",
-    "二面角",
-    "A1C中点"
-  ],
-  "desc": "斜三棱柱线框图模板：底面ABC满足∠ACB=90°，A₁C垂直底面ABC；可见棱用实线，被遮挡棱用虚线；支持可选显示6个顶点标签A、B、C、A₁、B₁、C₁及辅助点D（A₁C中点）、辅助线AD和BD，用于第2问二面角A‑BD‑C。",
-  "whenNotToUse": "正方体、长方体、棱台，或者需要自定义透视角度、自定义底面边长比例的空间几何图形，建议改用自由TikZ。",
-  "params": [
-    {
-      "name": "side",
-      "type": "number",
-      "min": 1.0,
-      "max": null,
-      "options": null,
-      "default": "4",
-      "desc": "底面直角边AC、BC的参考长度"
-    },
-    {
-      "name": "showverts",
-      "type": "bool",
-      "min": null,
-      "max": null,
-      "options": null,
-      "default": "true",
-      "desc": "是否标出6个顶点标签A、B、C、A₁、B₁、C₁"
-    },
-    {
-      "name": "showd",
-      "type": "bool",
-      "min": null,
-      "max": null,
-      "options": null,
-      "default": "false",
-      "desc": "是否显示辅助点D（A₁C中点）及辅助线AD、BD"
-    }
-  ],
-  "constraints": [],
-  "template": "% 参数由系统自动注入；斜三棱柱 ABC‑A₁B₁C₁，A₁C⊥平面 ABC，∠ACB=90°；遮挡棱与内部线段用虚线\n% 视觉归一化：把最长外接边缩放到 6 个坐标单位，线宽与虚线样式不缩放\n\n% ==========================================================\n% 三棱柱透视参数\n% ==========================================================\n% dx：底面CA方向水平偏移分量\n% dy：底面CA方向竖直偏移分量\n\n\\pgfmathsetmacro{\\dx}{0.36 * \\side}\n\\pgfmathsetmacro{\\dy}{0.30 * \\side}\n\n% 视觉归一化：外接矩形最大边缩放到6\n\\pgfmathsetmacro{\\figscale}{6 / max(\\side + 2*\\dx, \\side + 2*\\dy)}\n\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n\n    % ======================================================\n    % 底面 ABC（C为原点，CB沿x轴正方向，CA沿斜二测y轴负方向）\n    % ======================================================\n    \\coordinate (C) at (0, 0);\n    \\coordinate (B) at (\\side, 0);\n    \\coordinate (A) at (-\\dx, -\\dy);\n\n    % ======================================================\n    % 顶面 A₁B₁C₁\n    % A₁在C正上方（A₁C⊥底面ABC）；棱柱侧棱平移：AA₁∥BB₁∥CC₁\n    % ======================================================\n    \\coordinate (A1) at (0, \\side);\n    \\coordinate (C1) at (\\dx, \\side + \\dy);\n    \\coordinate (B1) at (\\side + \\dx, \\side + \\dy);\n\n    % ======================================================\n    % 可见实线棱 + 体对角线A₁B\n    % ======================================================\n    % 底面可见边\n    \\draw[thick] (A) -- (B);\n    % 可见侧棱\n    \\draw[thick] (A) -- (A1);\n    \\draw[thick] (B) -- (B1);\n    % 顶面三角形三边\n    \\draw[thick] (A1) -- (C1) -- (B1) -- (A1);\n    % 体对角线 A₁B\n    \\draw[thick] (A1) -- (B);\n\n    % ======================================================\n    % 被遮挡棱 + 内部垂线A₁C：虚线\n    % ======================================================\n    % 底面被遮挡边\n    \\draw[dashed] (A) -- (C);\n    \\draw[dashed] (C) -- (B);\n    % 被遮挡侧棱 CC₁\n    \\draw[dashed] (C) -- (C1);\n    % 内部垂线 A₁C\n    \\draw[dashed] (A1) -- (C);\n\n    % ======================================================\n    % 辅助点 D（A₁C 中点）及辅助线 AD、BD\n    % D 在 A₁C 中点：(0, side) 和 (0, 0) 的中点 => (0, 0.5*side)\n    % ======================================================\n    \\coordinate (D) at (0, 0.5*\\side);\n\n    \\ifnum\\showd>0\n        % 辅助线 AD、BD（内部空间对角线，虚线）\n        \\draw[dashed] (A) -- (D);\n        \\draw[dashed] (B) -- (D);\n        % D 点实心标记\n        \\node[circle, fill=black, inner sep=1.2pt] at (D) {};\n        % D 标签\n        \\node[right=3pt] at (D) {$D$};\n    \\fi\n\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n    \\ifnum\\showverts>0\n        \\node[below left=3pt] at (A) {$A$};\n        \\node[below right=3pt] at (B) {$B$};\n        \\node[left=3pt] at (C) {$C$};\n        \\node[left=3pt] at (A1) {$A_1$};\n        \\node[above left=3pt] at (C1) {$C_1$};\n        \\node[above right=3pt] at (B1) {$B_1$};\n    \\fi\n\n% ==========================================================\n% 结束绘图\n% ==========================================================\n\\end{tikzpicture}\n"
+  "id" : "prism-2023-guojia-jia-17",
+  "name" : "三棱柱-2023全国甲卷 第17题",
+  "category" : "立体几何-棱柱",
+  "parent" : null,
+  "tags" : [ "三棱柱", "斜棱柱", "空间几何体", "线框图", "虚线", "面面垂直", "棱锥", "顶点标签", "辅助点", "二面角", "A1C中点" ],
+  "desc" : "斜三棱柱线框图模板：底面ABC满足∠ACB=90°，A₁C垂直底面ABC；可见棱用实线，被遮挡棱用虚线；支持可选显示6个顶点标签A、B、C、A₁、B₁、C₁及辅助点D（A₁C中点）、辅助线AD和BD，用于第2问二面角A‑BD‑C。",
+  "whenNotToUse" : "正方体、长方体、棱台，或者需要自定义透视角度、自定义底面边长比例的空间几何图形，建议改用自由TikZ。",
+  "params" : [ {
+    "name" : "side",
+    "type" : "number",
+    "min" : 1.0,
+    "max" : null,
+    "options" : null,
+    "default" : "4",
+    "desc" : "底面直角边AC、BC的参考长度"
+  }, {
+    "name" : "showverts",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "true",
+    "desc" : "是否标出6个顶点标签A、B、C、A₁、B₁、C₁"
+  }, {
+    "name" : "showd",
+    "type" : "bool",
+    "min" : null,
+    "max" : null,
+    "options" : null,
+    "default" : "false",
+    "desc" : "是否显示辅助点D（A₁C中点）及辅助线AD、BD"
+  } ],
+  "constraints" : [ ],
+  "template" : "% 参数由系统自动注入；斜三棱柱 ABC‑A₁B₁C₁，A₁C⊥平面 ABC，∠ACB=90°；遮挡棱与内部线段用虚线\n% 视觉归一化：把最长外接边缩放到 6 个坐标单位，线宽与虚线样式不缩放\n\n% ==========================================================\n% 三棱柱透视参数\n% ==========================================================\n% dx：底面CA方向水平偏移分量\n% dy：底面CA方向竖直偏移分量\n\n\\pgfmathsetmacro{\\dx}{0.36 * \\side}\n\\pgfmathsetmacro{\\dy}{0.30 * \\side}\n\n% 视觉归一化：外接矩形最大边缩放到6\n\\pgfmathsetmacro{\\figscale}{6 / max(\\side + 2*\\dx, \\side + 2*\\dy)}\n\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n\n    % ======================================================\n    % 底面 ABC（C为原点，CB沿x轴正方向，CA沿斜二测y轴负方向）\n    % ======================================================\n    \\coordinate (C) at (0, 0);\n    \\coordinate (B) at (\\side, 0);\n    \\coordinate (A) at (-\\dx, -\\dy);\n\n    % ======================================================\n    % 顶面 A₁B₁C₁\n    % A₁在C正上方（A₁C⊥底面ABC）；棱柱侧棱平移：AA₁∥BB₁∥CC₁\n    % ======================================================\n    \\coordinate (A1) at (0, \\side);\n    \\coordinate (C1) at (\\dx, \\side + \\dy);\n    \\coordinate (B1) at (\\side + \\dx, \\side + \\dy);\n\n    % ======================================================\n    % 可见实线棱 + 体对角线A₁B\n    % ======================================================\n    % 底面可见边\n    \\draw[thick] (A) -- (B);\n    % 可见侧棱\n    \\draw[thick] (A) -- (A1);\n    \\draw[thick] (B) -- (B1);\n    % 顶面三角形三边\n    \\draw[thick] (A1) -- (C1) -- (B1) -- (A1);\n    % 体对角线 A₁B\n    \\draw[thick] (A1) -- (B);\n\n    % ======================================================\n    % 被遮挡棱 + 内部垂线A₁C：虚线\n    % ======================================================\n    % 底面被遮挡边\n    \\draw[dashed] (A) -- (C);\n    \\draw[dashed] (C) -- (B);\n    % 被遮挡侧棱 CC₁\n    \\draw[dashed] (C) -- (C1);\n    % 内部垂线 A₁C\n    \\draw[dashed] (A1) -- (C);\n\n    % ======================================================\n    % 辅助点 D（A₁C 中点）及辅助线 AD、BD\n    % D 在 A₁C 中点：(0, side) 和 (0, 0) 的中点 => (0, 0.5*side)\n    % ======================================================\n    \\coordinate (D) at (0, 0.5*\\side);\n\n    \\ifnum\\showd>0\n        % 辅助线 AD、BD（内部空间对角线，虚线）\n        \\draw[dashed] (A) -- (D);\n        \\draw[dashed] (B) -- (D);\n        % D 点实心标记\n        \\node[circle, fill=black, inner sep=1.2pt] at (D) {};\n        % D 标签\n        \\node[right=3pt] at (D) {$D$};\n    \\fi\n\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n    \\ifnum\\showverts>0\n        \\node[below left=3pt] at (A) {$A$};\n        \\node[below right=3pt] at (B) {$B$};\n        \\node[left=3pt] at (C) {$C$};\n        \\node[left=3pt] at (A1) {$A_1$};\n        \\node[above left=3pt] at (C1) {$C_1$};\n        \\node[above right=3pt] at (B1) {$B_1$};\n    \\fi\n\n% ==========================================================\n% 结束绘图\n% ==========================================================\n\\end{tikzpicture}\n",
+  "elements" : null
 }
