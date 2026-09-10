@@ -438,7 +438,6 @@ body {
   margin: 6px 0 2px; padding: 8px 12px;
   border: 1px solid var(--line); border-radius: 8px; background: var(--line-2);
 }
-.q-fig-panel .pname { font: 600 11.5px var(--sans); color: var(--ink-2); }
 .q-fig-panel .pid { font: 400 11px var(--mono); color: var(--ink-3); margin-right: 4px; }
 .q-fig-panel .pp { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
 .q-fig-panel .pp label { color: var(--ink-2); }
@@ -1293,10 +1292,27 @@ function renderPaper(p) {
       pre.after(fig);
     }
   });
+  // 图库模板轨道 / 纯图片轨道：题干只有 ![配图] 链接、没有 ```tikz 源码块。
+  // 同样挂"编辑配图"：图库图点击时取模板展开源码（/figure/source）灌进同一个编辑弹窗，
+  // 纯图片以空源码打开（源码面板粘贴 TikZ 后应用即成图）；应用后源码块写回题干，
+  // 之后与自由 TikZ 轨道同构（重渲染走上面的 pre.q-code 逻辑，编辑不丢失）。
+  body.querySelectorAll('.q-stem img[alt="配图"]').forEach((img) => {
+    if (img.closest('.q-fig')) return; // 自由 TikZ 轨道已处理
+    const fig = document.createElement('span');
+    fig.className = 'q-fig';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'q-fig-btn';
+    btn.textContent = '✎ 编辑配图';
+    btn.addEventListener('click', () => openFigEditorForImage(img, fig));
+    img.replaceWith(fig);
+    fig.appendChild(img);
+    fig.appendChild(btn);
+  });
   $('showAns').checked = false;
   body.querySelectorAll('.q-ans').forEach((el) => el.classList.remove('show'));
   // 图库轨道配图：item.fig 引用了模板的题，在配图下方挂参数面板（改参数即时重渲染）。
-  // 异步加载目录后再逐题挂面板；自由 TikZ 轨道（带源码块）由上面的 pre.q-code 逻辑处理，互不干扰。
+  // 与上面的「✎ 编辑配图」按钮并存：参数面板快速调参，编辑弹窗做属性/AI/源码深度编辑。
   attachFigPanels(p);
 }
 
@@ -1316,20 +1332,54 @@ async function attachFigPanels(p) {
   });
 }
 
+/* 图库轨道 / 纯图片配图打开编辑弹窗：取可编辑源码 + 造占位源码块，复用 openFigEditor 全套面板。
+   应用过一次后 fig 内已有源码块（含最新代码），再次打开直接复用它继续编辑 */
+async function openFigEditorForImage(img, fig) {
+  const exist = fig.querySelector('pre.q-code');
+  if (exist) {
+    const code = exist.textContent.replace(/^\s*```[^\n]*\n/, '').replace(/```\s*$/, '').trim();
+    openFigEditor(code, img, exist, fig);
+    state.figEdit.item = fig._tikzItem || null;
+    return;
+  }
+  const itemEl = fig.closest('.q-item');
+  const idx = [...document.querySelectorAll('#paperBody .q-item')].indexOf(itemEl);
+  const item = flatItems(state.paper)[idx];
+  let code = '';
+  if (item && item.fig && item.fig.id) {
+    try {
+      const res = await fetch('/figure/source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.fig.id, params: item.fig.params || {} }),
+      });
+      const data = await res.json();
+      if (data.error) { toast('获取配图源码失败：' + data.error); return; }
+      code = data.code || '';
+    } catch {
+      toast('获取配图源码失败，请重试');
+      return;
+    }
+  }
+  // 占位源码块：applyFigImage 把最新源码写在这里；item 记在 fig 上供再次打开与写回题干
+  const pre = document.createElement('pre');
+  pre.className = 'q-code';
+  pre.hidden = true;
+  pre.textContent = '```tikz\n' + code + '\n```';
+  fig.appendChild(pre);
+  fig._tikzItem = item || null;
+  openFigEditor(code, img, pre, fig);
+  state.figEdit.item = item || null;
+}
+
 /* ---------------- 题干编辑（对话式 AI 修改 + 手动改源码） ---------------- */
 /* 卷面所有题目按渲染顺序摊平（配图定位题干、编辑题干共用同一索引口径） */
 function flatItems(p) {
   return (p && Array.isArray(p.sections)) ? p.sections.flatMap((sec) => sec.items || []) : [];
 }
 
-/* ---------------- 图库轨道配图参数面板 ---------------- */
-/* 生题时大模型可能输出 fig: {id, params} 引用图库模板（替代自由 TikZ）。
-   这类配图在题干里只留一张 ![配图](path) 图片、不带 ```tikz 源码块，
-   因此改图不走 AI 对话，而是在配图下方挂参数面板，改参数即时调 /figure/render 重出图。
-   自由 TikZ 轨道（题干带 ```tikz 源码块）维持原有「编辑配图/调整配图」对话，不受此处影响。 */
-
-/* 懒加载图库目录：首次需要面板时拉取 /figure/list，缓存为 id -> Catalog 的 Map。
-   返回 Map（可能为空）；网络失败不抛错，仅返回空 Map，面板退化为只显示模板 id。 */
+/* 懒加载图库目录：指定模板下拉与编辑弹窗共用，缓存为 id -> Catalog 的 Map。
+   返回 Map（可能为空）；网络失败不抛错，仅返回空 Map。 */
 async function loadFigureCatalog() {
   if (state.figureCatalog) return state.figureCatalog;
   try {
@@ -1369,6 +1419,11 @@ async function populateFigureTemplateSelect() {
   });
 }
 
+/* ---------------- 图库轨道配图参数面板 ---------------- */
+/* 生题时大模型可能输出 fig: {id, params} 引用图库模板（替代自由 TikZ）。
+   这类配图在题干里只留一张 ![配图](path) 图片，参数面板挂在配图下方改参数即时重出图；
+   同时配图上也挂了「✎ 编辑配图」按钮（见 renderPaper），点开走属性/AI/源码弹窗深度编辑。 */
+
 /* 取某题当前参数值：优先 item.fig.params，缺省回退模板默认值，再缺省给类型空值。 */
 function figureParamValues(fig, tpl) {
   const vals = {};
@@ -1386,12 +1441,14 @@ function figureParamValues(fig, tpl) {
 }
 
 /* 渲染单个题目的参数面板：基于模板参数表生成 number input / bool checkbox / string select。
-   面板挂在 .q-stem 内的 ![配图] <img> 之后；改参数防抖调 /figure/render 重出图替换该 img。 */
+   面板挂在 .q-stem 内的 ![配图] <img> 之后；改参数后点「渲染配图」调 /figure/render 重出图。 */
 function renderFigPanel(stemEl, fig, tpl) {
   const img = stemEl.querySelector('img.q-inline-img[alt="配图"], img[alt="配图"]');
   if (!img) return; // 题干没有配图（fig 渲染失败回退等），不挂面板
+  // 配图已被「编辑配图」按钮包进 .q-fig 容器时，面板挂在容器之后，避免挤进容器内部
+  const anchor = img.closest('.q-fig') || img;
   // 清掉旧面板（重渲染场景）
-  const old = img.nextElementSibling;
+  const old = anchor.nextElementSibling;
   if (old && old.classList.contains('q-fig-panel')) old.remove();
 
   const panel = document.createElement('div');
@@ -1449,7 +1506,7 @@ function renderFigPanel(stemEl, fig, tpl) {
   });
   panel.appendChild(renderBtn);
   panel.appendChild(status);
-  img.after(panel);
+  anchor.after(panel);
 
   // 收集面板当前值（与后端 appendDefs 约定一致：bool 转小写 true/false，number/string 原样）
   const collectParams = () => {
@@ -1525,6 +1582,7 @@ function syncPaperImageByImg(img, newPath) {
     (sec.items || []).forEach((it) => {
       if (it.q) it.q = replace(it.q);
       if (it.note) it.note = replace(it.note);
+      if (it.a) it.a = replace(it.a);
       if (it.o) it.o = it.o.map(replace);
     });
   });
@@ -2338,12 +2396,33 @@ function applyFigImage(ctx, newPath, code) {
     chat: ctx.chat, stem: ctx.stem, model: newModel,
     // 原地补丁的 diff 基准随最新代码刷新（raw 区间对准当前源码，深拷贝防随编辑同变）
     origModel: cloneTikzModel(newModel),
+    item: ctx.item,
   };
   // 若属性面板可见，按最新代码刷新模型
   if (newModel && document.querySelector('.fig-tab.active[data-fig-tab="props"]')) {
     renderFigProps(newModel);
     bindFigPropGlobal(newModel);
   }
+  // 图库轨道首次应用：源码写回题干、清除 fig 引用，之后按自由 TikZ 轨道口径处理
+  if (ctx.item) {
+    syncItemTikz(ctx.item, code);
+    // 参数面板依赖 item.fig，转自由轨道后已失效，一并摘掉
+    const panel = ctx.fig && ctx.fig.nextElementSibling;
+    if (panel && panel.classList && panel.classList.contains('q-fig-panel')) panel.remove();
+  }
+}
+
+/* 图库轨道配图编辑应用后：源码写进题干（![配图] 链接已在题干里），清掉 item.fig，
+   后续渲染/保存/导出按"图片 + ```tikz 源码"的自由轨道口径走；重复应用时更新块内容 */
+function syncItemTikz(item, code) {
+  if (!item || typeof item.q !== 'string') return;
+  const block = '```tikz\n' + code + '\n```';
+  if (/```tikz[\s\S]*?```/.test(item.q)) {
+    item.q = item.q.replace(/```tikz[\s\S]*?```/, block);
+  } else {
+    item.q = (item.q.trim() ? item.q.trim() + '\n\n' : '') + block;
+  }
+  item.fig = null;
 }
 
 /* state.paper 各字段里的旧图片路径替换为新路径（复制/下载与界面保持一致） */

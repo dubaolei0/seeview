@@ -200,6 +200,28 @@ public class FigureLibraryService {
     }
 
     /**
+     * 按参数展开模板源码（\def 声明区 + 模板体），不编译。
+     * 生题页图库轨道配图的「编辑配图」用：前端拿到源码灌进编辑弹窗，
+     * 属性/AI/源码三个面板照常工作，应用时走 /question/render-tikz 重出图。
+     *
+     * @param id     模板 id
+     * @param params 参数值（缺省项用默认值）
+     * @return 成功 {@code {"code": 源码}}；失败 {@code {"error": 摘要}}
+     */
+    public Map<String, String> source(String id, Map<String, Object> params) {
+        FigureTemplate t = get(id);
+        if (t == null) {
+            return Map.of("error", "图库中不存在模板: " + id);
+        }
+        StringBuilder defs = new StringBuilder();
+        String err = appendDefs(defs, t, params);
+        if (err != null) {
+            return Map.of("error", err);
+        }
+        return Map.of("code", defs + t.template().strip());
+    }
+
+    /**
      * 渲染草稿模板（图库编辑器实时预览用）：不落盘，直接按传入的模板定义与参数渲染。
      * 校验口径与 {@link #render} 一致；模板体结构不校验（编辑中允许半成品），只做编译。
      *

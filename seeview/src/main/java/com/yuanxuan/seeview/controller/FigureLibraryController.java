@@ -117,4 +117,23 @@ public class FigureLibraryController {
         }
         return Map.of("path", r.path().toString().replace('\\', '/'));
     }
+
+    /**
+     * 取模板按参数展开后的 TikZ 源码（\def 声明区 + 模板体），不编译。
+     * 生题页图库轨道配图（题干只有图片、无 ```tikz 块）点「编辑配图」时，
+     * 前端据此拿到可编辑源码灌进编辑弹窗；参数非法时返回 error。
+     *
+     * @param body {@code {"id": 模板id, "params": {参数名: 值}}}（params 可省，用默认值）
+     * @return 成功 {@code {"code": TikZ 源码}}；失败 {@code {"error": 摘要}}
+     */
+    @PostMapping("/source")
+    public Map<String, String> source(@RequestBody Map<String, Object> body) {
+        if (body == null || body.get("id") == null || String.valueOf(body.get("id")).isBlank()) {
+            return Map.of("error", "id 不能为空");
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> params = body.get("params") instanceof Map<?, ?> m
+                ? (Map<String, Object>) m : Map.of();
+        return library.source(String.valueOf(body.get("id")).strip(), params);
+    }
 }
