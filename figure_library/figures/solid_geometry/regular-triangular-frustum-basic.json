@@ -52,7 +52,7 @@
       "min": 0.5,
       "max": null,
       "options": null,
-      "default": "1.8",
+      "default": "1.3",
       "desc": "正三棱台的高（OO' 竖直长度）；小于底面透视高度时自动抬升绘图高度避免上底面压到后顶点 C，不影响 top/base 比例"
     },
     {
