@@ -1,0 +1,65 @@
+{
+  "id": "cylinder-oblique-drawing",
+  "name": "圆柱斜二测立体示意图",
+  "category": "立体几何-旋转体",
+  "parent": null,
+  "tags": [
+    "圆柱",
+    "旋转体",
+    "斜二测",
+    "立体图",
+    "线框图",
+    "虚线",
+    "底面圆心",
+    "母线",
+    "半径OA,O'A'"
+  ],
+  "desc": "绘制圆柱斜二测立体图，上下两个椭圆代表上下底面，OO'为竖直中心轴线；OA、O'A'分别为上下底面的水平半径，AA'为母线。后半个底面椭圆用虚线绘制，被遮挡轮廓虚线，可见轮廓实线。适配高中立体几何圆柱概念、表面积体积、线面位置关系题型。",
+  "whenNotToUse": "圆锥、圆台、球体；正视图/侧视图；需要截面切割的复杂图形。",
+  "params": [
+    {
+      "name": "radius",
+      "type": "number",
+      "min": 0.8,
+      "max": null,
+      "default": "1.2",
+      "desc": "圆柱底面圆半径"
+    },
+    {
+      "name": "height",
+      "type": "number",
+      "min": 1.0,
+      "max": null,
+      "default": "2.4",
+      "desc": "圆柱的高（OO'长度）"
+    },
+    {
+      "name": "xscale",
+      "type": "number",
+      "min": 0.4,
+      "max": 1.0,
+      "default": "0.42",
+      "desc": "斜二测椭圆y方向压缩系数，控制椭圆扁平程度"
+    },
+    {
+      "name": "showlabels",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标记顶点标签 O,O',A,A'"
+    },
+    {
+      "name": "showaxis",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否绘制中心对称轴OO'"
+    }
+  ],
+  "constraints": [],
+  "template": "% 参数由系统自动注入；圆柱斜二测图，上下底面椭圆，OO'中心轴，半径OA,O'A'，母线AA'\n% 视觉归一化：最长外接边缩放到6个坐标单位，线宽与虚线样式不缩放\n\\pgfmathsetmacro{\\ellipseY}{\\radius * \\xscale}\n\\pgfmathsetmacro{\\xmin}{-\\radius}\n\\pgfmathsetmacro{\\xmax}{\\radius}\n\\pgfmathsetmacro{\\ymin}{0}\n\\pgfmathsetmacro{\\ymax}{\\height + \\ellipseY}\n\\pgfmathsetmacro{\\figscale}{6 / max(\\xmax-\\xmin, \\ymax-\\ymin)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n    \\coordinate (O)  at (0,0);\n    \\coordinate (Op) at (0,\\height);\n    \\coordinate (A)  at (\\radius, 0);\n    \\coordinate (Ap) at (\\radius, \\height);\n    % 上底面椭圆（全部实线）\n    \\draw[blue, thick] (Op) ellipse (\\radius and \\ellipseY);\n    % 下底面椭圆：前半实线，后半虚线\n    \\draw[blue, thick] (O) ellipse (\\radius and \\ellipseY);\n    \\draw[blue, thick, dashed] (O) arc[start angle=180, end angle=360, x radius=\\radius, y radius=\\ellipseY];\n    % 两条竖直母线\n    \\draw[black, thick] (-\\radius, 0) -- (-\\radius, \\height);\n    \\draw[black, thick] (\\radius, 0) -- (\\radius, \\height);\n    % 中心对称轴OO'\n    \\ifnum\\showaxis>0\n        \\draw[green!60!black, dashed, thick] (O)--(Op);\n    \\fi\n    % 半径OA, O'A' 橙色\n    \\draw[orange, thick] (O)--(A);\n    \\draw[orange, thick] (Op)--(Ap);\n    % 母线AA' 橙色虚线\n    \\draw[orange, thick, dashed] (A)--(Ap);\n    % 标签\n    \\ifnum\\showlabels>0\n        \\node[below left] at (O) {$O$};\n        \\node[above left] at (Op) {$O'$};\n        \\node[below right] at (A) {$A$};\n        \\node[above right] at (Ap) {$A'$};\n    \\fi\n\\end{tikzpicture}\n"
+}

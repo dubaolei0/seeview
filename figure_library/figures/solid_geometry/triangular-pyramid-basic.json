@@ -1,76 +1,95 @@
 {
-  "id" : "triangular-pyramid-basic",
-  "name" : "三棱锥基础立体几何图形模板",
-  "category" : "立体几何",
-  "parent" : null,
-  "tags" : [ "三棱锥", "空间几何体", "立体几何", "线框图", "虚线", "顶点标签", "棱", "棱上动点", "辅助线" ],
-  "desc" : "绘制三棱锥 P-ABC 的立体示意图，ABC 为底面三角形，P 为顶点；含棱 PB 上点 D、棱 PA 上点 E、底边 AC 上点 F，O 为直线 EF 与底边 BC 的交点。实线：侧棱、AB、AC、AD、EF；虚线：BC、BF、PO、DO、AO。适配线面平行、截面交线类高考题。",
-  "whenNotToUse" : "四棱锥、多棱锥、棱柱、棱台、正方体或长方体等其他空间几何体；如果题目需要严格按照特定透视角度、旋转方向或复杂截面关系绘制，应使用自由 TikZ 模板。",
-  "params" : [ {
-    "name" : "side",
-    "type" : "number",
-    "min" : 1.0,
-    "max" : null,
-    "options" : null,
-    "default" : "4",
-    "desc" : "三棱锥底面三角形的基准尺度"
-  }, {
-    "name" : "dpar",
-    "type" : "number",
-    "min" : 0.0,
-    "max" : 1.0,
-    "options" : null,
-    "default" : "0.45",
-    "desc" : "点D在棱PB上的位置比例，0对应点B，1对应点P"
-  }, {
-    "name" : "epar",
-    "type" : "number",
-    "min" : 0.0,
-    "max" : 1.0,
-    "options" : null,
-    "default" : "0.5",
-    "desc" : "点E在棱PA上的位置比例，0对应点A，1对应点P"
-  }, {
-    "name" : "fpar",
-    "type" : "number",
-    "min" : 0.0,
-    "max" : 1.0,
-    "options" : null,
-    "default" : "0.55",
-    "desc" : "点F在底边AC上的位置比例，0对应点A，1对应点C"
-  }, {
-    "name" : "opar",
-    "type" : "number",
-    "min" : 0.0,
-    "max" : 1.0,
-    "options" : null,
-    "default" : "0.8",
-    "desc" : "点O在线段BF上的位置比例，0对应点B，1对应点F"
-  }, {
-    "name" : "showverts",
-    "type" : "bool",
-    "min" : null,
-    "max" : null,
-    "options" : null,
-    "default" : "true",
-    "desc" : "是否显示顶点标签 A、B、C、P"
-  }, {
-    "name" : "showaux",
-    "type" : "bool",
-    "min" : null,
-    "max" : null,
-    "options" : null,
-    "default" : "false",
-    "desc" : "是否显示点 D、E、F、O 及辅助线 AD、EF、BF、PO、DO、AO"
-  }, {
-    "name" : "showpoints",
-    "type" : "bool",
-    "min" : null,
-    "max" : null,
-    "options" : null,
-    "default" : "false",
-    "desc" : "是否显示棱上或内部辅助点"
-  } ],
-  "constraints" : [ ],
-  "template" : "% 参数由系统自动注入；三棱锥 P-ABC：ABC 为底面三角形，P 为顶点\n% D 在棱 PB 上(dpar)，E 在棱 PA 上(epar)，F 在底边 AC 上(fpar)，O 在线段 BF 上(opar)\n% 实线：侧棱 PA/PB/PC、底边 AB/AC、辅助线 AD、EF\n% 虚线：底边 BC(遮挡)、BF、PO、DO、AO\n% 视觉归一化：把图形最长外接尺寸缩放到 6 个坐标单位，线宽与虚线样式不缩放\n\n% ==========================================================\n% 三棱锥透视参数\n% ==========================================================\n% 底面 ABC：B、C 位于同一水平线，A 位于底面前方偏左\n% P 位于 BC 中点正上方\n\n\\pgfmathsetmacro{\\bx}{-2.5 * \\side}\n\\pgfmathsetmacro{\\by}{0}\n\\pgfmathsetmacro{\\cx}{2.5 * \\side}\n\\pgfmathsetmacro{\\cy}{0}\n\\pgfmathsetmacro{\\ax}{-0.9 * \\side}\n\\pgfmathsetmacro{\\ay}{-1.2 * \\side}\n\\pgfmathsetmacro{\\px}{0}\n\\pgfmathsetmacro{\\py}{2.6 * \\side}\n\n% 视觉归一化\n\\pgfmathsetmacro{\\figscale}{6 / max(\\cx - \\bx, \\py - \\ay)}\n\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n\n    % 三棱锥四个顶点\n    \\coordinate (A) at (\\ax,\\ay);\n    \\coordinate (B) at (\\bx,\\by);\n    \\coordinate (C) at (\\cx,\\cy);\n    \\coordinate (P) at (\\px,\\py);\n\n    % 基本三棱锥结构\n    % 侧棱 PA、PB、PC\n    \\draw[thick] (P) -- (A);\n    \\draw[thick] (P) -- (B);\n    \\draw[thick] (P) -- (C);\n\n    % 底面边 AB、AC 实线；BC 被遮挡用虚线\n    \\draw[thick] (A) -- (B);\n    \\draw[thick] (A) -- (C);\n    \\draw[dashed,thick] (B) -- (C);\n\n    % ======================================================\n    % 条件性绘制辅助元素\n    % ======================================================\n    \\ifnum\\showaux>0\n        % D 在 PB 上\n        \\pgfmathsetmacro{\\Dx}{\\bx + \\dpar * (\\px - \\bx)}\n        \\pgfmathsetmacro{\\Dy}{\\by + \\dpar * (\\py - \\by)}\n        \\coordinate (D) at (\\Dx,\\Dy);\n\n        % E 在 PA 上\n        \\pgfmathsetmacro{\\Ex}{\\ax + \\epar * (\\px - \\ax)}\n        \\pgfmathsetmacro{\\Ey}{\\ay + \\epar * (\\py - \\ay)}\n        \\coordinate (E) at (\\Ex,\\Ey);\n\n        % F 在 AC 上\n        \\pgfmathsetmacro{\\Fx}{\\ax + \\fpar * (\\cx - \\ax)}\n        \\pgfmathsetmacro{\\Fy}{\\ay + \\fpar * (\\cy - \\ay)}\n        \\coordinate (F) at (\\Fx,\\Fy);\n\n        % O 在线段 BF 上\n        \\pgfmathsetmacro{\\Ox}{\\bx + \\opar * (\\Fx - \\bx)}\n        \\pgfmathsetmacro{\\Oy}{\\by + \\opar * (\\Fy - \\by)}\n        \\coordinate (O) at (\\Ox,\\Oy);\n\n        % 辅助线\n        \\draw[dashed,thick] (B) -- (F);   % 底面线段 BF\n        \\draw[dashed,thick] (P) -- (O);\n        \\draw[dashed,thick] (D) -- (O);\n        \\draw[dashed,thick] (A) -- (O);\n        \\draw[thick] (D) -- (A);          % 侧面辅助线 AD\n        \\draw[thick] (E) -- (F);          % 侧面辅助线 EF（过 O）\n    \\fi\n\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n    \\ifnum\\showverts>0\n        \\node[below left=4pt] at (B) {$B$};\n        \\node[right=5pt] at (C) {$C$};\n        \\node[below=5pt] at (A) {$A$};\n        \\node[above=4pt] at (P) {$P$};\n        % 仅当辅助元素被启用时才显示辅助点标签\n        \\ifnum\\showaux>0\n            \\node[left=5pt] at (D) {$D$};\n            \\node[right=3pt] at (E) {$E$};\n            \\node[below right=5pt] at (F) {$F$};\n            \\node[above=3pt] at (O) {$O$};\n        \\fi\n    \\fi\n\n    % ======================================================\n    % 辅助点\n    % ======================================================\n    \\ifnum\\showpoints>0\n        % 仅当辅助元素被启用时才显示辅助点\n        \\ifnum\\showaux>0\n            \\fill (D) circle [radius=1.6pt];\n            \\fill (E) circle [radius=1.6pt];\n            \\fill (F) circle [radius=1.6pt];\n            \\fill (O) circle [radius=1.6pt];\n        \\fi\n    \\fi\n\n% ==========================================================\n% 结束绘图\n% ==========================================================\n\\end{tikzpicture}\n"
+  "id": "triangular-pyramid-basic",
+  "name": "三棱锥基础立体几何图形模板",
+  "category": "立体几何-棱锥",
+  "parent": null,
+  "tags": [
+    "三棱锥",
+    "空间几何体",
+    "立体几何",
+    "线框图",
+    "虚线",
+    "顶点标签",
+    "棱",
+    "棱上动点",
+    "辅助线"
+  ],
+  "desc": "绘制三棱锥 P-ABC 的立体示意图，ABC 为底面三角形，P 为顶点；含棱 PB 上点 D、棱 PA 上点 E、底边 AC 上点 F，O 为直线 EF 与底边 BC 的交点。实线：侧棱、AB、AC、AD、EF；虚线：BC、BF、PO、DO、AO。适配线面平行、截面交线类高考题。",
+  "whenNotToUse": "四棱锥、多棱锥、棱柱、棱台、正方体或长方体等其他空间几何体；如果题目需要严格按照特定透视角度、旋转方向或复杂截面关系绘制，应使用自由 TikZ 模板。",
+  "params": [
+    {
+      "name": "side",
+      "type": "number",
+      "min": 1.0,
+      "max": null,
+      "options": null,
+      "default": "4",
+      "desc": "三棱锥底面三角形的基准尺度"
+    },
+    {
+      "name": "dpar",
+      "type": "number",
+      "min": 0.0,
+      "max": 1.0,
+      "options": null,
+      "default": "0.45",
+      "desc": "点D在棱PB上的位置比例，0对应点B，1对应点P"
+    },
+    {
+      "name": "epar",
+      "type": "number",
+      "min": 0.0,
+      "max": 1.0,
+      "options": null,
+      "default": "0.5",
+      "desc": "点E在棱PA上的位置比例，0对应点A，1对应点P"
+    },
+    {
+      "name": "fpar",
+      "type": "number",
+      "min": 0.0,
+      "max": 1.0,
+      "options": null,
+      "default": "0.55",
+      "desc": "点F在底边AC上的位置比例，0对应点A，1对应点C"
+    },
+    {
+      "name": "opar",
+      "type": "number",
+      "min": 0.0,
+      "max": 1.0,
+      "options": null,
+      "default": "0.8",
+      "desc": "点O在线段BF上的位置比例，0对应点B，1对应点F"
+    },
+    {
+      "name": "showverts",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否显示顶点标签 A、B、C、P"
+    },
+    {
+      "name": "showaux",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否显示点 D、E、F、O 及辅助线 AD、EF、BF、PO、DO、AO"
+    },
+    {
+      "name": "showpoints",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "false",
+      "desc": "是否显示棱上或内部辅助点"
+    }
+  ],
+  "constraints": [],
+  "template": "% 参数由系统自动注入；三棱锥 P-ABC：ABC 为底面三角形，P 为顶点\n% D 在棱 PB 上(dpar)，E 在棱 PA 上(epar)，F 在底边 AC 上(fpar)，O 在线段 BF 上(opar)\n% 实线：侧棱 PA/PB/PC、底边 AB/AC、辅助线 AD、EF\n% 虚线：底边 BC(遮挡)、BF、PO、DO、AO\n% 视觉归一化：把图形最长外接尺寸缩放到 6 个坐标单位，线宽与虚线样式不缩放\n\n% ==========================================================\n% 三棱锥透视参数\n% ==========================================================\n% 底面 ABC：B、C 位于同一水平线，A 位于底面前方偏左\n% P 位于 BC 中点正上方\n\n\\pgfmathsetmacro{\\bx}{-2.5 * \\side}\n\\pgfmathsetmacro{\\by}{0}\n\\pgfmathsetmacro{\\cx}{2.5 * \\side}\n\\pgfmathsetmacro{\\cy}{0}\n\\pgfmathsetmacro{\\ax}{-0.9 * \\side}\n\\pgfmathsetmacro{\\ay}{-1.2 * \\side}\n\\pgfmathsetmacro{\\px}{0}\n\\pgfmathsetmacro{\\py}{2.6 * \\side}\n\n% 视觉归一化\n\\pgfmathsetmacro{\\figscale}{6 / max(\\cx - \\bx, \\py - \\ay)}\n\n% ==========================================================\n% 开始绘图\n% ==========================================================\n\\begin{tikzpicture}[\n    scale=\\figscale,\n    every node/.style={\n        font=\\small,\n        fill=none,\n        inner sep=1.5pt\n    }\n]\n\n    % 三棱锥四个顶点\n    \\coordinate (A) at (\\ax,\\ay);\n    \\coordinate (B) at (\\bx,\\by);\n    \\coordinate (C) at (\\cx,\\cy);\n    \\coordinate (P) at (\\px,\\py);\n\n    % 基本三棱锥结构\n    % 侧棱 PA、PB、PC\n    \\draw[thick] (P) -- (A);\n    \\draw[thick] (P) -- (B);\n    \\draw[thick] (P) -- (C);\n\n    % 底面边 AB、AC 实线；BC 被遮挡用虚线\n    \\draw[thick] (A) -- (B);\n    \\draw[thick] (A) -- (C);\n    \\draw[dashed,thick] (B) -- (C);\n\n    % ======================================================\n    % 条件性绘制辅助元素\n    % ======================================================\n    \\ifnum\\showaux>0\n        % D 在 PB 上\n        \\pgfmathsetmacro{\\Dx}{\\bx + \\dpar * (\\px - \\bx)}\n        \\pgfmathsetmacro{\\Dy}{\\by + \\dpar * (\\py - \\by)}\n        \\coordinate (D) at (\\Dx,\\Dy);\n\n        % E 在 PA 上\n        \\pgfmathsetmacro{\\Ex}{\\ax + \\epar * (\\px - \\ax)}\n        \\pgfmathsetmacro{\\Ey}{\\ay + \\epar * (\\py - \\ay)}\n        \\coordinate (E) at (\\Ex,\\Ey);\n\n        % F 在 AC 上\n        \\pgfmathsetmacro{\\Fx}{\\ax + \\fpar * (\\cx - \\ax)}\n        \\pgfmathsetmacro{\\Fy}{\\ay + \\fpar * (\\cy - \\ay)}\n        \\coordinate (F) at (\\Fx,\\Fy);\n\n        % O 在线段 BF 上\n        \\pgfmathsetmacro{\\Ox}{\\bx + \\opar * (\\Fx - \\bx)}\n        \\pgfmathsetmacro{\\Oy}{\\by + \\opar * (\\Fy - \\by)}\n        \\coordinate (O) at (\\Ox,\\Oy);\n\n        % 辅助线\n        \\draw[dashed,thick] (B) -- (F);   % 底面线段 BF\n        \\draw[dashed,thick] (P) -- (O);\n        \\draw[dashed,thick] (D) -- (O);\n        \\draw[dashed,thick] (A) -- (O);\n        \\draw[thick] (D) -- (A);          % 侧面辅助线 AD\n        \\draw[thick] (E) -- (F);          % 侧面辅助线 EF（过 O）\n    \\fi\n\n    % ======================================================\n    % 顶点标签\n    % ======================================================\n    \\ifnum\\showverts>0\n        \\node[below left=4pt] at (B) {$B$};\n        \\node[right=5pt] at (C) {$C$};\n        \\node[below=5pt] at (A) {$A$};\n        \\node[above=4pt] at (P) {$P$};\n        % 仅当辅助元素被启用时才显示辅助点标签\n        \\ifnum\\showaux>0\n            \\node[left=5pt] at (D) {$D$};\n            \\node[right=3pt] at (E) {$E$};\n            \\node[below right=5pt] at (F) {$F$};\n            \\node[above=3pt] at (O) {$O$};\n        \\fi\n    \\fi\n\n    % ======================================================\n    % 辅助点\n    % ======================================================\n    \\ifnum\\showpoints>0\n        % 仅当辅助元素被启用时才显示辅助点\n        \\ifnum\\showaux>0\n            \\node[circle, fill=black, inner sep=1.2pt] at (D) {};\n            \\node[circle, fill=black, inner sep=1.2pt] at (E) {};\n            \\node[circle, fill=black, inner sep=1.2pt] at (F) {};\n            \\node[circle, fill=black, inner sep=1.2pt] at (O) {};\n        \\fi\n    \\fi\n\n% ==========================================================\n% 结束绘图\n% ==========================================================\n\\end{tikzpicture}\n"
 }

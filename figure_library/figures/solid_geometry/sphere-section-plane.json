@@ -1,0 +1,56 @@
+{
+  "id": "sphere-section-plane",
+  "name": "球与截面平面立体示意图",
+  "category": "立体几何-旋转体",
+  "parent": null,
+  "tags": [
+    "球",
+    "球体",
+    "截面",
+    "球心",
+    "小圆",
+    "平面α",
+    "立体图",
+    "线框图",
+    "虚线"
+  ],
+  "desc": "绘制球体被平面α截取的立体示意图，O为球心，O'为截面小圆的圆心，OO'垂直截面α；P为截面小圆上一点。球面可见轮廓实线，被遮挡的球面、小圆、线段使用虚线，平面α用绿色平行四边形绘制。适配球的截面性质、球半径、小圆半径、球心距相关高考题型。",
+  "whenNotToUse": "圆柱圆锥圆台；正多面体；需要严格正视图。",
+  "params": [
+    {
+      "name": "R",
+      "type": "number",
+      "min": 1.0,
+      "max": null,
+      "default": "1.6",
+      "desc": "球的半径"
+    },
+    {
+      "name": "d",
+      "type": "number",
+      "min": 0.3,
+      "max": null,
+      "default": "0.8",
+      "desc": "球心O到截面α的距离，OO'长度"
+    },
+    {
+      "name": "rxscale",
+      "type": "number",
+      "min": 0.3,
+      "max": 0.6,
+      "default": "0.42",
+      "desc": "椭圆y方向压缩系数，控制斜二测椭圆扁平度"
+    },
+    {
+      "name": "showlabels",
+      "type": "bool",
+      "min": null,
+      "max": null,
+      "options": null,
+      "default": "true",
+      "desc": "是否标记O,O',P,α等文字标签"
+    }
+  ],
+  "constraints": [],
+  "template": "% 参数由系统自动注入；球体+截面平面α示意图，O球心，O'截面圆心，P小圆上点\n% 视觉归一化：最长外接边缩放到6个坐标单位，线宽与虚线样式不缩放\n\\pgfmathsetmacro{\\r}{sqrt(\\R^2 - \\d^2)} % 截面小圆半径\n\\pgfmathsetmacro{\\xmin}{-\\R-0.6}\n\\pgfmathsetmacro{\\xmax}{\\R+0.6}\n\\pgfmathsetmacro{\\ymin}{-\\R-0.4}\n\\pgfmathsetmacro{\\ymax}{\\R+0.6}\n\\pgfmathsetmacro{\\figscale}{6 / max(\\xmax-\\xmin, \\ymax-\\ymin)}\n\\begin{tikzpicture}[scale=\\figscale, every node/.style={font=\\small, fill=none, inner sep=1.5pt}]\n    \\coordinate (O)  at (0, \\d);\n    \\coordinate (Op) at (0, 0);\n    \\pgfmathsetmacro{\\px}{\\r*cos(30)};\n    \\pgfmathsetmacro{\\py}{\\r*sin(30)*\\rxscale};\n    \\coordinate (P) at (\\px, \\py);\n    % 平面α 绿色平行四边形\n    \\draw[green, thick] (-2.2,-0.6) -- (2.2,-0.6) -- (2.8,0.4) -- (-1.6,0.4) -- cycle;\n    \\ifnum\\showlabels>0\n        \\node[green, below left] at (-2.2,-0.6) {$\\alpha$};\n    \\fi\n    % 球体外轮廓大圆\n    \\draw[black, thick] (0,0) circle (\\R);\n    % 截面小圆（椭圆）\n    \\draw[green, thick] (Op) ellipse (\\r and \\r*\\rxscale);\n    \\draw[green, thick, dashed] (Op) arc[start angle=180, end angle=360, x radius=\\r, y radius=\\r*\\rxscale];\n    % 球内部被遮挡虚线圆弧\n    \\draw[gray, thick, dashed] (0,0) arc[start angle=210, end angle=330, x radius=\\R, y radius=\\R*0.48];\n    % 辅助线段 OO', O'P, OP\n    \\draw[purple, thick, dashed] (O)--(Op);\n    \\draw[purple, thick, dashed] (Op)--(P);\n    \\draw[purple, thick, dashed] (O)--(P);\n    % 点标记\n    \\node[circle, fill=black, inner sep=0.5pt] at (O) {};\n    \\node[circle, fill=black, inner sep=0.5pt] at (Op) {};\n    \\node[circle, fill=red, inner sep=0.5pt] at (P) {};\n    % 文字标签\n    \\ifnum\\showlabels>0\n        \\node[above] at (O) {$O$};\n        \\node[right] at (Op) {$O'$};\n        \\node[left] at (P) {$P$};\n    \\fi\n\\end{tikzpicture}\n"
+}
