@@ -1233,9 +1233,7 @@ public class LangChainController {
                 }
             }
         } else {
-            String name = req.fileName() == null || req.fileName().isBlank() ? "" : "（文件名：" + req.fileName() + "）";
-            sb.append("【命题材料】用户未提供可读的材料文本").append(name)
-                    .append("，请结合文件名主题，生成一组综合复习检测题。\n");
+            throw new IllegalArgumentException("上传内容不能为空");
         }
         if (req.prompt() != null && !req.prompt().isBlank()) {
             sb.append("【用户补充要求】").append(req.prompt().strip()).append('\n');
