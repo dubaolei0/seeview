@@ -60,9 +60,13 @@ langchain4j:
 #      api-key: sk-bec6f20fa8eae687d5019e5694849cb13816caeeb5d5dcba9d2917d6992de360
 #      model-name: gpt-5.6
 #      base-url: https://code.mmkg.cloud/v1
-      api-key: bce-v3/ALTAKSP-NiwnbpkU5z3tiL0C9yvP7/2e36fee0ce4e65728b4dc604aa2e307b8482cee2
+#      api-key: bce-v3/ALTAKSP-NiwnbpkU5z3tiL0C9yvP7/2e36fee0ce4e65728b4dc604aa2e307b8482cee2
+#      model-name: glm-5.2
+#      base-url: https://qianfan.baidubce.com/v2/tokenplan/personal
+
+      api-key: sk-sp-H.DEPRPX.ftdj.MEUCIQDjOfb9WINBn75BP2rUyCXEYvY5C-Fm4vvX0dKjnASftgIgZtqyov9lfI8yOeCkFKz0811k8DC_0dc-RspdqG66dno
       model-name: glm-5.2
-      base-url: https://qianfan.baidubce.com/v2/tokenplan/personal
+      base-url: https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
 
       log-requests: true
       log-responses: true
